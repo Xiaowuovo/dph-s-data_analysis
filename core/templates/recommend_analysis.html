@@ -1,0 +1,752 @@
+{% extends 'base.html' %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/recommend_analysis.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="recommend-analysis-container">
+    <!-- 页面头部 -->
+    <div class="analysis-header">
+        <h1><i class="fas fa-chart-line"></i> 推荐系统分析</h1>
+        <p class="subtitle">深入分析推荐算法性能，优化个性化推荐效果</p>
+    </div>
+
+    <!-- 模型选择和控制面板 -->
+    <div class="control-panel">
+        <div class="control-card">
+            <h3><i class="fas fa-sliders-h"></i> 分析配置</h3>
+            <form id="analysisConfigForm">
+                <div class="config-row">
+                    <div class="config-group">
+                        <label for="modelSelect"><i class="fas fa-brain"></i> 选择模型</label>
+                        <select id="modelSelect" class="form-select">
+                            <option value="all" selected>全部模型</option>
+                            <option value="cf_user">基于用户的协同过滤</option>
+                            <option value="cf_item">基于物品的协同过滤</option>
+                            <option value="content">基于内容推荐</option>
+                            <option value="hybrid">混合推荐</option>
+                            <option value="deepfm">DeepFM深度学习</option>
+                        </select>
+                    </div>
+                    
+                    <div class="config-group">
+                        <label for="metricSelect"><i class="fas fa-ruler"></i> 评估指标</label>
+                        <select id="metricSelect" class="form-select" multiple>
+                            <option value="precision" selected>精确率(Precision)</option>
+                            <option value="recall" selected>召回率(Recall)</option>
+                            <option value="f1" selected>F1分数</option>
+                            <option value="ndcg">NDCG</option>
+                            <option value="coverage">覆盖率</option>
+                            <option value="novelty">新颖性</option>
+                        </select>
+                    </div>
+                    
+                    <div class="config-group">
+                        <label for="timeRange"><i class="fas fa-calendar-alt"></i> 时间范围</label>
+                        <select id="timeRange" class="form-select">
+                            <option value="7">最近7天</option>
+                            <option value="15">最近15天</option>
+                            <option value="30" selected>最近30天</option>
+                            <option value="90">最近90天</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="config-actions">
+                    <button type="button" id="runAnalysis" class="btn btn-primary">
+                        <i class="fas fa-play"></i> 运行分析
+                    </button>
+                    <button type="button" id="exportReport" class="btn btn-outline-secondary">
+                        <i class="fas fa-download"></i> 导出报告
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 模型性能概览 -->
+    <div class="performance-overview">
+        <div class="overview-cards">
+            <div class="overview-card">
+                <div class="card-icon">
+                    <i class="fas fa-bullseye"></i>
+                </div>
+                <div class="card-content">
+                    <h4>最佳模型</h4>
+                    <p class="card-value">{{ performance_stats.best_model|default('DeepFM') }}</p>
+                    <p class="card-change">F1: {{ performance_stats.best_f1|default(0.78) }}</p>
+                </div>
+            </div>
+            
+            <div class="overview-card">
+                <div class="card-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="card-content">
+                    <h4>平均精确率</h4>
+                    <p class="card-value">{{ performance_stats.avg_precision|default(0.72) }}</p>
+                    <p class="card-change">环比 +{{ performance_stats.precision_change|default(1.2) }}%</p>
+                </div>
+            </div>
+            
+            <div class="overview-card">
+                <div class="card-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="card-content">
+                    <h4>推荐覆盖率</h4>
+                    <p class="card-value">{{ performance_stats.coverage|default(0.65) }}</p>
+                    <p class="card-change">可推荐用户占比</p>
+                </div>
+            </div>
+            
+            <div class="overview-card">
+                <div class="card-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="card-content">
+                    <h4>响应时间</h4>
+                    <p class="card-value">{{ performance_stats.response_time|default(150) }}ms</p>
+                    <p class="card-change">平均请求响应</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模型性能对比 -->
+    <div class="performance-section">
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-chart-bar"></i> 模型性能对比</h3>
+                <div class="card-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="exportComparison">
+                        <i class="fas fa-download"></i> 导出图表
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="modelComparisonChart" style="width: 100%; height: 400px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 详细分析 -->
+    <div class="analysis-details">
+        <div class="result-row">
+            <!-- 精度-召回曲线 -->
+            <div class="result-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-chart-line"></i> PR曲线</h3>
+                </div>
+                <div class="card-body">
+                    <div id="prCurveChart" style="width: 100%; height: 350px;"></div>
+                </div>
+            </div>
+            
+            <!-- ROC曲线 -->
+            <div class="result-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-chart-area"></i> ROC曲线</h3>
+                </div>
+                <div class="card-body">
+                    <div id="rocCurveChart" style="width: 100%; height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模型详细指标 -->
+    <div class="metrics-section">
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-table"></i> 模型详细指标</h3>
+            </div>
+            <div class="card-body">
+                <div class="metrics-tabs">
+                    <div class="tab-buttons">
+                        <button class="tab-btn active" data-tab="cf_user">用户协同过滤</button>
+                        <button class="tab-btn" data-tab="cf_item">物品协同过滤</button>
+                        <button class="tab-btn" data-tab="content">内容推荐</button>
+                        <button class="tab-btn" data-tab="hybrid">混合推荐</button>
+                        <button class="tab-btn" data-tab="deepfm">DeepFM</button>
+                    </div>
+                    
+                    <div class="tab-content active" id="cf_user-tab">
+                        <div class="metrics-table">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>指标</th>
+                                        <th>值</th>
+                                        <th>排名</th>
+                                        <th>变化</th>
+                                        <th>状态</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><i class="fas fa-bullseye"></i> 精确率</td>
+                                        <td>0.68</td>
+                                        <td>3/5</td>
+                                        <td><span class="change-badge up">+0.02</span></td>
+                                        <td><span class="status-badge good">良好</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><i class="fas fa-search"></i> 召回率</td>
+                                        <td>0.72</td>
+                                        <td>2/5</td>
+                                        <td><span class="change-badge up">+0.03</span></td>
+                                        <td><span class="status-badge good">良好</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><i class="fas fa-percentage"></i> F1分数</td>
+                                        <td>0.70</td>
+                                        <td>3/5</td>
+                                        <td><span class="change-badge up">+0.02</span></td>
+                                        <td><span class="status-badge good">良好</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><i class="fas fa-expand-alt"></i> 覆盖率</td>
+                                        <td>0.75</td>
+                                        <td>1/5</td>
+                                        <td><span class="change-badge neutral">0.00</span></td>
+                                        <td><span class="status-badge excellent">优秀</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><i class="fas fa-lightbulb"></i> 新颖性</td>
+                                        <td>0.65</td>
+                                        <td>1/5</td>
+                                        <td><span class="change-badge up">+0.05</span></td>
+                                        <td><span class="status-badge excellent">优秀</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- 其他模型的tab内容类似，这里省略以节省篇幅 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 推荐效果分析 -->
+    <div class="effectiveness-section">
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-chart-pie"></i> 推荐效果分析</h3>
+            </div>
+            <div class="card-body">
+                <div class="effectiveness-grid">
+                    <div class="effectiveness-chart">
+                        <h4>点击率分布</h4>
+                        <div id="ctrChart" style="width: 100%; height: 300px;"></div>
+                    </div>
+                    
+                    <div class="effectiveness-chart">
+                        <h4>转化率分析</h4>
+                        <div id="conversionChart" style="width: 100%; height: 300px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 用户分群分析 -->
+    <div class="user-analysis-section">
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-users"></i> 用户分群推荐效果</h3>
+            </div>
+            <div class="card-body">
+                <div class="user-segments">
+                    <div class="segment-card">
+                        <h4><i class="fas fa-crown"></i> 高价值用户</h4>
+                        <div class="segment-metrics">
+                            <div class="metric">
+                                <span class="label">点击率</span>
+                                <span class="value">12.5%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="label">转化率</span>
+                                <span class="value">8.3%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="label">满意度</span>
+                                <span class="value">92%</span>
+                            </div>
+                        </div>
+                        <p class="segment-desc">对个性化推荐敏感，转化率高</p>
+                    </div>
+                    
+                    <div class="segment-card">
+                        <h4><i class="fas fa-user-friends"></i> 普通用户</h4>
+                        <div class="segment-metrics">
+                            <div class="metric">
+                                <span class="label">点击率</span>
+                                <span class="value">8.2%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="label">转化率</span>
+                                <span class="value">4.1%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="label">满意度</span>
+                                <span class="value">78%</span>
+                            </div>
+                        </div>
+                        <p class="segment-desc">偏好热门商品，行为模式稳定</p>
+                    </div>
+                    
+                    <div class="segment-card">
+                        <h4><i class="fas fa-user-clock"></i> 新用户</h4>
+                        <div class="segment-metrics">
+                            <div class="metric">
+                                <span class="label">点击率</span>
+                                <span class="value">6.5%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="label">转化率</span>
+                                <span class="value">2.8%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="label">满意度</span>
+                                <span class="value">65%</span>
+                            </div>
+                        </div>
+                        <p class="segment-desc">需要更多引导，偏好多样性推荐</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 优化建议 -->
+    <div class="optimization-section">
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-lightbulb"></i> 优化建议</h3>
+            </div>
+            <div class="card-body">
+                <div class="recommendation-list">
+                    <div class="recommendation-item priority-high">
+                        <div class="recommendation-icon">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </div>
+                        <div class="recommendation-content">
+                            <h5>优化新用户推荐</h5>
+                            <p>新用户点击率低于平均水平，建议增加热门商品和探索性推荐</p>
+                            <span class="priority-badge">高优先级</span>
+                        </div>
+                    </div>
+                    
+                    <div class="recommendation-item priority-medium">
+                        <div class="recommendation-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="recommendation-content">
+                            <h5>提升模型多样性</h5>
+                            <p>当前推荐多样性较低，建议增加内容推荐的比例</p>
+                            <span class="priority-badge">中优先级</span>
+                        </div>
+                    </div>
+                    
+                    <div class="recommendation-item priority-low">
+                        <div class="recommendation-icon">
+                            <i class="fas fa-sync-alt"></i>
+                        </div>
+                        <div class="recommendation-content">
+                            <h5>优化模型更新频率</h5>
+                            <p>考虑增加实时模型更新，提升推荐时效性</p>
+                            <span class="priority-badge">低优先级</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化图表
+    const comparisonChart = echarts.init(document.getElementById('modelComparisonChart'));
+    const prChart = echarts.init(document.getElementById('prCurveChart'));
+    const rocChart = echarts.init(document.getElementById('rocCurveChart'));
+    const ctrChart = echarts.init(document.getElementById('ctrChart'));
+    const conversionChart = echarts.init(document.getElementById('conversionChart'));
+    
+    // 模型对比图表
+    const comparisonOption = {
+        title: {
+            text: '模型性能对比',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'shadow'
+            }
+        },
+        legend: {
+            data: ['精确率', '召回率', 'F1分数', 'NDCG'],
+            bottom: 10
+        },
+        xAxis: {
+            type: 'category',
+            data: ['用户CF', '物品CF', '内容推荐', '混合推荐', 'DeepFM']
+        },
+        yAxis: {
+            type: 'value',
+            min: 0,
+            max: 1,
+            axisLabel: {
+                formatter: '{value}'
+            }
+        },
+        series: [
+            {
+                name: '精确率',
+                type: 'bar',
+                data: [0.68, 0.65, 0.60, 0.72, 0.78],
+                itemStyle: { color: '#5470C6' }
+            },
+            {
+                name: '召回率',
+                type: 'bar',
+                data: [0.72, 0.70, 0.65, 0.75, 0.80],
+                itemStyle: { color: '#91CC75' }
+            },
+            {
+                name: 'F1分数',
+                type: 'bar',
+                data: [0.70, 0.68, 0.62, 0.73, 0.79],
+                itemStyle: { color: '#FAC858' }
+            },
+            {
+                name: 'NDCG',
+                type: 'bar',
+                data: [0.75, 0.72, 0.68, 0.78, 0.85],
+                itemStyle: { color: '#EE6666' }
+            }
+        ]
+    };
+    
+    // PR曲线
+    const prOption = {
+        title: {
+            text: 'PR曲线',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'axis',
+            formatter: function(params) {
+                return `精确率: ${params[0].value[1].toFixed(3)}<br/>召回率: ${params[0].value[0].toFixed(3)}`;
+            }
+        },
+        legend: {
+            data: ['用户CF', '物品CF', '内容推荐', '混合推荐', 'DeepFM'],
+            bottom: 10
+        },
+        xAxis: {
+            type: 'value',
+            name: '召回率',
+            min: 0,
+            max: 1
+        },
+        yAxis: {
+            type: 'value',
+            name: '精确率',
+            min: 0,
+            max: 1
+        },
+        series: [
+            {
+                name: '用户CF',
+                type: 'line',
+                data: generatePRCurve(0.68, 0.72),
+                smooth: true
+            },
+            {
+                name: '物品CF',
+                type: 'line',
+                data: generatePRCurve(0.65, 0.70),
+                smooth: true
+            },
+            {
+                name: '内容推荐',
+                type: 'line',
+                data: generatePRCurve(0.60, 0.65),
+                smooth: true
+            },
+            {
+                name: '混合推荐',
+                type: 'line',
+                data: generatePRCurve(0.72, 0.75),
+                smooth: true
+            },
+            {
+                name: 'DeepFM',
+                type: 'line',
+                data: generatePRCurve(0.78, 0.80),
+                smooth: true
+            }
+        ]
+    };
+    
+    // ROC曲线
+    const rocOption = {
+        title: {
+            text: 'ROC曲线',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'axis',
+            formatter: function(params) {
+                return `假阳性率: ${params[0].value[0].toFixed(3)}<br/>真阳性率: ${params[0].value[1].toFixed(3)}`;
+            }
+        },
+        legend: {
+            data: ['用户CF', '物品CF', '内容推荐', '混合推荐', 'DeepFM', '随机线'],
+            bottom: 10
+        },
+        xAxis: {
+            type: 'value',
+            name: '假阳性率',
+            min: 0,
+            max: 1
+        },
+        yAxis: {
+            type: 'value',
+            name: '真阳性率',
+            min: 0,
+            max: 1
+        },
+        series: [
+            {
+                name: '用户CF',
+                type: 'line',
+                data: generateROCCurve(0.8),
+                smooth: true
+            },
+            {
+                name: '物品CF',
+                type: 'line',
+                data: generateROCCurve(0.78),
+                smooth: true
+            },
+            {
+                name: '内容推荐',
+                type: 'line',
+                data: generateROCCurve(0.72),
+                smooth: true
+            },
+            {
+                name: '混合推荐',
+                type: 'line',
+                data: generateROCCurve(0.82),
+                smooth: true
+            },
+            {
+                name: 'DeepFM',
+                type: 'line',
+                data: generateROCCurve(0.85),
+                smooth: true
+            },
+            {
+                name: '随机线',
+                type: 'line',
+                data: [[0, 0], [1, 1]],
+                lineStyle: {
+                    type: 'dashed',
+                    color: '#999'
+                }
+            }
+        ]
+    };
+    
+    // CTR分布图表
+    const ctrOption = {
+        title: {
+            text: '点击率分布',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'axis',
+            formatter: '{b}: {c}%'
+        },
+        xAxis: {
+            type: 'category',
+            data: ['<1%', '1-3%', '3-5%', '5-8%', '8-12%', '>12%']
+        },
+        yAxis: {
+            type: 'value',
+            name: '商品数量'
+        },
+        series: [{
+            data: [120, 200, 150, 80, 70, 40],
+            type: 'bar',
+            itemStyle: {
+                color: function(params) {
+                    const colors = ['#FF6B6B', '#FF8E6B', '#FFD166', '#06D6A0', '#118AB2', '#073B4C'];
+                    return colors[params.dataIndex] || '#999';
+                }
+            }
+        }]
+    };
+    
+    // 转化率分析图表
+    const conversionOption = {
+        title: {
+            text: '推荐转化率分析',
+            subtext: '按商品类目统计',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'item',
+            formatter: '{a} <br/>{b}: {c}%'
+        },
+        legend: {
+            orient: 'vertical',
+            left: 'left',
+            data: ['电子产品', '服装', '家居用品', '美妆护肤', '食品饮料', '其他']
+        },
+        series: [
+            {
+                name: '转化率',
+                type: 'pie',
+                radius: '50%',
+                data: [
+                    {value: 8.5, name: '电子产品'},
+                    {value: 6.2, name: '服装'},
+                    {value: 7.8, name: '家居用品'},
+                    {value: 9.1, name: '美妆护肤'},
+                    {value: 5.4, name: '食品饮料'},
+                    {value: 4.2, name: '其他'}
+                ],
+                emphasis: {
+                    itemStyle: {
+                        shadowBlur: 10,
+                        shadowOffsetX: 0,
+                        shadowColor: 'rgba(0, 0, 0, 0.5)'
+                    }
+                }
+            }
+        ]
+    };
+    
+    // 渲染图表
+    comparisonChart.setOption(comparisonOption);
+    prChart.setOption(prOption);
+    rocChart.setOption(rocOption);
+    ctrChart.setOption(ctrOption);
+    conversionChart.setOption(conversionOption);
+    
+    // 标签页切换
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const tabId = this.getAttribute('data-tab');
+            
+            // 更新按钮状态
+            tabBtns.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // 更新内容显示
+            tabContents.forEach(content => {
+                content.classList.remove('active');
+                if (content.id === tabId + '-tab') {
+                    content.classList.add('active');
+                }
+            });
+        });
+    });
+    
+    // 运行分析
+    document.getElementById('runAnalysis').addEventListener('click', function() {
+        const model = document.getElementById('modelSelect').value;
+        const timeRange = document.getElementById('timeRange').value;
+        const metrics = Array.from(document.getElementById('metricSelect').selectedOptions)
+            .map(option => option.value);
+        
+        // 显示加载状态
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 分析中...';
+        
+        // 模拟分析过程
+        setTimeout(() => {
+            // 重新加载图表数据
+            loadAnalysisData(model, timeRange, metrics);
+            
+            // 恢复按钮状态
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-play"></i> 运行分析';
+        }, 2000);
+    });
+    
+    // 导出功能
+    document.getElementById('exportComparison').addEventListener('click', function() {
+        exportChart(comparisonChart, '模型性能对比.png');
+    });
+    
+    document.getElementById('exportReport').addEventListener('click', function() {
+        alert('分析报告导出功能将在后端实现');
+    });
+    
+    // 窗口大小变化时重绘
+    window.addEventListener('resize', function() {
+        comparisonChart.resize();
+        prChart.resize();
+        rocChart.resize();
+        ctrChart.resize();
+        conversionChart.resize();
+    });
+    
+    // 工具函数
+    function generatePRCurve(precision, recall) {
+        const points = [];
+        for (let i = 0; i <= 10; i++) {
+            const r = i / 10;
+            const p = precision + (recall - r) * 0.2;
+            points.push([r, Math.max(0, Math.min(1, p))]);
+        }
+        return points;
+    }
+    
+    function generateROCCurve(auc) {
+        const points = [];
+        for (let i = 0; i <= 10; i++) {
+            const fpr = i / 10;
+            const tpr = auc * fpr + (1 - auc) * Math.pow(fpr, 2);
+            points.push([fpr, Math.max(0, Math.min(1, tpr))]);
+        }
+        return points;
+    }
+    
+    function exportChart(chart, filename) {
+        const url = chart.getDataURL({
+            type: 'png',
+            pixelRatio: 2,
+            backgroundColor: '#fff'
+        });
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    
+    function loadAnalysisData(model, timeRange, metrics) {
+        console.log('加载分析数据:', {model, timeRange, metrics});
+        // 这里应该发送AJAX请求获取新的分析数据
+        // 然后更新所有图表
+    }
+});
+</script>
+{% endblock %}

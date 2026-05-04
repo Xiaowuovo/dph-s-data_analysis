@@ -1,0 +1,644 @@
+{% extends 'base.html' %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/user_analysis.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="user-analysis-container">
+    <!-- 页面头部 -->
+    <div class="analysis-header">
+        <h1><i class="fas fa-user-chart"></i> 用户画像深度分析</h1>
+        <p class="subtitle">深入洞察单个用户的行为模式、偏好特征和转化路径</p>
+    </div>
+
+    <!-- 用户搜索与分析控制 -->
+    <div class="user-search-section">
+        <div class="search-card">
+            <h3><i class="fas fa-search"></i> 用户搜索与分析</h3>
+            <div class="search-controls">
+                <div class="search-box">
+                    <i class="fas fa-user"></i>
+                    <input type="text"
+                           id="userIdInput"
+                           placeholder="输入用户ID（例如：1001）"
+                           value="{{ user_id if user_id else '' }}">
+                    <button class="btn btn-primary" id="analyzeUserBtn">
+                        <i class="fas fa-chart-line"></i> 开始分析
+                    </button>
+                </div>
+                <div class="search-options">
+                    <button class="btn btn-outline-secondary" id="randomUserBtn">
+                        <i class="fas fa-random"></i> 随机用户
+                    </button>
+                    <button class="btn btn-outline-secondary" id="recentUserBtn">
+                        <i class="fas fa-history"></i> 最近分析
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 用户信息展示区 -->
+    {% if user_info %}
+    <div class="user-profile-section">
+        <div class="profile-card">
+            <div class="profile-header">
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="user-basic-info">
+                    <h3>用户 {{ user_info.user_id }}</h3>
+                    <div class="user-tags">
+                        <span class="tag segment-{{ user_info.segment|default('new') }}">
+                            {{ user_info.segment_name|default('新用户') }}
+                        </span>
+                        <span class="tag activity-{{ user_info.activity_level|default('medium') }}">
+                            {{ user_info.activity_level|default('中等') }}活跃
+                        </span>
+                        <span class="tag value-{{ user_info.value_level|default('medium') }}">
+                            {{ user_info.value_level|default('中等') }}价值
+                        </span>
+                    </div>
+                </div>
+                <div class="profile-actions">
+                    <button class="btn btn-sm btn-outline-primary" id="saveProfile">
+                        <i class="fas fa-save"></i> 保存画像
+                    </button>
+                </div>
+            </div>
+
+            <div class="profile-details">
+                <!-- 基本信息 -->
+                <div class="info-section">
+                    <h4><i class="fas fa-info-circle"></i> 基本信息</h4>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="label">注册时间</span>
+                            <span class="value">{{ user_info.register_time|default('未知') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">最后活跃</span>
+                            <span class="value">{{ user_info.last_active|default('未知') }} 天前</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">所在地区</span>
+                            <span class="value">{{ user_info.region|default('未知') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">设备类型</span>
+                            <span class="value">{{ user_info.device|default('未知') }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 行为概览 -->
+                <div class="info-section">
+                    <h4><i class="fas fa-chart-bar"></i> 行为概览</h4>
+                    <div class="behavior-stats">
+                        <div class="stat-item">
+                            <div class="stat-icon browse">
+                                <i class="fas fa-eye"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">浏览量</span>
+                                <span class="stat-value">{{ user_info.pv_count|default(0)|format_number }}</span>
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-icon cart">
+                                <i class="fas fa-shopping-cart"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">加购量</span>
+                                <span class="stat-value">{{ user_info.cart_count|default(0)|format_number }}</span>
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-icon favorite">
+                                <i class="fas fa-heart"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">收藏量</span>
+                                <span class="stat-value">{{ user_info.fav_count|default(0)|format_number }}</span>
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-icon purchase">
+                                <i class="fas fa-shopping-bag"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">购买量</span>
+                                <span class="stat-value">{{ user_info.buy_count|default(0)|format_number }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 用户行为分析区 -->
+    <div class="behavior-analysis-section">
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-chart-line"></i> 行为时间模式</h3>
+                <div class="card-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="exportTimePattern">
+                        <i class="fas fa-download"></i> 导出图表
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="timePatternChart" style="width: 100%; height: 350px;"></div>
+            </div>
+        </div>
+
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-shopping-bag"></i> 品类偏好分析</h3>
+                <div class="card-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="exportCategoryPreference">
+                        <i class="fas fa-download"></i> 导出图表
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="categoryPreferenceChart" style="width: 100%; height: 350px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 行为路径与转化分析 -->
+    <div class="conversion-section">
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-filter"></i> 转化漏斗分析</h3>
+            </div>
+            <div class="card-body">
+                <div class="conversion-funnel">
+                    <div class="funnel-step">
+                        <div class="step-header">
+                            <span class="step-name">浏览(PV)</span>
+                            <span class="step-count">{{ user_info.pv_count|default(0)|format_number }}</span>
+                        </div>
+                        <div class="step-bar" style="width: 100%">
+                            <div class="step-fill" style="width: 100%"></div>
+                        </div>
+                        <div class="step-percent">100%</div>
+                    </div>
+
+                    <div class="funnel-step">
+                        <div class="step-header">
+                            <span class="step-name">加购(Cart)</span>
+                            <span class="step-count">{{ user_info.cart_count|default(0)|format_number }}</span>
+                        </div>
+                        <div class="step-bar" style="width: 100%">
+                            <div class="step-fill" style="width: {{ user_info.pv_to_cart_rate|default(0) }}%"></div>
+                        </div>
+                        <div class="step-percent">{{ user_info.pv_to_cart_rate|default(0) }}%</div>
+                    </div>
+
+                    <div class="funnel-step">
+                        <div class="step-header">
+                            <span class="step-name">收藏(Fav)</span>
+                            <span class="step-count">{{ user_info.fav_count|default(0)|format_number }}</span>
+                        </div>
+                        <div class="step-bar" style="width: 100%">
+                            <div class="step-fill" style="width: {{ user_info.pv_to_fav_rate|default(0) }}%"></div>
+                        </div>
+                        <div class="step-percent">{{ user_info.pv_to_fav_rate|default(0) }}%</div>
+                    </div>
+
+                    <div class="funnel-step">
+                        <div class="step-header">
+                            <span class="step-name">购买(Buy)</span>
+                            <span class="step-count">{{ user_info.buy_count|default(0)|format_number }}</span>
+                        </div>
+                        <div class="step-bar" style="width: 100%">
+                            <div class="step-fill" style="width: {{ user_info.pv_to_buy_rate|default(0) }}%"></div>
+                        </div>
+                        <div class="step-percent">{{ user_info.pv_to_buy_rate|default(0) }}%</div>
+                    </div>
+                </div>
+
+                <div class="conversion-insights">
+                    <div class="insight">
+                        <i class="fas fa-lightbulb"></i>
+                        <p>总体转化率为 {{ user_info.overall_conversion|default(0) }}%，
+                        {% if user_info.overall_conversion|default(0) > 5 %}
+                        高于平台平均水平
+                        {% else %}
+                        低于平台平均水平
+                        {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 用户偏好与标签 -->
+    <div class="preference-section">
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-tags"></i> 用户偏好标签</h3>
+            </div>
+            <div class="card-body">
+                <div class="preference-tags">
+                    {% for tag in user_info.preferences|default([]) %}
+                    <span class="preference-tag" style="background-color: {{ tag.color|default('#6f068bad') }}">
+                        <i class="{{ tag.icon|default('fas fa-tag') }}"></i>
+                        {{ tag.name }}
+                        <span class="tag-weight">{{ tag.weight|default(1.0) }}</span>
+                    </span>
+                    {% endfor %}
+                </div>
+
+                <div class="preference-details">
+                    <div class="detail-item">
+                        <h5><i class="fas fa-money-bill-wave"></i> 价格敏感度</h5>
+                        <div class="sensitivity-level">
+                            <div class="sensitivity-bar" style="width: {{ user_info.price_sensitivity|default(50) }}%"></div>
+                        </div>
+                        <span class="sensitivity-label">
+                            {% if user_info.price_sensitivity|default(50) > 70 %}
+                            高敏感
+                            {% elif user_info.price_sensitivity|default(50) > 30 %}
+                            中等敏感
+                            {% else %}
+                            低敏感
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    <div class="detail-item">
+                        <h5><i class="fas fa-clock"></i> 购买决策时长</h5>
+                        <span class="decision-time">
+                            {{ user_info.decision_time|default(3) }} 天
+                        </span>
+                        <span class="decision-label">
+                            {% if user_info.decision_time|default(3) < 1 %}
+                            冲动型
+                            {% elif user_info.decision_time|default(3) < 3 %}
+                            谨慎型
+                            {% else %}
+                            犹豫型
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    <div class="detail-item">
+                        <h5><i class="fas fa-sync-alt"></i> 复购周期</h5>
+                        <span class="repurchase-cycle">
+                            {{ user_info.repurchase_cycle|default(30) }} 天
+                        </span>
+                        <span class="cycle-label">
+                            {% if user_info.repurchase_cycle|default(30) < 15 %}
+                            高频复购
+                            {% elif user_info.repurchase_cycle|default(30) < 60 %}
+                            正常复购
+                            {% else %}
+                            低频复购
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 互动历史 -->
+    <div class="interaction-section">
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-history"></i> 最近互动历史</h3>
+                <div class="card-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="viewAllInteractions">
+                        <i class="fas fa-list"></i> 查看全部
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>商品ID</th>
+                                <th>行为类型</th>
+                                <th>品类</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for interaction in user_info.recent_interactions|default([]) %}
+                            <tr>
+                                <td>{{ interaction.timestamp }}</td>
+                                <td>
+                                    <a href="#" class="item-link">{{ interaction.item_id }}</a>
+                                </td>
+                                <td>
+                                    <span class="behavior-badge behavior-{{ interaction.behavior_type }}">
+                                        {{ interaction.behavior_type }}
+                                    </span>
+                                </td>
+                                <td>{{ interaction.category_id }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="viewItemDetail('{{ interaction.item_id }}')">
+                                        <i class="fas fa-search"></i> 查看
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 个性化推荐 -->
+    <div class="recommendation-section">
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-star"></i> 个性化推荐</h3>
+                <div class="card-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="refreshRecommendations">
+                        <i class="fas fa-sync-alt"></i> 刷新推荐
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="recommendation-grid">
+                    {% for item in user_info.recommendations|default([]) %}
+                    <div class="recommendation-item">
+                        <div class="item-header">
+                            <span class="item-rank">#{{ loop.index }}</span>
+                            <span class="item-score">{{ item.score|default(0.85) }}</span>
+                        </div>
+                        <div class="item-body">
+                            <h5>商品 {{ item.item_id }}</h5>
+                            <p class="item-category">{{ item.category_name|default('未知品类') }}</p>
+                            <div class="item-stats">
+                                <span class="stat">
+                                    <i class="fas fa-eye"></i>
+                                    {{ item.view_count|default(0)|format_number }}
+                                </span>
+                                <span class="stat">
+                                    <i class="fas fa-shopping-bag"></i>
+                                    {{ item.purchase_count|default(0)|format_number }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="item-actions">
+                            <button class="btn btn-sm btn-outline-primary" onclick="viewItemDetail('{{ item.item_id }}')">
+                                <i class="fas fa-search"></i> 查看
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 分析报告 -->
+    <div class="report-section">
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-file-alt"></i> 用户分析报告</h3>
+                <div class="card-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="exportReport">
+                        <i class="fas fa-download"></i> 导出报告
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="report-content">
+                    <div class="report-section">
+                        <h4>用户画像摘要</h4>
+                        <p>{{ user_info.summary|default('暂无摘要') }}</p>
+                    </div>
+
+                    <div class="report-section">
+                        <h4>核心洞察</h4>
+                        <ul>
+                            {% for insight in user_info.insights|default([]) %}
+                            <li>{{ insight }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                    <div class="report-section">
+                        <h4>运营建议</h4>
+                        <ul>
+                            {% for recommendation in user_info.recommendations|default([]) %}
+                            <li>{{ recommendation.suggestion|default('暂无建议') }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化图表
+    const timePatternChart = echarts.init(document.getElementById('timePatternChart'));
+    const categoryPreferenceChart = echarts.init(document.getElementById('categoryPreferenceChart'));
+
+    // 时间模式图表
+    const timePatternOption = {
+        title: {
+            text: '用户活跃时间分布',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'axis',
+            formatter: function(params) {
+                return `${params[0].axisValue}: ${params[0].value} 次`;
+            }
+        },
+        xAxis: {
+            type: 'category',
+            data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+            name: '星期'
+        },
+        yAxis: {
+            type: 'value',
+            name: '活跃次数'
+        },
+        series: [{
+            data: generateWeeklyActivity(),
+            type: 'bar',
+            itemStyle: {
+                color: '#6f068bad'
+            },
+            label: {
+                show: true,
+                position: 'top'
+            }
+        }],
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            containLabel: true
+        }
+    };
+
+    // 品类偏好图表
+    const categoryPreferenceOption = {
+        title: {
+            text: '用户品类偏好',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'item',
+            formatter: '{b}: {c} ({d}%)'
+        },
+        legend: {
+            orient: 'vertical',
+            right: 10,
+            top: 'center',
+            data: ['电子产品', '服装', '家居用品', '美妆护肤', '食品饮料', '其他']
+        },
+        series: [
+            {
+                name: '品类偏好',
+                type: 'pie',
+                radius: ['40%', '70%'],
+                center: ['40%', '50%'],
+                data: [
+                    {value: 35, name: '电子产品', itemStyle: {color: '#5470C6'}},
+                    {value: 25, name: '服装', itemStyle: {color: '#91CC75'}},
+                    {value: 20, name: '家居用品', itemStyle: {color: '#FAC858'}},
+                    {value: 10, name: '美妆护肤', itemStyle: {color: '#EE6666'}},
+                    {value: 8, name: '食品饮料', itemStyle: {color: '#73C0DE'}},
+                    {value: 2, name: '其他', itemStyle: {color: '#3BA272'}}
+                ],
+                emphasis: {
+                    itemStyle: {
+                        shadowBlur: 10,
+                        shadowOffsetX: 0,
+                        shadowColor: 'rgba(0, 0, 0, 0.5)'
+                    }
+                }
+            }
+        ]
+    };
+
+    // 渲染图表
+    timePatternChart.setOption(timePatternOption);
+    categoryPreferenceChart.setOption(categoryPreferenceOption);
+
+    // 分析用户
+    document.getElementById('analyzeUserBtn').addEventListener('click', analyzeUser);
+
+    // 随机用户
+    document.getElementById('randomUserBtn').addEventListener('click', function() {
+        const randomUserId = Math.floor(Math.random() * 10000) + 1000;
+        document.getElementById('userIdInput').value = randomUserId;
+        analyzeUser();
+    });
+
+    // 导出功能
+    document.getElementById('exportTimePattern').addEventListener('click', function() {
+        exportChart(timePatternChart, '时间模式分析.png');
+    });
+
+    document.getElementById('exportCategoryPreference').addEventListener('click', function() {
+        exportChart(categoryPreferenceChart, '品类偏好分析.png');
+    });
+
+    document.getElementById('exportReport').addEventListener('click', function() {
+        alert('用户分析报告导出功能将在后端实现');
+    });
+
+    // 查看全部互动
+    document.getElementById('viewAllInteractions').addEventListener('click', function() {
+        const userId = document.getElementById('userIdInput').value;
+        if (userId) {
+            window.location.href = `/user/${userId}/interactions`;
+        } else {
+            alert('请先输入用户ID');
+        }
+    });
+
+    // 刷新推荐
+    document.getElementById('refreshRecommendations').addEventListener('click', function() {
+        alert('刷新推荐功能将在后端实现');
+    });
+
+    // 保存画像
+    document.getElementById('saveProfile').addEventListener('click', function() {
+        alert('用户画像保存功能将在后端实现');
+    });
+
+    // 窗口大小变化时重绘
+    window.addEventListener('resize', function() {
+        timePatternChart.resize();
+        categoryPreferenceChart.resize();
+    });
+
+    // 工具函数
+    function generateWeeklyActivity() {
+        return Array(7).fill().map(() => Math.floor(Math.random() * 100) + 20);
+    }
+
+    function exportChart(chart, filename) {
+        const url = chart.getDataURL({
+            type: 'png',
+            pixelRatio: 2,
+            backgroundColor: '#fff'
+        });
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+});
+
+// 分析用户
+function analyzeUser() {
+    const userId = document.getElementById('userIdInput').value.trim();
+    if (!userId) {
+        alert('请输入用户ID');
+        return;
+    }
+
+    const analyzeBtn = document.getElementById('analyzeUserBtn');
+    const originalText = analyzeBtn.innerHTML;
+
+    // 显示加载状态
+    analyzeBtn.disabled = true;
+    analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 分析中...';
+
+    // 模拟加载延迟
+    setTimeout(() => {
+        // 在实际应用中，这里应该调用后端API获取数据
+        // 并重新加载页面或通过AJAX更新内容
+        window.location.href = `/user/${userId}/analysis`;
+
+        // 恢复按钮状态
+        analyzeBtn.disabled = false;
+        analyzeBtn.innerHTML = originalText;
+    }, 1500);
+}
+
+// 查看商品详情
+function viewItemDetail(itemId) {
+    console.log('查看商品详情:', itemId);
+    alert(`查看商品 ${itemId} 的详细信息`);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据分析中心 - 电商消费者购物行为可视化系统</title>
+
+    <!-- 基础样式 -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <!-- 分析页面专用样式 -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/analysis.css') }}">
+    <!-- 字体图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- ECharts库 -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+</head>
+
+<body>
+    {% extends "base.html" %}
+
+    {% block content %}
+    <div class="analysis-container">
+        <!-- 页面标题区域 -->
+        <div class="page-header">
+            <h1><i class="fas fa-chart-bar"></i> 数据分析中心</h1>
+            <p class="page-subtitle">基于淘宝用户行为数据的多维度综合分析</p>
+        </div>
+
+        <!-- 综合指标仪表板 -->
+        <div class="dashboard-metrics">
+            <div class="metric-card">
+                <div class="metric-value" id="totalUsers">77,968</div>
+                <div class="metric-label">总用户数</div>
+                <div class="metric-trend trend-up">↗ 环比+5.2%</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="totalBehaviors">10,126,233</div>
+                <div class="metric-label">总行为记录数</div>
+                <div class="metric-trend trend-up">↗ 环比+12.8%</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="conversionRate">2.23%</div>
+                <div class="metric-label">整体转化率</div>
+                <div class="metric-trend trend-up">↗ 环比+2.1%</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="activeUsers">15,892</div>
+                <div class="metric-label">活跃购买用户</div>
+                <div class="metric-trend trend-up">↗ 环比+8.5%</div>
+            </div>
+        </div>
+
+        <!-- 分析内容区域 -->
+        <div class="analysis-sections">
+            <!-- 用户行为转化全景 -->
+            <div class="analysis-section">
+                <h3 class="section-title"><i class="fas fa-sitemap"></i> 用户行为转化全景</h3>
+                <div class="funnel-container">
+                    <div class="funnel-stage">
+                        <div class="stage-label">浏览(PV)</div>
+                        <div class="stage-value">7,133,888</div>
+                        <div class="conversion-arrow">↓ 9.5%</div>
+                    </div>
+                    <div class="funnel-stage">
+                        <div class="stage-label">加购/收藏</div>
+                        <div class="stage-value">677,445</div>
+                        <div class="conversion-arrow">↓ 23.5%</div>
+                    </div>
+                    <div class="funnel-stage">
+                        <div class="stage-label">购买</div>
+                        <div class="stage-value">158,926</div>
+                    </div>
+                </div>
+                <p class="funnel-summary">
+                    从浏览到购买的总体转化率为 <strong>2.23%</strong>，加购到购买环节转化率最高达 <strong>23.5%</strong>
+                </p>
+            </div>
+
+            <!-- RFM用户价值矩阵 -->
+            <div class="analysis-section">
+                <h3 class="section-title"><i class="fas fa-chess-board"></i> RFM用户价值矩阵</h3>
+                <div class="matrix-grid">
+                    <div class="matrix-cell high-r-high-f">
+                        <div class="cell-title">价值客户</div>
+                        <div class="cell-value">52,780</div>
+                        <div class="cell-percent">33.2%</div>
+                    </div>
+                    <div class="matrix-cell low-r-high-f">
+                        <div class="cell-title">保持客户</div>
+                        <div class="cell-value">39,363</div>
+                        <div class="cell-percent">24.8%</div>
+                    </div>
+                    <div class="matrix-cell high-r-low-f">
+                        <div class="cell-title">发展客户</div>
+                        <div class="cell-value">39,945</div>
+                        <div class="cell-percent">25.1%</div>
+                    </div>
+                    <div class="matrix-cell low-r-low-f">
+                        <div class="cell-title">挽留客户</div>
+                        <div class="cell-value">26,838</div>
+                        <div class="cell-percent">16.9%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 用户活跃时间模式 -->
+        <div class="analysis-section">
+            <h3 class="section-title"><i class="fas fa-clock"></i> 用户活跃时间规律</h3>
+            <div class="time-patterns">
+                <div class="pattern-card">
+                    <div class="pattern-icon">🌅</div>
+                    <div class="pattern-title">早晨高峰</div>
+                    <div class="pattern-time">08:00-10:00</div>
+                    <div class="pattern-metric trend-up">+35% 活跃度</div>
+                </div>
+                <div class="pattern-card">
+                    <div class="pattern-icon">🌇</div>
+                    <div class="pattern-title">午间高峰</div>
+                    <div class="pattern-time">12:00-14:00</div>
+                    <div class="pattern-metric trend-up">+28% 活跃度</div>
+                </div>
+                <div class="pattern-card">
+                    <div class="pattern-icon">🌃</div>
+                    <div class="pattern-title">晚间高峰</div>
+                    <div class="pattern-time">20:00-22:00</div>
+                    <div class="pattern-metric trend-up">+62% 活跃度</div>
+                </div>
+                <div class="pattern-card">
+                    <div class="pattern-icon">🌙</div>
+                    <div class="pattern-title">深夜低谷</div>
+                    <div class="pattern-time">02:00-04:00</div>
+                    <div class="pattern-metric trend-down">-85% 活跃度</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 热门品类表现 -->
+        <div class="analysis-section">
+            <h3 class="section-title"><i class="fas fa-trophy"></i> 热门品类表现TOP5</h3>
+            <div class="ranking-list">
+                <div class="rank-item">
+                    <span class="rank-number">1</span>
+                    <span class="category-name">4756105</span>
+                    <span class="category-metric">421,360次浏览</span>
+                    <span class="growth-badge">+15%</span>
+                </div>
+                <div class="rank-item">
+                    <span class="rank-number">2</span>
+                    <span class="category-name">4145813</span>
+                    <span class="category-metric">286,971次浏览</span>
+                    <span class="growth-badge">+8%</span>
+                </div>
+                <div class="rank-item">
+                    <span class="rank-number">3</span>
+                    <span class="category-name">2355072</span>
+                    <span class="category-metric">271,379次浏览</span>
+                    <span class="growth-badge">+12%</span>
+                </div>
+                <div class="rank-item">
+                    <span class="rank-number">4</span>
+                    <span class="category-name">982926</span>
+                    <span class="category-metric">250,695次浏览</span>
+                    <span class="growth-badge">+5%</span>
+                </div>
+                <div class="rank-item">
+                    <span class="rank-number">5</span>
+                    <span class="category-name">1320293</span>
+                    <span class="category-metric">154,458次浏览</span>
+                    <span class="growth-badge">+7%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 智能行动建议 -->
+        <div class="action-recommendations">
+            <h3 class="section-title"><i class="fas fa-lightbulb"></i> 智能行动建议</h3>
+            <div class="recommendation-list">
+                <div class="recommendation-item">
+                    <span class="rec-badge priority">优先处理</span>
+                    <span class="rec-text">挽留客户(16.9%)转化潜力巨大，建议制定专属召回策略和优惠活动</span>
+                </div>
+                <div class="recommendation-item">
+                    <span class="rec-badge opportunity">机会挖掘</span>
+                    <span class="rec-text">晚间20-22点活跃度提升62%，建议加大该时段营销投入和推广活动</span>
+                </div>
+                <div class="recommendation-item">
+                    <span class="rec-badge warning">风险预警</span>
+                    <span class="rec-text">品类4756105竞争激烈，需关注用户留存和差异化策略</span>
+                </div>
+                <div class="recommendation-item">
+                    <span class="rec-badge optimization">优化建议</span>
+                    <span class="rec-text">加购到购买转化率23.5%表现良好，可进一步优化加购用户体验</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图表可视化区域 -->
+        <div class="charts-section">
+            <h3 class="section-title"><i class="fas fa-chart-line"></i> 数据可视化分析</h3>
+            <div class="charts-container">
+                <div class="chart-wrapper">
+                    <div id="behaviorTrendChart" class="chart"></div>
+                </div>
+                <div class="chart-wrapper">
+                    <div id="conversionFunnelChart" class="chart"></div>
+                </div>
+                <div class="chart-wrapper">
+                    <div id="rfmDistributionChart" class="chart"></div>
+                </div>
+                <div class="chart-wrapper">
+                    <div id="timePatternChart" class="chart"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 快速分析导航 -->
+        <div class="quick-nav-section">
+            <h3 class="section-title"><i class="fas fa-rocket"></i> 快速分析入口</h3>
+            <div class="nav-buttons">
+                <a href="{{ url_for('rfm_analysis') }}" class="nav-btn">
+                    <i class="fas fa-users"></i>
+                    <span>详细RFM分析</span>
+                </a>
+                <a href="{{ url_for('conversion_analysis') }}" class="nav-btn">
+                    <i class="fas fa-filter"></i>
+                    <span>转化漏斗分析</span>
+                </a>
+                <a href="{{ url_for('time_pattern') }}" class="nav-btn">
+                    <i class="fas fa-clock"></i>
+                    <span>时间模式分析</span>
+                </a>
+                <a href="{{ url_for('user_analysis') }}" class="nav-btn">
+                    <i class="fas fa-user-chart"></i>
+                    <span>用户行为分析</span>
+                </a>
+                <a href="{{ url_for('item_analysis') }}" class="nav-btn">
+                    <i class="fas fa-shopping-bag"></i>
+                    <span>商品分析</span>
+                </a>
+                <a href="{{ url_for('recommend_analysis') }}" class="nav-btn">
+                    <i class="fas fa-star"></i>
+                    <span>推荐分析</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- 数据更新时间 -->
+        <div class="data-update-info">
+            <p><i class="fas fa-sync-alt"></i> 数据最后更新时间: <span id="updateTime">2025-12-15 14:30:25</span></p>
+        </div>
+    </div>
+    {% endblock %}
+
+    {% block page_js %}
+    <script src="{{ url_for('static', filename='js/analysis.js') }}"></script>
+    <script>
+        // 页面加载完成后初始化图表
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化所有ECharts图表
+            initBehaviorTrendChart();
+            initConversionFunnelChart();
+            initRFMDistributionChart();
+            initTimePatternChart();
+
+            // 启动数据动画效果
+            startDataAnimations();
+
+            // 设置自动刷新（可选）
+            setAutoRefresh();
+        });
+
+        // 行为趋势图表
+        function initBehaviorTrendChart() {
+            const chart = echarts.init(document.getElementById('behaviorTrendChart'));
+            const option = {
+                title: { text: '用户行为趋势分析', left: 'center' },
+                tooltip: { trigger: 'axis' },
+                legend: { data: ['浏览量(PV)', '加购量', '收藏量', '购买量'], bottom: 0 },
+                xAxis: {
+                    type: 'category',
+                    data: ['11-25', '11-26', '11-27', '11-28', '11-29', '11-30', '12-01', '12-02', '12-03']
+                },
+                yAxis: { type: 'value' },
+                series: [
+                    {
+                        name: '浏览量(PV)',
+                        type: 'line',
+                        data: [1058069, 1012022, 1065905, 996947, 1037958, 1059526, 1137424, 1417555, 1215802],
+                        smooth: true
+                    },
+                    {
+                        name: '加购量',
+                        type: 'line',
+                        data: [65000, 62000, 68000, 59000, 61000, 63000, 71000, 89000, 75000],
+                        smooth: true
+                    },
+                    {
+                        name: '收藏量',
+                        type: 'line',
+                        data: [32000, 30000, 35000, 29000, 31000, 33000, 38000, 45000, 40000],
+                        smooth: true
+                    },
+                    {
+                        name: '购买量',
+                        type: 'line',
+                        data: [15000, 14000, 16000, 13000, 14500, 15500, 18000, 22000, 19000],
+                        smooth: true
+                    }
+                ]
+            };
+            chart.setOption(option);
+        }
+
+        // 转化漏斗图表
+        function initConversionFunnelChart() {
+            const chart = echarts.init(document.getElementById('conversionFunnelChart'));
+            const option = {
+                title: { text: '用户转化漏斗', left: 'center' },
+                tooltip: { trigger: 'item', formatter: "{a} <br/>{b} : {c} ({d}%)" },
+                series: [
+                    {
+                        name: '转化漏斗',
+                        type: 'funnel',
+                        left: '10%',
+                        top: 60,
+                        bottom: 60,
+                        width: '80%',
+                        min: 0,
+                        max: 7133888,
+                        minSize: '0%',
+                        maxSize: '100%',
+                        sort: 'descending',
+                        gap: 2,
+                        label: { show: true, position: 'inside' },
+                        labelLine: { length: 10, lineStyle: { width: 1, type: 'solid' } },
+                        itemStyle: { borderColor: '#fff', borderWidth: 1 },
+                        emphasis: { label: { fontSize: 20 } },
+                        data: [
+                            { value: 7133888, name: '浏览(PV)' },
+                            { value: 677445, name: '加购/收藏' },
+                            { value: 158926, name: '购买' }
+                        ]
+                    }
+                ]
+            };
+            chart.setOption(option);
+        }
+
+        // RFM分布图表
+        function initRFMDistributionChart() {
+            const chart = echarts.init(document.getElementById('rfmDistributionChart'));
+            const option = {
+                title: { text: 'RFM用户价值分布', left: 'center' },
+                tooltip: { trigger: 'item', formatter: '{a} <br/>{b}: {c} ({d}%)' },
+                legend: { orient: 'vertical', left: 'left', top: 'center' },
+                series: [
+                    {
+                        name: '用户分布',
+                        type: 'pie',
+                        radius: ['40%', '70%'],
+                        center: ['60%', '50%'],
+                        avoidLabelOverlap: false,
+                        itemStyle: {
+                            borderRadius: 10,
+                            borderColor: '#fff',
+                            borderWidth: 2
+                        },
+                        label: { show: false, position: 'center' },
+                        emphasis: {
+                            label: { show: true, fontSize: '18', fontWeight: 'bold' }
+                        },
+                        labelLine: { show: false },
+                        data: [
+                            { value: 52780, name: '价值客户' },
+                            { value: 39363, name: '保持客户' },
+                            { value: 39945, name: '发展客户' },
+                            { value: 26838, name: '挽留客户' }
+                        ]
+                    }
+                ]
+            };
+            chart.setOption(option);
+        }
+
+        // 时间模式图表
+        function initTimePatternChart() {
+            const chart = echarts.init(document.getElementById('timePatternChart'));
+            const option = {
+                title: { text: '24小时用户活跃模式', left: 'center' },
+                tooltip: { trigger: 'axis' },
+                xAxis: {
+                    type: 'category',
+                    data: Array.from({length: 24}, (_, i) => `${i}:00`)
+                },
+                yAxis: { type: 'value', name: '活跃度' },
+                series: [{
+                    data: [120, 132, 101, 134, 90, 230, 210, 182, 191, 234, 290, 330,
+                           310, 432, 401, 354, 290, 330, 410, 562, 632, 601, 534, 390],
+                    type: 'line',
+                    smooth: true,
+                    areaStyle: {}
+                }]
+            };
+            chart.setOption(option);
+        }
+
+        // 数据动画效果
+        function startDataAnimations() {
+            const metrics = document.querySelectorAll('.metric-value');
+            metrics.forEach(metric => {
+                const finalValue = parseInt(metric.textContent.replace(/,/g, ''));
+                animateValue(metric, 0, finalValue, 2000);
+            });
+        }
+
+        // 数值动画函数
+        function animateValue(element, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const value = Math.floor(progress * (end - start) + start);
+                element.textContent = value.toLocaleString();
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        // 自动刷新设置
+        function setAutoRefresh() {
+            // 每5分钟刷新一次数据
+            setInterval(() => {
+                refreshData();
+            }, 300000);
+        }
+
+        // 数据刷新函数
+        function refreshData() {
+            fetch('/api/analysis/latest')
+                .then(response => response.json())
+                .then(data => {
+                    updateDashboard(data);
+                })
+                .catch(error => {
+                    console.error('数据刷新失败:', error);
+                });
+        }
+
+        // 更新仪表板数据
+        function updateDashboard(data) {
+            // 这里实现数据更新逻辑
+            console.log('数据已更新:', data);
+        }
+    </script>
+    {% endblock %}
+</body>
+</html>

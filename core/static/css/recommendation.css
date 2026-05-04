@@ -1,0 +1,639 @@
+/* recommendation.css - 个性化推荐页面专用样式 */
+
+.recommendation-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* 页面头部 */
+.recommendation-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: linear-gradient(135deg, #6f068bad 0%, #4a0578 100%);
+    border-radius: 10px;
+    color: white;
+}
+
+.recommendation-header h1 {
+    font-size: 2.2rem;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
+
+.subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin-bottom: 20px;
+}
+
+/* 用户搜索 */
+.user-search {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: white;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.search-box i {
+    color: #666;
+    font-size: 1.1rem;
+}
+
+.search-box input {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    font-size: 1rem;
+    background: transparent;
+    color: #333;
+}
+
+.search-box input:focus {
+    outline: none;
+}
+
+.search-box input::placeholder {
+    color: #999;
+}
+
+.search-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 8px 16px;
+    border-radius: 5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background-color: white;
+    color: #6f068bad;
+}
+
+.btn-primary:hover {
+    background-color: #f8f9fa;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 255, 255, 0.2);
+}
+
+.btn-outline-secondary {
+    background-color: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+}
+
+.btn-outline-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+}
+
+/* 用户信息卡片 */
+.user-info-section {
+    margin-bottom: 30px;
+}
+
+.user-info-card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    border: 1px solid #e9ecef;
+}
+
+.user-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.user-avatar {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, rgba(111, 6, 141, 0.1), rgba(74, 5, 120, 0.1));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.user-avatar i {
+    font-size: 2.5rem;
+    color: #6f068bad;
+}
+
+.user-details h3 {
+    font-size: 1.5rem;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.user-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.stat-item i {
+    color: #6f068bad;
+}
+
+/* 用户行为统计 */
+.user-behavior h4 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.behavior-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.behavior-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    transition: transform 0.3s;
+}
+
+.behavior-item:hover {
+    transform: translateY(-3px);
+}
+
+.behavior-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.behavior-icon i {
+    font-size: 1.5rem;
+    color: white;
+}
+
+.behavior-icon.browse { background: #3498db; }
+.behavior-icon.cart { background: #f39c12; }
+.behavior-icon.favorite { background: #e74c3c; }
+.behavior-icon.purchase { background: #2ecc71; }
+
+.behavior-label {
+    display: block;
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.behavior-value {
+    display: block;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #333;
+}
+
+/* 算法配置 */
+.algorithm-section {
+    margin-bottom: 30px;
+}
+
+.algorithm-card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    border: 1px solid #e9ecef;
+}
+
+.algorithm-card h3 {
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 2px solid #6f068bad;
+    padding-bottom: 10px;
+}
+
+.algorithm-config {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.algorithm-tabs {
+    display: flex;
+    overflow-x: auto;
+    gap: 10px;
+    padding-bottom: 10px;
+}
+
+.algo-tab {
+    flex: 1;
+    min-width: 150px;
+    padding: 15px;
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+}
+
+.algo-tab:hover {
+    border-color: #6f068bad;
+    background: rgba(111, 6, 141, 0.05);
+}
+
+.algo-tab.active {
+    border-color: #6f068bad;
+    background: rgba(111, 6, 141, 0.1);
+    color: #6f068bad;
+}
+
+.algo-tab i {
+    font-size: 1.5rem;
+    margin-bottom: 5px;
+}
+
+.algo-tab span {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* 算法参数 */
+.algorithm-params {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.param-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.param-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    color: #555;
+    min-width: 120px;
+}
+
+.slider {
+    flex: 1;
+    height: 6px;
+    background: #ddd;
+    border-radius: 3px;
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #6f068bad;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.param-group span {
+    min-width: 40px;
+    text-align: center;
+    font-weight: 600;
+    color: #6f068bad;
+}
+
+.param-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    grid-column: 1 / -1;
+}
+
+/* 推荐结果 */
+.recommendation-results {
+    margin-bottom: 30px;
+}
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.results-header h3 {
+    font-size: 1.3rem;
+    color: #333;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.results-stats {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.stat-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    background: #f8f9fa;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+/* 推荐网格 */
+.recommendation-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.recommendation-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    border: 1px solid #e9ecef;
+    transition: transform 0.3s, box-shadow 0.3s;
+    display: flex;
+    flex-direction: column;
+}
+
+.recommendation-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: linear-gradient(135deg, rgba(111, 6, 141, 0.1), rgba(74, 5, 120, 0.1));
+    border-bottom: 1px solid #e9ecef;
+}
+
+.card-rank {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #6f068bad;
+    background: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card-score {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.card-body {
+    padding: 15px;
+    flex: 1;
+}
+
+.item-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.item-avatar {
+    width: 50px;
+    height: 50px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.item-avatar i {
+    font-size: 1.5rem;
+    color: #6f068bad;
+}
+
+.item-details h4 {
+    font-size: 1.1rem;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.item-category {
+    font-size: 0.85rem;
+    color: #666;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.item-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.metric-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.metric-item i {
+    color: #6f068bad;
+    font-size: 0.9rem;
+}
+
+.metric-label {
+    display: block;
+    font-size: 0.75rem;
+    color: #666;
+}
+
+.metric-value {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.card-footer {
+    padding: 12px 15px;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    gap: 10px;
+}
+
+.btn-outline-primary {
+    background: transparent;
+    border: 1px solid #6f068bad;
+    color: #6f068bad;
+}
+
+.btn-outline-primary:hover {
+    background: rgba(111, 6, 141, 0.1);
+}
+
+.btn-success {
+    background: #28a745;
+    color: white;
+    border: none;
+}
+
+.btn-success:hover {
+    background: #218838;
+}
+
+.btn-outline-success {
+    background: transparent;
+    border: 1px solid #28a745;
+    color: #28a745;
+}
+
+.btn-outline-success:hover {
+    background: rgba(40, 167, 69, 0.1);
+}
+
+/* 无推荐状态 */
+.no-recommendations {
+    text-align: center;
+    padding: 50px 20px;
+    background: white;
+    border-radius: 12px;
+    border: 2px dashed #e9ecef;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: #dee2e6;
+    margin-bottom: 20px;
+}
+
+.empty-state h4 {
+    font-size: 1.5rem;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.empty-state p {
+    color: #666;
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .recommendation-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .algorithm-tabs {
+        flex-wrap: wrap;
+    }
+
+    .algo-tab {
+        min-width: calc(50% - 5px);
+    }
+
+    .param-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .results-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .recommendation-header h1 {
+        font-size: 1.8rem;
+    }
+}

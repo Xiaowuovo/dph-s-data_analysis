@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>电商消费者购物行为可视化系统</title>
+    <!-- 基础样式 -->
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/base.css') }}">
+    <!-- 响应式样式 -->
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/responsive.css') }}">
+    <!-- 通用组件样式 -->
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/components.css') }}">
+    <!-- 动态页面样式 -->
+    {% block page_css %}{% endblock %}
+
+    <!-- 第三方库 -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="base-header">
+        <div class="header-container">
+            <div class="logo-section">
+                <i class="fas fa-chart-line logo-icon"></i>
+                <h1 class="system-title">电商消费者购物行为可视化系统</h1>
+            </div>
+
+            <div class="header-right">
+                <div class="global-time-filter">
+                    <i class="fas fa-calendar-alt"></i>
+                    <select id="globalTimeFilter" class="time-filter-select">
+                        <option value="today">今日</option>
+                        <option value="7days" selected>近7天</option>
+                        <option value="30days">近30天</option>
+                        <option value="custom">自定义</option>
+                    </select>
+                </div>
+                <div class="user-section">
+                    <div class="user-info">
+                        <i class="fas fa-user-circle user-icon"></i>
+                        <span class="username">管理员</span>
+                    </div>
+                    <form action="{{ url_for('logout') }}" method="POST" class="logout-form">
+                        <button type="submit" class="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i> 退出登录
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <aside class="sidebar">
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <h3 class="section-title"><i class="fas fa-tachometer-alt"></i> 系统概览</h3>
+                    <ul class="nav-list">
+                        <li class="nav-item">
+                            <a href="{{ url_for('dashboard') }}" class="nav-link active">
+                                <i class="fas fa-chart-bar"></i> 数据看板
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3 class="section-title"><i class="fas fa-chart-area"></i> 行为分析中心</h3>
+                    <ul class="nav-list">
+                        <li class="nav-item">
+                            <a href="{{ url_for('behavior_analysis_center') }}" class="nav-link">
+                                <i class="fas fa-chart-line"></i> 行为分析
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('item_analysis') }}" class="nav-link">
+                                <i class="fas fa-shopping-bag"></i> 商品分析
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3 class="section-title"><i class="fas fa-user-friends"></i> 用户价值分析</h3>
+                    <ul class="nav-list">
+                        <li class="nav-item">
+                            <a href="{{ url_for('user_value_analysis') }}" class="nav-link">
+                                <i class="fas fa-gem"></i> RFM价值分析
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('user_analysis') }}" class="nav-link">
+                                <i class="fas fa-user-chart"></i> 用户画像
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3 class="section-title"><i class="fas fa-robot"></i> 智能推荐</h3>
+                    <ul class="nav-list">
+                        <li class="nav-item">
+                            <a href="{{ url_for('intelligent_recommendation') }}" class="nav-link">
+                                <i class="fas fa-brain"></i> 智能推荐
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3 class="section-title"><i class="fas fa-database"></i> 数据管理</h3>
+                    <ul class="nav-list">
+                        <li class="nav-item">
+                            <a href="{{ url_for('query') }}" class="nav-link">
+                                <i class="fas fa-upload"></i> 数据上传
+                                <span class="data-count">{{ data_stats.total_records if data_stats else 0 }}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('data_export') }}" class="nav-link">
+                                <i class="fas fa-download"></i> 数据导出
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('upload_history') }}" class="nav-link">
+                                <i class="fas fa-history"></i> 上传历史
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="content-area">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="message-container">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                <i class="fas fa-info-circle"></i> {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}
+            <!-- 页面具体内容会在这里插入 -->
+            {% endblock %}
+        </main>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-info">
+                <p><i class="fas fa-copyright"></i> 2026 电商消费者购物行为可视化系统 v1.0</p>
+                <p><i class="fas fa-server"></i> 数据统计：
+                    {% if data_stats %}
+                    用户: {{ data_stats.total_users }} | 商品: {{ data_stats.total_items }} | 记录: {{ data_stats.total_records }}
+                    {% else %}
+                    系统正在初始化...
+                    {% endif %}
+                </p>
+            </div>
+            <div class="footer-links">
+                <a href="{{ url_for('about') }}">关于系统</a>
+                <a href="{{ url_for('contact') }}">联系我们</a>
+                <a href="{{ url_for('privacy') }}">隐私政策</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // 导航菜单激活状态
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.nav-link');
+
+            navLinks.forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+
+            // 响应式侧边栏
+            const sidebar = document.querySelector('.sidebar');
+            const contentArea = document.querySelector('.content-area');
+            const toggleBtn = document.createElement('button');
+            toggleBtn.className = 'sidebar-toggle';
+            toggleBtn.innerHTML = '<i class="fas fa-bars"></i>';
+            toggleBtn.addEventListener('click', function() {
+                sidebar.classList.toggle('collapsed');
+                contentArea.classList.toggle('expanded');
+            });
+
+            document.querySelector('.header-container').appendChild(toggleBtn);
+        });
+
+        // 显示当前时间
+        function updateTime() {
+            const now = new Date();
+            const timeStr = now.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                weekday: 'short'
+            });
+
+            const timeElement = document.querySelector('.current-time');
+            if (timeElement) {
+                timeElement.textContent = '当前时间: ' + timeStr;
+            }
+        }
+
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // 全局时间筛选器功能
+        const globalTimeFilter = document.getElementById('globalTimeFilter');
+        if (globalTimeFilter) {
+            globalTimeFilter.addEventListener('change', function() {
+                const timeRange = this.value;
+                
+                // 保存时间范围到 localStorage
+                localStorage.setItem('globalTimeRange', timeRange);
+                
+                // 触发自定义事件，让各个页面监听并响应
+                const event = new CustomEvent('timeRangeChanged', { 
+                    detail: { timeRange: timeRange } 
+                });
+                window.dispatchEvent(event);
+                
+                // 如果是自定义时间范围，显示日期选择器
+                if (timeRange === 'custom') {
+                    showCustomDatePicker();
+                }
+            });
+            
+            // 页面加载时恢复之前选择的时间范围
+            const savedTimeRange = localStorage.getItem('globalTimeRange');
+            if (savedTimeRange) {
+                globalTimeFilter.value = savedTimeRange;
+            }
+        }
+        
+        // 自定义日期选择器
+        function showCustomDatePicker() {
+            // 这里可以集成日期选择器组件
+            console.log('显示自定义日期选择器');
+        }
+    </script>
+
+    {% block page_js %}{% endblock %}
+</body>
+</html>

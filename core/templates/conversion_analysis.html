@@ -1,0 +1,485 @@
+{% extends 'base.html' %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/conversion_analysis.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="conversion-container">
+    <!-- 头部区域 -->
+    <div class="analysis-header">
+        <h1><i class="fas fa-filter"></i> 用户行为转化漏斗分析</h1>
+        <p class="subtitle">从浏览到购买的完整转化路径分析，识别关键流失环节</p>
+    </div>
+
+    <!-- 筛选条件区域 -->
+    <div class="filter-section">
+        <div class="filter-card">
+            <h3><i class="fas fa-sliders-h"></i> 分析筛选</h3>
+            <form id="conversionFilterForm">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="dateRange"><i class="fas fa-calendar-alt"></i> 日期范围</label>
+                        <select id="dateRange" class="form-select">
+                            <option value="7">最近7天</option>
+                            <option value="15">最近15天</option>
+                            <option value="30" selected>最近30天</option>
+                            <option value="custom">自定义范围</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group" id="customDateRange" style="display:none;">
+                        <label for="startDate">开始日期</label>
+                        <input type="date" id="startDate" class="form-control">
+                        
+                        <label for="endDate">结束日期</label>
+                        <input type="date" id="endDate" class="form-control">
+                    </div>
+                </div>
+                
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="userSegment"><i class="fas fa-users"></i> 用户分群</label>
+                        <select id="userSegment" class="form-select">
+                            <option value="all">全部用户</option>
+                            <option value="new">新用户</option>
+                            <option value="returning">回头客</option>
+                            <option value="high_value">高价值用户</option>
+                            <option value="inactive">沉默用户</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="categoryFilter"><i class="fas fa-tags"></i> 商品类目</label>
+                        <select id="categoryFilter" class="form-select">
+                            <option value="all">全部类目</option>
+                            <option value="electronics">电子产品</option>
+                            <option value="clothing">服装</option>
+                            <option value="home">家居用品</option>
+                            <option value="beauty">美妆</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="filter-actions">
+                    <button type="button" id="applyFilters" class="btn btn-primary">
+                        <i class="fas fa-chart-line"></i> 生成分析
+                    </button>
+                    <button type="button" id="resetFilters" class="btn btn-outline-secondary">
+                        <i class="fas fa-redo"></i> 重置条件
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 分析结果区域 -->
+    <div class="analysis-results">
+        <!-- 转化漏斗图表 -->
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-funnel-dollar"></i> 转化漏斗</h3>
+                <div class="card-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="exportFunnel">
+                        <i class="fas fa-download"></i> 导出图片
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="funnelChart" style="width: 100%; height: 400px;"></div>
+                <div class="funnel-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">总转化率</span>
+                        <span class="stat-value" id="totalConversion">7.6%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">关键流失点</span>
+                        <span class="stat-value" id="keyDropPoint">加购→购买 (流失68.3%)</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">最优转化环节</span>
+                        <span class="stat-value" id="bestStep">收藏→购买 (57.7%)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 转化路径分析 -->
+        <div class="result-row">
+            <div class="result-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-project-diagram"></i> 转化路径分析</h3>
+                </div>
+                <div class="card-body">
+                    <div id="pathAnalysisChart" style="width: 100%; height: 350px;"></div>
+                    <div class="path-analysis">
+                        <div class="path-segment">
+                            <h4>主要转化路径</h4>
+                            <div class="path-steps">
+                                <span class="path-step">浏览</span>
+                                <i class="fas fa-arrow-right"></i>
+                                <span class="path-step">加购</span>
+                                <i class="fas fa-arrow-right"></i>
+                                <span class="path-step">购买</span>
+                                <span class="path-percent">32.1%</span>
+                            </div>
+                        </div>
+                        <div class="path-segment">
+                            <h4>替代转化路径</h4>
+                            <div class="path-steps">
+                                <span class="path-step">浏览</span>
+                                <i class="fas fa-arrow-right"></i>
+                                <span class="path-step">收藏</span>
+                                <i class="fas fa-arrow-right"></i>
+                                <span class="path-step">购买</span>
+                                <span class="path-percent">18.7%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 转化率对比 -->
+            <div class="result-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-chart-bar"></i> 转化率对比</h3>
+                </div>
+                <div class="card-body">
+                    <div id="conversionComparisonChart" style="width: 100%; height: 300px;"></div>
+                    <div class="comparison-notes">
+                        <p id="comparisonInsight">与行业平均水平相比，您的<strong>加购到购买</strong>转化率低于平均水平15%</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 优化建议 -->
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-lightbulb"></i> 优化建议</h3>
+            </div>
+            <div class="card-body">
+                <div class="recommendation-list">
+                    <div class="recommendation-item">
+                        <i class="fas fa-check-circle text-success"></i>
+                        <strong>加购转化优化：</strong> 在用户加购后24小时内发送个性化提醒
+                    </div>
+                    <div class="recommendation-item">
+                        <i class="fas fa-check-circle text-success"></i>
+                        <strong>支付流程简化：</strong> 减少从购物车到支付的步骤
+                    </div>
+                    <div class="recommendation-item">
+                        <i class="fas fa-check-circle text-success"></i>
+                        <strong>新用户引导：</strong> 为新用户提供首单优惠和引导教程
+                    </div>
+                    <div class="recommendation-item">
+                        <i class="fas fa-check-circle text-success"></i>
+                        <strong>流失用户召回：</strong> 针对加购未购买用户发送优惠券
+                    </div>
+                </div>
+                <button class="btn btn-outline-primary mt-3">
+                    <i class="fas fa-book"></i> 查看完整优化指南
+                </button>
+            </div>
+        </div>
+        
+        <!-- 详细数据表格 -->
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-table"></i> 详细转化数据</h3>
+                <div class="card-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="exportData">
+                        <i class="fas fa-file-export"></i> 导出CSV
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>转化阶段</th>
+                                <th>用户数</th>
+                                <th>转化率</th>
+                                <th>环比变化</th>
+                                <th>行业基准</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>浏览(PV)</td>
+                                <td>24,568</td>
+                                <td>100%</td>
+                                <td><span class="text-success">+2.5% ↑</span></td>
+                                <td>-</td>
+                                <td><span class="badge bg-success">优秀</span></td>
+                            </tr>
+                            <tr>
+                                <td>加购(Cart)</td>
+                                <td>5,742</td>
+                                <td>23.4%</td>
+                                <td><span class="text-danger">-1.2% ↓</span></td>
+                                <td>25.8%</td>
+                                <td><span class="badge bg-warning">需改进</span></td>
+                            </tr>
+                            <tr>
+                                <td>收藏(Fav)</td>
+                                <td>3,215</td>
+                                <td>13.1%</td>
+                                <td><span class="text-success">+0.8% ↑</span></td>
+                                <td>12.5%</td>
+                                <td><span class="badge bg-success">良好</span></td>
+                            </tr>
+                            <tr>
+                                <td>购买(Buy)</td>
+                                <td>1,856</td>
+                                <td>7.6%</td>
+                                <td><span class="text-success">+1.1% ↑</span></td>
+                                <td>8.9%</td>
+                                <td><span class="badge bg-warning">需改进</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化图表
+    const funnelChart = echarts.init(document.getElementById('funnelChart'));
+    const pathChart = echarts.init(document.getElementById('pathAnalysisChart'));
+    const comparisonChart = echarts.init(document.getElementById('conversionComparisonChart'));
+    
+    // 漏斗图配置
+    const funnelOption = {
+        title: {
+            text: '用户行为转化漏斗',
+            subtext: '从浏览到购买的转化过程',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'item',
+            formatter: '{a} <br/>{b} : {c} ({d}%)'
+        },
+        legend: {
+            data: ['浏览(PV)', '加购(Cart)', '收藏(Fav)', '购买(Buy)'],
+            bottom: 10
+        },
+        series: [{
+            name: '转化漏斗',
+            type: 'funnel',
+            left: '10%',
+            top: 60,
+            bottom: 60,
+            width: '80%',
+            min: 0,
+            max: 100,
+            minSize: '0%',
+            maxSize: '100%',
+            sort: 'descending',
+            gap: 2,
+            label: {
+                show: true,
+                position: 'inside'
+            },
+            labelLine: {
+                length: 10,
+                lineStyle: {
+                    width: 1,
+                    type: 'solid'
+                }
+            },
+            itemStyle: {
+                borderColor: '#fff',
+                borderWidth: 1
+            },
+            emphasis: {
+                label: {
+                    fontSize: 20
+                }
+            },
+            data: [
+                {value: 100, name: '浏览(PV)', itemStyle: {color: '#5470C6'}},
+                {value: 23.4, name: '加购(Cart)', itemStyle: {color: '#91CC75'}},
+                {value: 13.1, name: '收藏(Fav)', itemStyle: {color: '#FAC858'}},
+                {value: 7.6, name: '购买(Buy)', itemStyle: {color: '#EE6666'}}
+            ]
+        }]
+    };
+    
+    // 路径图配置
+    const pathOption = {
+        title: {
+            text: '主要转化路径',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'item',
+            triggerOn: 'mousemove'
+        },
+        series: [{
+            type: 'tree',
+            data: [{
+                name: '浏览(PV)',
+                children: [{
+                    name: '加购(Cart)',
+                    children: [{
+                        name: '购买(Buy)',
+                        value: 7.6
+                    }]
+                }, {
+                    name: '收藏(Fav)',
+                    children: [{
+                        name: '加购(Cart)',
+                        children: [{
+                            name: '购买(Buy)',
+                            value: 4.2
+                        }]
+                    }, {
+                        name: '购买(Buy)',
+                        value: 3.4
+                    }]
+                }]
+            }],
+            symbol: 'roundRect',
+            symbolSize: 10,
+            orient: 'vertical',
+            expandAndCollapse: true,
+            initialTreeDepth: 3,
+            label: {
+                position: 'top',
+                rotate: 0,
+                verticalAlign: 'middle',
+                align: 'center',
+                fontSize: 12
+            },
+            leaves: {
+                label: {
+                    position: 'right',
+                    verticalAlign: 'middle',
+                    align: 'left'
+                }
+            },
+            emphasis: {
+                focus: 'descendant'
+            },
+            animationDurationUpdate: 750
+        }]
+    };
+    
+    // 对比图配置
+    const comparisonOption = {
+        title: {
+            text: '转化率对比',
+            subtext: '与行业平均水平的对比',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'shadow'
+            }
+        },
+        legend: {
+            data: ['您的转化率', '行业平均'],
+            bottom: 10
+        },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '15%',
+            containLabel: true
+        },
+        xAxis: {
+            type: 'category',
+            data: ['浏览→加购', '加购→收藏', '收藏→购买', '加购→购买']
+        },
+        yAxis: {
+            type: 'value',
+            axisLabel: {
+                formatter: '{value}%'
+            }
+        },
+        series: [{
+            name: '您的转化率',
+            type: 'bar',
+            data: [23.4, 56.0, 57.7, 32.3],
+            itemStyle: {
+                color: '#6f068bad'
+            },
+            label: {
+                show: true,
+                position: 'top',
+                formatter: '{c}%'
+            }
+        }, {
+            name: '行业平均',
+            type: 'bar',
+            data: [25.8, 58.5, 62.4, 38.1],
+            itemStyle: {
+                color: '#6c757d'
+            },
+            label: {
+                show: true,
+                position: 'top',
+                formatter: '{c}%'
+            }
+        }]
+    };
+    
+    // 渲染图表
+    funnelChart.setOption(funnelOption);
+    pathChart.setOption(pathOption);
+    comparisonChart.setOption(comparisonOption);
+    
+    // 窗口大小变化时重绘图表
+    window.addEventListener('resize', function() {
+        funnelChart.resize();
+        pathChart.resize();
+        comparisonChart.resize();
+    });
+    
+    // 筛选表单交互
+    document.getElementById('dateRange').addEventListener('change', function() {
+        const customDateDiv = document.getElementById('customDateRange');
+        if (this.value === 'custom') {
+            customDateDiv.style.display = 'block';
+        } else {
+            customDateDiv.style.display = 'none';
+        }
+    });
+    
+    // 应用筛选按钮
+    document.getElementById('applyFilters').addEventListener('click', function() {
+        // 这里应该发送AJAX请求获取筛选后的数据
+        // 然后更新所有图表
+        alert('筛选条件已应用，图表数据将更新');
+    });
+    
+    // 导出功能
+    document.getElementById('exportFunnel').addEventListener('click', function() {
+        const url = funnelChart.getDataURL({
+            type: 'png',
+            pixelRatio: 2,
+            backgroundColor: '#fff'
+        });
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = '转化漏斗.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+    
+    document.getElementById('exportData').addEventListener('click', function() {
+        alert('CSV数据导出功能将在实际系统中实现');
+    });
+});
+</script>
+{% endblock %}

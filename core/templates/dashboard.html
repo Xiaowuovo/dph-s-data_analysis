@@ -1,0 +1,499 @@
+{% extends 'base.html' %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- 页面头部 -->
+    <div class="page-header">
+        <div class="header-left">
+            <h1><i class="fas fa-tachometer-alt"></i> 数据看板</h1>
+            <p class="subtitle">实时监控核心业务指标与数据趋势</p>
+        </div>
+        <div class="header-right">
+            <button id="refreshBtn" class="btn btn-secondary">
+                <i class="fas fa-sync-alt"></i> 刷新数据
+            </button>
+        </div>
+    </div>
+
+    <!-- 顶部筛选区 -->
+    <div class="filter-section">
+        <div class="time-filter">
+            <label><i class="fas fa-calendar-alt"></i> 时间范围</label>
+            <div class="time-buttons">
+                <button class="time-btn" data-range="today">今日</button>
+                <button class="time-btn active" data-range="7days">近7天</button>
+                <button class="time-btn" data-range="30days">近30天</button>
+                <button class="time-btn" data-range="custom">自定义</button>
+            </div>
+            <div class="custom-date" id="customDatePicker" style="display: none;">
+                <input type="date" id="startDate" class="date-input">
+                <span>至</span>
+                <input type="date" id="endDate" class="date-input">
+                <button class="btn btn-sm btn-primary" id="applyCustomDate">应用</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 核心指标卡（6个） -->
+    <div class="stats-cards">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-content">
+                <p class="stat-label">总用户数</p>
+                <h3 class="stat-value">77,968</h3>
+                <span class="stat-trend up">+5.2%</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <i class="fas fa-box"></i>
+            </div>
+            <div class="stat-content">
+                <p class="stat-label">总商品数</p>
+                <h3 class="stat-value">1,388,335</h3>
+                <span class="stat-trend up">+3.8%</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <i class="fas fa-mouse-pointer"></i>
+            </div>
+            <div class="stat-content">
+                <p class="stat-label">总行为数</p>
+                <h3 class="stat-value">10.12M</h3>
+                <span class="stat-trend up">+12.5%</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                <i class="fas fa-percentage"></i>
+            </div>
+            <div class="stat-content">
+                <p class="stat-label">转化率</p>
+                <h3 class="stat-value">3.8%</h3>
+                <span class="stat-trend up">+0.5%</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                <i class="fas fa-shopping-cart"></i>
+            </div>
+            <div class="stat-content">
+                <p class="stat-label">成交订单数</p>
+                <h3 class="stat-value">384,852</h3>
+                <span class="stat-trend up">+8.3%</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);">
+                <i class="fas fa-user-friends"></i>
+            </div>
+            <div class="stat-content">
+                <p class="stat-label">新/老用户占比</p>
+                <h3 class="stat-value">28% / 72%</h3>
+                <span class="stat-trend neutral">稳定</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 趋势分析区 -->
+    <div class="analysis-section">
+        <div class="section-header">
+            <h2><i class="fas fa-chart-line"></i> 趋势分析</h2>
+        </div>
+        <div class="chart-card">
+            <div class="card-header">
+                <h3>日行为趋势</h3>
+                <div class="legend">
+                    <span class="legend-item"><i class="fas fa-circle" style="color: #667eea;"></i> 浏览(PV)</span>
+                    <span class="legend-item"><i class="fas fa-circle" style="color: #f093fb;"></i> 独立访客(UV)</span>
+                    <span class="legend-item"><i class="fas fa-circle" style="color: #4facfe;"></i> 加购</span>
+                    <span class="legend-item"><i class="fas fa-circle" style="color: #43e97b;"></i> 购买</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="behaviorTrendChart" style="width: 100%; height: 350px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 分布分析区 -->
+    <div class="distribution-section">
+        <div class="section-header">
+            <h2><i class="fas fa-chart-pie"></i> 分布分析</h2>
+        </div>
+        
+        <div class="distribution-grid">
+            <!-- 行为类型分布 -->
+            <div class="chart-card">
+                <div class="card-header">
+                    <h3>行为类型分布</h3>
+                </div>
+                <div class="card-body">
+                    <div class="chart-row">
+                        <div id="behaviorPieChart" style="width: 50%; height: 250px;"></div>
+                        <div id="behaviorBarChart" style="width: 50%; height: 250px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 热门商品TOP 10 -->
+            <div class="chart-card">
+                <div class="card-header">
+                    <h3>热门商品 TOP 10</h3>
+                </div>
+                <div class="card-body">
+                    <div id="topProductsChart" style="width: 100%; height: 300px;"></div>
+                </div>
+            </div>
+
+            <!-- 活跃用户TOP 10 -->
+            <div class="chart-card">
+                <div class="card-header">
+                    <h3>活跃用户 TOP 10</h3>
+                </div>
+                <div class="card-body">
+                    <div id="topUsersChart" style="width: 100%; height: 300px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 系统状态 -->
+    <div class="system-status">
+        <div class="section-header">
+            <h2><i class="fas fa-server"></i> 系统状态</h2>
+        </div>
+        <div class="status-grid">
+            <div class="status-card">
+                <div class="status-icon success">
+                    <i class="fas fa-database"></i>
+                </div>
+                <div class="status-content">
+                    <h4>数据库连接</h4>
+                    <p class="status-value">正常</p>
+                    <span class="status-detail">MySQL 8.0.28 | 延迟: 12ms</span>
+                </div>
+            </div>
+
+            <div class="status-card">
+                <div class="status-icon success">
+                    <i class="fas fa-sync-alt"></i>
+                </div>
+                <div class="status-content">
+                    <h4>数据更新频率</h4>
+                    <p class="status-value">实时</p>
+                    <span class="status-detail">上次更新: 2分钟前</span>
+                </div>
+            </div>
+
+            <div class="status-card">
+                <div class="status-icon success">
+                    <i class="fas fa-bell"></i>
+                </div>
+                <div class="status-content">
+                    <h4>系统告警</h4>
+                    <p class="status-value">无异常</p>
+                    <span class="status-detail">所有监控指标正常</span>
+                </div>
+            </div>
+
+            <div class="status-card">
+                <div class="status-icon success">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <div class="status-content">
+                    <h4>数据完整性</h4>
+                    <p class="status-value">100%</p>
+                    <span class="status-detail">总记录: 10,126,233</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 快捷入口 -->
+    <div class="quick-links-section">
+        <h3><i class="fas fa-bolt"></i> 快捷入口</h3>
+        <div class="quick-links-grid">
+            <a href="{{ url_for('behavior_analysis_center') }}" class="quick-link-card">
+                <div class="link-icon">
+                    <i class="fas fa-chart-area"></i>
+                </div>
+                <div class="link-content">
+                    <h4>行为分析中心</h4>
+                    <p>转化漏斗、RFM分群、行为可视化</p>
+                </div>
+                <i class="fas fa-chevron-right link-arrow"></i>
+            </a>
+
+            <a href="{{ url_for('user_analysis') }}" class="quick-link-card">
+                <div class="link-icon">
+                    <i class="fas fa-user-chart"></i>
+                </div>
+                <div class="link-content">
+                    <h4>用户价值分析</h4>
+                    <p>用户画像、价值分层、留存分析</p>
+                </div>
+                <i class="fas fa-chevron-right link-arrow"></i>
+            </a>
+
+            <a href="{{ url_for('item_analysis') }}" class="quick-link-card">
+                <div class="link-icon">
+                    <i class="fas fa-shopping-bag"></i>
+                </div>
+                <div class="link-content">
+                    <h4>商品分析</h4>
+                    <p>热门商品、品类分析、库存优化</p>
+                </div>
+                <i class="fas fa-chevron-right link-arrow"></i>
+            </a>
+
+            <a href="{{ url_for('time_pattern') }}" class="quick-link-card">
+                <div class="link-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="link-content">
+                    <h4>时间模式分析</h4>
+                    <p>时段分析、周期规律、高峰预测</p>
+                </div>
+                <i class="fas fa-chevron-right link-arrow"></i>
+            </a>
+
+            <a href="{{ url_for('recommendation') }}" class="quick-link-card">
+                <div class="link-icon">
+                    <i class="fas fa-star"></i>
+                </div>
+                <div class="link-content">
+                    <h4>智能推荐</h4>
+                    <p>个性化推荐、协同过滤、内容推荐</p>
+                </div>
+                <i class="fas fa-chevron-right link-arrow"></i>
+            </a>
+
+            <a href="{{ url_for('data_export') }}" class="quick-link-card">
+                <div class="link-icon">
+                    <i class="fas fa-download"></i>
+                </div>
+                <div class="link-content">
+                    <h4>数据导出</h4>
+                    <p>报表导出、数据备份、Excel生成</p>
+                </div>
+                <i class="fas fa-chevron-right link-arrow"></i>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 时间筛选器
+    const timeButtons = document.querySelectorAll('.time-btn');
+    const customDatePicker = document.getElementById('customDatePicker');
+    
+    timeButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            timeButtons.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            if (this.dataset.range === 'custom') {
+                customDatePicker.style.display = 'flex';
+            } else {
+                customDatePicker.style.display = 'none';
+                updateDashboardData(this.dataset.range);
+            }
+        });
+    });
+    
+    document.getElementById('applyCustomDate')?.addEventListener('click', function() {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        if (startDate && endDate) {
+            updateDashboardData('custom', startDate, endDate);
+        }
+    });
+    
+    // 初始化图表
+    const behaviorTrendChart = echarts.init(document.getElementById('behaviorTrendChart'));
+    const behaviorPieChart = echarts.init(document.getElementById('behaviorPieChart'));
+    const behaviorBarChart = echarts.init(document.getElementById('behaviorBarChart'));
+    const topProductsChart = echarts.init(document.getElementById('topProductsChart'));
+    const topUsersChart = echarts.init(document.getElementById('topUsersChart'));
+    
+    // 日行为趋势图
+    const trendOption = {
+        tooltip: { trigger: 'axis' },
+        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+        xAxis: {
+            type: 'category',
+            boundaryGap: false,
+            data: ['12-10', '12-11', '12-12', '12-13', '12-14', '12-15', '12-16']
+        },
+        yAxis: { type: 'value' },
+        series: [
+            {
+                name: '浏览(PV)',
+                type: 'line',
+                data: [12000, 13200, 10100, 13400, 9000, 13000, 10000],
+                smooth: true,
+                lineStyle: { width: 3, color: '#667eea' },
+                itemStyle: { color: '#667eea' },
+                areaStyle: { color: 'rgba(102, 126, 234, 0.1)' }
+            },
+            {
+                name: '独立访客(UV)',
+                type: 'line',
+                data: [8200, 9320, 9010, 9340, 12900, 13300, 13000],
+                smooth: true,
+                lineStyle: { width: 3, color: '#f093fb' },
+                itemStyle: { color: '#f093fb' },
+                areaStyle: { color: 'rgba(240, 147, 251, 0.1)' }
+            },
+            {
+                name: '加购',
+                type: 'line',
+                data: [3200, 4320, 3010, 5340, 4900, 4300, 4600],
+                smooth: true,
+                lineStyle: { width: 3, color: '#4facfe' },
+                itemStyle: { color: '#4facfe' }
+            },
+            {
+                name: '购买',
+                type: 'line',
+                data: [520, 632, 401, 734, 490, 630, 710],
+                smooth: true,
+                lineStyle: { width: 3, color: '#43e97b' },
+                itemStyle: { color: '#43e97b' }
+            }
+        ]
+    };
+    
+    // 行为类型分布 - 饼图
+    const pieOption = {
+        tooltip: { trigger: 'item' },
+        series: [{
+            type: 'pie',
+            radius: ['40%', '70%'],
+            avoidLabelOverlap: false,
+            itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+            label: { show: true, formatter: '{b}: {d}%' },
+            data: [
+                { value: 7133888, name: '浏览(PV)', itemStyle: { color: '#667eea' } },
+                { value: 565839, name: '加购', itemStyle: { color: '#4facfe' } },
+                { value: 41839, name: '收藏', itemStyle: { color: '#f093fb' } },
+                { value: 384852, name: '购买', itemStyle: { color: '#43e97b' } }
+            ]
+        }]
+    };
+    
+    // 行为类型分布 - 柱状图
+    const barOption = {
+        tooltip: { trigger: 'axis' },
+        grid: { left: '10%', right: '5%', bottom: '10%', top: '10%' },
+        xAxis: {
+            type: 'category',
+            data: ['浏览', '加购', '收藏', '购买'],
+            axisLabel: { interval: 0, rotate: 0 }
+        },
+        yAxis: { type: 'value' },
+        series: [{
+            type: 'bar',
+            data: [
+                { value: 7133888, itemStyle: { color: '#667eea' } },
+                { value: 565839, itemStyle: { color: '#4facfe' } },
+                { value: 41839, itemStyle: { color: '#f093fb' } },
+                { value: 384852, itemStyle: { color: '#43e97b' } }
+            ],
+            barWidth: '50%',
+            label: { show: true, position: 'top' }
+        }]
+    };
+    
+    // 热门商品TOP 10
+    const productsOption = {
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        grid: { left: '10%', right: '5%', bottom: '3%', top: '3%', containLabel: true },
+        xAxis: { type: 'value' },
+        yAxis: {
+            type: 'category',
+            data: ['商品10', '商品9', '商品8', '商品7', '商品6', '商品5', '商品4', '商品3', '商品2', '商品1']
+        },
+        series: [{
+            type: 'bar',
+            data: [2340, 2580, 2890, 3120, 3450, 3780, 4120, 4560, 4890, 5230],
+            itemStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                    { offset: 0, color: '#667eea' },
+                    { offset: 1, color: '#764ba2' }
+                ])
+            },
+            label: { show: true, position: 'right' }
+        }]
+    };
+    
+    // 活跃用户TOP 10
+    const usersOption = {
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        grid: { left: '10%', right: '5%', bottom: '3%', top: '3%', containLabel: true },
+        xAxis: { type: 'value' },
+        yAxis: {
+            type: 'category',
+            data: ['用户10', '用户9', '用户8', '用户7', '用户6', '用户5', '用户4', '用户3', '用户2', '用户1']
+        },
+        series: [{
+            type: 'bar',
+            data: [45, 52, 58, 65, 72, 78, 85, 92, 98, 105],
+            itemStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                    { offset: 0, color: '#43e97b' },
+                    { offset: 1, color: '#38f9d7' }
+                ])
+            },
+            label: { show: true, position: 'right', formatter: '{c} 次' }
+        }]
+    };
+    
+    // 渲染所有图表
+    behaviorTrendChart.setOption(trendOption);
+    behaviorPieChart.setOption(pieOption);
+    behaviorBarChart.setOption(barOption);
+    topProductsChart.setOption(productsOption);
+    topUsersChart.setOption(usersOption);
+    
+    // 响应式
+    window.addEventListener('resize', function() {
+        behaviorTrendChart.resize();
+        behaviorPieChart.resize();
+        behaviorBarChart.resize();
+        topProductsChart.resize();
+        topUsersChart.resize();
+    });
+    
+    // 刷新按钮
+    document.getElementById('refreshBtn')?.addEventListener('click', function() {
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 更新中...';
+        setTimeout(() => {
+            location.reload();
+        }, 1000);
+    });
+    
+    function updateDashboardData(range, startDate, endDate) {
+        console.log('更新数据:', range, startDate, endDate);
+        // 这里应该发送AJAX请求获取新数据并更新图表
+    }
+});
+</script>
+{% endblock %}

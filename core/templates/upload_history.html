@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block page_css %}
+<style>
+.history-container { padding: 20px; }
+.page-header { margin-bottom: 24px; }
+.page-header h1 { font-size: 26px; color: #333; display: flex; align-items: center; gap: 10px; }
+.page-header .subtitle { color: #666; font-size: 14px; margin-top: 6px; }
+
+.stats-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+.stat-card { background: #fff; border-radius: 10px; padding: 16px 24px; box-shadow: 0 2px 8px rgba(0,0,0,.07); flex: 1; min-width: 150px; text-align: center; }
+.stat-card .val { font-size: 28px; font-weight: 700; color: #6f068bad; }
+.stat-card .lbl { font-size: 13px; color: #888; margin-top: 4px; }
+
+.history-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.07); overflow: hidden; }
+.history-card .card-header { padding: 16px 20px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; }
+.history-card .card-header h3 { font-size: 16px; color: #333; display: flex; align-items: center; gap: 8px; }
+
+table { width: 100%; border-collapse: collapse; }
+thead th { background: #6f068bad; color: #fff; padding: 10px 14px; font-size: 13px; text-align: left; }
+tbody tr:nth-child(even) { background: #f8f9fa; }
+tbody td { padding: 10px 14px; font-size: 13px; border-bottom: 1px solid #eee; vertical-align: middle; }
+
+.badge-success { display:inline-flex; align-items:center; gap:5px; background:#d4edda; color:#155724; padding:3px 10px; border-radius:20px; font-size:12px; }
+.badge-error   { display:inline-flex; align-items:center; gap:5px; background:#f8d7da; color:#721c24; padding:3px 10px; border-radius:20px; font-size:12px; }
+
+.error-log { max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #dc3545; font-size: 12px; cursor: pointer; }
+.error-log:hover { white-space: normal; overflow: visible; }
+
+.empty-state { text-align: center; padding: 60px 20px; color: #aaa; }
+.empty-state i { font-size: 48px; margin-bottom: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="history-container">
+    <div class="page-header">
+        <h1><i class="fas fa-history"></i> 上传历史记录</h1>
+        <p class="subtitle">追溯每次数据导入的状态和错误日志</p>
+    </div>
+
+    {% set total = history|length %}
+    {% set success_cnt = history|selectattr('status','equalto','success')|list|length %}
+    {% set error_cnt   = total - success_cnt %}
+    {% set total_rows  = history|sum(attribute='record_count') %}
+
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="val">{{ total }}</div>
+            <div class="lbl">总上传次数</div>
+        </div>
+        <div class="stat-card">
+            <div class="val" style="color:#28a745;">{{ success_cnt }}</div>
+            <div class="lbl">成功</div>
+        </div>
+        <div class="stat-card">
+            <div class="val" style="color:#dc3545;">{{ error_cnt }}</div>
+            <div class="lbl">失败</div>
+        </div>
+        <div class="stat-card">
+            <div class="val">{{ total_rows|default(0) }}</div>
+            <div class="lbl">累计导入记录</div>
+        </div>
+    </div>
+
+    <div class="history-card">
+        <div class="card-header">
+            <h3><i class="fas fa-list"></i> 导入记录（最近100条）</h3>
+            <a href="{{ url_for('taobao_upload') }}" class="btn btn-primary" style="font-size:13px;padding:6px 16px;">
+                <i class="fas fa-upload"></i> 新建上传
+            </a>
+        </div>
+
+        {% if history %}
+        <div style="overflow-x:auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>文件名</th>
+                        <th>文件大小</th>
+                        <th>导入记录数</th>
+                        <th>状态</th>
+                        <th>操作人</th>
+                        <th>上传时间</th>
+                        <th>错误信息</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in history %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td><i class="fas fa-file-csv" style="color:#6f068bad;margin-right:5px;"></i>{{ r.filename }}</td>
+                        <td>{{ r.file_size or '—' }}</td>
+                        <td>{{ r.record_count|default(0) }}</td>
+                        <td>
+                            {% if r.status == 'success' %}
+                            <span class="badge-success"><i class="fas fa-check-circle"></i> 成功</span>
+                            {% else %}
+                            <span class="badge-error"><i class="fas fa-times-circle"></i> 失败</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ r.operator or '—' }}</td>
+                        <td>{{ r.upload_time }}</td>
+                        <td>
+                            {% if r.error_log %}
+                            <span class="error-log" title="{{ r.error_log }}">{{ r.error_log }}</span>
+                            {% else %}—{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <p>暂无上传记录</p>
+            <a href="{{ url_for('taobao_upload') }}" class="btn btn-primary" style="margin-top:12px;">立即上传数据</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

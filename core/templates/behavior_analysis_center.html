@@ -1,0 +1,4747 @@
+{% extends 'base.html' %}
+
+{% block page_css %}
+<style>
+    .behavior-analysis-container {
+        padding: 20px;
+    }
+
+    .page-header {
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .page-header h1 {
+        font-size: 28px;
+        color: #333;
+        margin-bottom: 10px;
+    }
+
+    .page-header .subtitle {
+        color: #666;
+        font-size: 14px;
+    }
+
+    .tab-navigation {
+        display: flex;
+        border-bottom: 2px solid #f0f0f0;
+        margin-bottom: 30px;
+        background: #fff;
+        padding: 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .tab-button {
+        padding: 15px 30px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        color: #666;
+        transition: all 0.3s ease;
+        position: relative;
+        border-bottom: 3px solid transparent;
+    }
+
+    .tab-button:hover {
+        background: #f8f9fa;
+        color: #6f068bad;
+    }
+
+    .tab-button.active {
+        color: #6f068bad;
+        font-weight: 600;
+        border-bottom-color: #6f068bad;
+    }
+
+    .tab-button i {
+        margin-right: 8px;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+        animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .embedded-page {
+        background: #fff;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .analysis-section {
+        background: #fff;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .section-header {
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .section-header h2 {
+        font-size: 22px;
+        color: #333;
+        margin: 0 0 8px 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .section-desc {
+        color: #666;
+        font-size: 14px;
+        margin: 0;
+    }
+
+    .chart-controls {
+        display: flex;
+        gap: 15px;
+        align-items: flex-end;
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+
+    .control-item {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .control-item label {
+        font-size: 13px;
+        font-weight: 500;
+        color: #555;
+    }
+
+    .form-select-sm, .form-control-sm {
+        padding: 6px 12px;
+        font-size: 14px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+
+    .chart-container {
+        margin-bottom: 30px;
+    }
+
+    .path-insights, .time-insights {
+        margin-top: 30px;
+    }
+
+    .path-insights h3, .time-insights h3 {
+        font-size: 18px;
+        color: #333;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .insights-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .insight-card {
+        padding: 20px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 10px;
+        border-left: 4px solid #6f068bad;
+    }
+
+    .insight-label {
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .insight-value {
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 5px;
+    }
+
+    .insight-percent {
+        font-size: 14px;
+        color: #6f068bad;
+        font-weight: 500;
+    }
+
+    .funnel-table {
+        margin-top: 30px;
+    }
+
+    .funnel-table table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .funnel-table th {
+        background: #f8f9fa;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        color: #555;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .funnel-table td {
+        padding: 12px;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .btn-link {
+        color: #6f068bad;
+        background: none;
+        border: none;
+        cursor: pointer;
+        text-decoration: underline;
+        font-size: 13px;
+    }
+
+    .btn-link:hover {
+        color: #4a0578;
+    }
+
+    .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 25px;
+        margin-bottom: 25px;
+    }
+
+    .chart-box, .chart-box-full {
+        background: #fff;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 20px;
+    }
+
+    .chart-box-full {
+        grid-column: 1 / -1;
+    }
+
+    .chart-box h3, .chart-box-full h3 {
+        font-size: 16px;
+        color: #333;
+        margin: 0 0 15px 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    /* 数据新鲜度提示 */
+    .data-freshness {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 14px;
+    }
+
+    .data-freshness i {
+        margin-right: 8px;
+    }
+
+    .btn-refresh {
+        background: rgba(255,255,255,0.2);
+        border: 1px solid rgba(255,255,255,0.5);
+        color: white;
+        padding: 6px 15px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        transition: all 0.3s;
+    }
+
+    .btn-refresh:hover {
+        background: rgba(255,255,255,0.3);
+    }
+
+    /* 漏斗控制器 */
+    .funnel-controls {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 25px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        flex-wrap: wrap;
+    }
+
+    .control-group {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .control-group label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: #555;
+        margin-bottom: 8px;
+    }
+
+    .control-group label i {
+        margin-right: 6px;
+        color: #667eea;
+    }
+
+    .form-select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        background: white;
+        cursor: pointer;
+    }
+
+    /* 漏斗对比区域 */
+    .funnel-comparison-section {
+        margin-bottom: 40px;
+    }
+
+    .funnel-chart-wrapper {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .chart-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .chart-title h3 {
+        font-size: 18px;
+        color: #333;
+        margin: 0;
+    }
+
+    .legend {
+        display: flex;
+        gap: 20px;
+    }
+
+    .legend-item {
+        font-size: 13px;
+        color: #666;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* 流失归因弹窗 */
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 800px;
+        max-height: 85vh;
+        overflow-y: auto;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    }
+
+    .modal-header {
+        padding: 20px 25px;
+        border-bottom: 2px solid #f0f0f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 20px;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 30px;
+        color: #999;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+    }
+
+    .modal-close:hover {
+        color: #333;
+    }
+
+    .modal-body {
+        padding: 25px;
+    }
+
+    .churn-stats {
+        display: flex;
+        gap: 30px;
+        margin-bottom: 25px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+
+    .churn-stats .stat-item {
+        flex: 1;
+    }
+
+    .churn-stats .stat-label {
+        font-size: 13px;
+        color: #666;
+        display: block;
+        margin-bottom: 8px;
+    }
+
+    .churn-stats .stat-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: #333;
+    }
+
+    .churn-stats .stat-value.danger {
+        color: #dc3545;
+    }
+
+    .churn-insights {
+        margin-top: 25px;
+    }
+
+    .churn-insights h4 {
+        font-size: 16px;
+        color: #333;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .churn-insights ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .churn-insights li {
+        padding: 12px 15px;
+        background: #f8f9fa;
+        border-left: 4px solid #667eea;
+        margin-bottom: 10px;
+        border-radius: 4px;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+
+    /* 路径分析区域 */
+    .path-analysis-section, .trend-comparison-section, .segment-comparison-section {
+        margin-bottom: 40px;
+    }
+
+    .section-title {
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .section-title h3 {
+        font-size: 20px;
+        color: #333;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .section-desc-sm {
+        font-size: 13px;
+        color: #666;
+        margin: 5px 0 0 0;
+    }
+
+    .path-metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-top: 25px;
+    }
+
+    .metric-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        display: flex;
+        align-items: flex-start;
+        gap: 15px;
+        transition: all 0.3s;
+    }
+
+    .metric-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+
+    .metric-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        color: white;
+        flex-shrink: 0;
+    }
+
+    .metric-content {
+        flex: 1;
+    }
+
+    .metric-label {
+        font-size: 12px;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    .metric-content h4 {
+        font-size: 16px;
+        color: #333;
+        margin: 0 0 10px 0;
+    }
+
+    .metric-detail {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .metric-detail span {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .metric-detail strong {
+        color: #667eea;
+        font-weight: 600;
+    }
+
+    /* 时间范围选择器 */
+    .time-range-selector {
+        display: flex;
+        gap: 10px;
+    }
+
+    .time-btn {
+        padding: 8px 18px;
+        background: #f8f9fa;
+        border: 2px solid transparent;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        color: #666;
+        transition: all 0.3s;
+    }
+
+    .time-btn:hover {
+        background: #e9ecef;
+    }
+
+    .time-btn.active {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+    }
+
+    /* 趋势洞察 */
+    .trend-insights {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 20px;
+        margin-top: 25px;
+    }
+
+    .insight-item {
+        padding: 20px;
+        border-radius: 10px;
+        display: flex;
+        align-items: flex-start;
+        gap: 15px;
+        border-left: 4px solid;
+    }
+
+    .insight-item.warning {
+        background: #fff3cd;
+        border-color: #ffc107;
+    }
+
+    .insight-item.success {
+        background: #d4edda;
+        border-color: #28a745;
+    }
+
+    .insight-item i {
+        font-size: 24px;
+        margin-top: 3px;
+    }
+
+    .insight-item.warning i {
+        color: #ff9800;
+    }
+
+    .insight-item.success i {
+        color: #28a745;
+    }
+
+    .insight-item strong {
+        display: block;
+        font-size: 15px;
+        margin-bottom: 5px;
+        color: #333;
+    }
+
+    .insight-item p {
+        margin: 0;
+        font-size: 13px;
+        color: #666;
+        line-height: 1.6;
+    }
+
+    /* 用户分层表格 */
+    .segment-table {
+        margin-top: 25px;
+    }
+
+    .segment-table table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .segment-table th {
+        background: #f8f9fa;
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+        color: #555;
+        border-bottom: 2px solid #dee2e6;
+        font-size: 14px;
+    }
+
+    .segment-table td {
+        padding: 15px;
+        border-bottom: 1px solid #e9ecef;
+        font-size: 14px;
+    }
+
+    .segment-table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .segment-table .highlight-row {
+        background: #fff3cd;
+    }
+
+    .rate-good {
+        color: #28a745;
+        font-weight: 600;
+    }
+
+    .rate-medium {
+        color: #ffc107;
+        font-weight: 600;
+    }
+
+    .rate-poor {
+        color: #dc3545;
+        font-weight: 600;
+    }
+
+    /* 分析逻辑说明 */
+    .analysis-logic {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 30px;
+        margin-top: 40px;
+        border: 2px solid #e9ecef;
+    }
+
+    .logic-header {
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .logic-header h3 {
+        font-size: 20px;
+        color: #333;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .logic-content {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 25px;
+    }
+
+    .logic-item h4 {
+        font-size: 16px;
+        color: #333;
+        margin: 0 0 15px 0;
+    }
+
+    .formula-box, .source-box, .method-box {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+    }
+
+    .formula-box p, .source-box p, .method-box p {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        line-height: 1.7;
+        color: #333;
+    }
+
+    .formula-box p:last-child, .source-box p:last-child, .method-box p:last-child {
+        margin-bottom: 0;
+    }
+
+    .formula-box .example {
+        color: #666;
+        font-size: 13px;
+        padding-left: 15px;
+        border-left: 3px solid #e9ecef;
+        margin-top: 8px;
+    }
+
+    .source-box .note {
+        color: #999;
+        font-size: 12px;
+        font-style: italic;
+        margin-top: 10px;
+    }
+
+    .method-box ul {
+        margin: 10px 0 0 0;
+        padding-left: 20px;
+    }
+
+    .method-box li {
+        margin-bottom: 8px;
+        font-size: 13px;
+        line-height: 1.6;
+        color: #555;
+    }
+
+    /* ==========RFM分群模块样式========== */
+    .rfm-rules-info {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 30px;
+        border: 2px solid #dee2e6;
+    }
+
+    .rules-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .rules-header h3 {
+        font-size: 18px;
+        color: #333;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .toggle-rules {
+        background: white;
+        border: 1px solid #ddd;
+        padding: 6px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        color: #666;
+    }
+
+    .rules-content {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .rule-item {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        display: flex;
+        align-items: flex-start;
+        gap: 15px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+
+    .rule-item.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .rule-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        font-weight: 700;
+        color: white;
+        flex-shrink: 0;
+    }
+
+    .rule-detail h4 {
+        font-size: 16px;
+        color: #333;
+        margin: 0 0 5px 0;
+    }
+
+    .rule-detail p {
+        font-size: 13px;
+        color: #666;
+        margin: 0 0 10px 0;
+    }
+
+    .rule-threshold {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .badge {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .badge-success { background: #d4edda; color: #155724; }
+    .badge-warning { background: #fff3cd; color: #856404; }
+    .badge-danger { background: #f8d7da; color: #721c24; }
+
+    .segment-examples {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .segment-tag {
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .segment-tag.vip { background: #667eea; color: white; }
+    .segment-tag.potential { background: #f093fb; color: white; }
+    .segment-tag.normal { background: #e9ecef; color: #495057; }
+    .segment-tag.churn { background: #fa709a; color: white; }
+
+    /* RFM筛选器 */
+    .rfm-controls {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 30px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        flex-wrap: wrap;
+    }
+
+    /* 分群分布 */
+    .rfm-distribution-section, .rfm-matrix-section, .rfm-trend-section,
+    .behavior-comparison-section, .operation-strategy-section {
+        margin-bottom: 40px;
+    }
+
+    .distribution-charts {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 25px;
+        margin-bottom: 30px;
+    }
+
+    .chart-wrapper {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .chart-wrapper h4 {
+        font-size: 16px;
+        color: #333;
+        margin: 0 0 15px 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    /* 分群卡片 */
+    .segment-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .segment-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        cursor: pointer;
+        transition: all 0.3s;
+        border-left: 4px solid;
+    }
+
+    .segment-card.vip { border-color: #667eea; }
+    .segment-card.potential { border-color: #f093fb; }
+    .segment-card.normal { border-color: #adb5bd; }
+    .segment-card.churn { border-color: #fa709a; }
+
+    .segment-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+
+    .segment-card .card-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        color: white;
+    }
+
+    .segment-card.vip .card-icon { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .segment-card.potential .card-icon { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .segment-card.normal .card-icon { background: linear-gradient(135deg, #adb5bd 0%, #6c757d 100%); }
+    .segment-card.churn .card-icon { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+
+    .segment-card .card-content {
+        flex: 1;
+    }
+
+    .segment-card h4 {
+        font-size: 16px;
+        color: #333;
+        margin: 0 0 8px 0;
+    }
+
+    .card-stats {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        margin-bottom: 5px;
+    }
+
+    .card-stats .count {
+        font-size: 24px;
+        font-weight: 700;
+        color: #333;
+    }
+
+    .card-stats .percent {
+        font-size: 16px;
+        color: #666;
+    }
+
+    .card-desc {
+        font-size: 13px;
+        color: #999;
+        margin: 0;
+    }
+
+    .card-arrow {
+        font-size: 18px;
+        color: #ccc;
+    }
+
+    /* 基准说明 */
+    .benchmark-note {
+        margin-top: 15px;
+        padding: 12px 15px;
+        background: #e7f3ff;
+        border-left: 4px solid #4facfe;
+        border-radius: 6px;
+        font-size: 13px;
+        color: #1976d2;
+    }
+
+    /* 趋势汇总 */
+    .trend-summary {
+        display: flex;
+        gap: 20px;
+    }
+
+    .trend-item {
+        padding: 6px 15px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .trend-item.up {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .trend-item.down {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    /* 对比图表 */
+    .comparison-charts {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 25px;
+        margin-bottom: 30px;
+    }
+
+    .path-comparison {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        margin-bottom: 30px;
+    }
+
+    .path-comparison h4 {
+        font-size: 16px;
+        color: #333;
+        margin: 0 0 15px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* 行为表格 */
+    .behavior-table {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .behavior-table table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .behavior-table th {
+        background: #f8f9fa;
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+        color: #555;
+        border-bottom: 2px solid #dee2e6;
+        font-size: 14px;
+    }
+
+    .behavior-table td {
+        padding: 15px;
+        border-bottom: 1px solid #e9ecef;
+        font-size: 14px;
+    }
+
+    .behavior-table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .behavior-table .vip-row {
+        background: rgba(102, 126, 234, 0.05);
+    }
+
+    .behavior-table .churn-row {
+        background: rgba(250, 112, 154, 0.05);
+    }
+
+    .metric-high { color: #28a745; font-weight: 600; }
+    .metric-medium { color: #ffc107; font-weight: 600; }
+    .metric-low { color: #dc3545; font-weight: 600; }
+
+    /* 运营策略卡片 */
+    .strategy-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 25px;
+    }
+
+    .strategy-card {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border-top: 4px solid;
+    }
+
+    .vip-strategy { border-color: #667eea; }
+    .potential-strategy { border-color: #f093fb; }
+    .churn-strategy { border-color: #fa709a; }
+
+    .strategy-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .strategy-header h4 {
+        font-size: 18px;
+        color: #333;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .user-count {
+        background: #f8f9fa;
+        padding: 5px 12px;
+        border-radius: 12px;
+        font-size: 13px;
+        color: #666;
+        font-weight: 600;
+    }
+
+    .strategy-content {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .strategy-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 15px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+
+    .strategy-item i {
+        font-size: 20px;
+        color: #667eea;
+        margin-top: 3px;
+    }
+
+    .strategy-item strong {
+        display: block;
+        font-size: 15px;
+        color: #333;
+        margin-bottom: 5px;
+    }
+
+    .strategy-item p {
+        font-size: 13px;
+        color: #666;
+        margin: 0 0 8px 0;
+    }
+
+    .effect-tag {
+        display: inline-block;
+        background: #e7f3ff;
+        color: #1976d2;
+        padding: 3px 10px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    /* 详情弹窗大尺寸 */
+    .modal-content.large {
+        max-width: 900px;
+    }
+
+    .segment-detail-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .detail-stat {
+        text-align: center;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 10px;
+    }
+
+    .detail-stat .stat-label {
+        display: block;
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 10px;
+    }
+
+    .detail-stat .stat-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: #667eea;
+    }
+
+    .detail-section {
+        margin-bottom: 25px;
+    }
+
+    .detail-section h4 {
+        font-size: 16px;
+        color: #333;
+        margin: 0 0 15px 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #f0f0f0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* ==========时间模式分析样式========== */
+    .time-analysis-settings {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 12px;
+        padding: 0;
+        margin-bottom: 30px;
+        border: 2px solid #dee2e6;
+        overflow: hidden;
+    }
+
+    .settings-header {
+        padding: 15px 25px;
+        background: white;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .settings-header:hover {
+        background: #f8f9fa;
+    }
+
+    .settings-header h3 {
+        font-size: 16px;
+        color: #333;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .toggle-btn {
+        background: none;
+        border: none;
+        color: #666;
+        cursor: pointer;
+        font-size: 16px;
+    }
+
+    .settings-content {
+        padding: 25px;
+    }
+
+    .settings-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+
+    .setting-item label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: #555;
+        margin-bottom: 8px;
+    }
+
+    .setting-item label i {
+        margin-right: 6px;
+        color: #667eea;
+    }
+
+    .settings-actions {
+        display: flex;
+        gap: 15px;
+        justify-content: flex-end;
+    }
+
+    .btn-apply, .btn-reset {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+
+    .btn-apply {
+        background: #667eea;
+        color: white;
+    }
+
+    .btn-apply:hover {
+        background: #5568d3;
+    }
+
+    .btn-reset {
+        background: #e9ecef;
+        color: #666;
+    }
+
+    .btn-reset:hover {
+        background: #dee2e6;
+    }
+
+    /* 时间模式各section */
+    .hourly-pattern-section, .weekly-pattern-section, 
+    .trend-forecast-section, .time-insights-summary {
+        margin-bottom: 40px;
+    }
+
+    .legend-box {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .legend-item {
+        font-size: 13px;
+        color: #666;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* 小时模式洞察 */
+    .hourly-insights {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-top: 25px;
+    }
+
+    .insight-box {
+        padding: 20px;
+        border-radius: 10px;
+        display: flex;
+        align-items: flex-start;
+        gap: 15px;
+        border-left: 4px solid;
+    }
+
+    .insight-box.info {
+        background: #e7f3ff;
+        border-color: #4facfe;
+    }
+
+    .insight-box.warning {
+        background: #fff3cd;
+        border-color: #ffc107;
+    }
+
+    .insight-box.success {
+        background: #d4edda;
+        border-color: #28a745;
+    }
+
+    .insight-box i {
+        font-size: 24px;
+        margin-top: 3px;
+    }
+
+    .insight-box.info i { color: #1976d2; }
+    .insight-box.warning i { color: #ff9800; }
+    .insight-box.success i { color: #28a745; }
+
+    .insight-box strong {
+        display: block;
+        font-size: 15px;
+        margin-bottom: 5px;
+        color: #333;
+    }
+
+    .insight-box p {
+        margin: 0;
+        font-size: 13px;
+        color: #666;
+        line-height: 1.6;
+    }
+
+    /* 周模式对比 */
+    .weekly-comparison {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 25px;
+        margin-bottom: 25px;
+    }
+
+    .main-chart, .benchmark-chart {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .benchmark-chart h4 {
+        font-size: 15px;
+        color: #333;
+        margin: 0 0 15px 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .benchmark-note {
+        margin-top: 15px;
+        font-size: 12px;
+        color: #999;
+        text-align: center;
+    }
+
+    .weekly-insights {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .insight-tag {
+        padding: 15px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .insight-tag i {
+        font-size: 18px;
+        margin-top: 2px;
+    }
+
+    .insight-tag.primary {
+        background: #e7f3ff;
+        color: #1976d2;
+    }
+
+    .insight-tag.success {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .insight-tag.info {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    /* 预测分析 */
+    .forecast-toggle {
+        display: flex;
+        align-items: center;
+    }
+
+    .forecast-toggle label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        color: #666;
+        cursor: pointer;
+    }
+
+    .forecast-toggle input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+    }
+
+    .forecast-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-top: 25px;
+    }
+
+    .forecast-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .forecast-card i {
+        font-size: 32px;
+        color: #667eea;
+    }
+
+    .forecast-card .label {
+        display: block;
+        font-size: 12px;
+        color: #999;
+        margin-bottom: 5px;
+    }
+
+    .forecast-card .value {
+        display: block;
+        font-size: 20px;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 3px;
+    }
+
+    .forecast-card .value.trend-up {
+        color: #28a745;
+    }
+
+    .forecast-card .confidence {
+        display: block;
+        font-size: 12px;
+        color: #666;
+    }
+
+    /* 时间洞察总结增强 */
+    .time-insights-summary {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 30px;
+    }
+
+    .time-insights-summary h3 {
+        font-size: 20px;
+        color: #333;
+        margin: 0 0 25px 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .time-insights-summary .insights-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+    }
+
+    .time-insights-summary .insight-card {
+        background: white;
+        border-radius: 12px;
+        padding: 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: all 0.3s;
+        overflow: hidden;
+    }
+
+    .time-insights-summary .insight-card.clickable {
+        cursor: pointer;
+    }
+
+    .time-insights-summary .insight-card.clickable:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+
+    .time-insights-summary .insight-icon {
+        width: 100%;
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        color: white;
+    }
+
+    .time-insights-summary .insight-content {
+        padding: 20px;
+    }
+
+    .time-insights-summary .insight-label {
+        font-size: 12px;
+        color: #999;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 5px;
+    }
+
+    .time-insights-summary .insight-value {
+        font-size: 22px;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 12px;
+    }
+
+    .time-insights-summary .insight-detail {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        margin-bottom: 12px;
+    }
+
+    .time-insights-summary .insight-detail span {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .drill-hint {
+        padding-top: 12px;
+        border-top: 1px dashed #e9ecef;
+        font-size: 12px;
+        color: #667eea;
+        font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+        .charts-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .chart-controls {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .insights-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .funnel-controls {
+            flex-direction: column;
+        }
+
+        .path-metrics, .logic-content {
+            grid-template-columns: 1fr;
+        }
+
+        .trend-insights {
+            grid-template-columns: 1fr;
+        }
+
+        .distribution-charts, .comparison-charts {
+            grid-template-columns: 1fr;
+        }
+
+        .segment-cards, .strategy-cards {
+            grid-template-columns: 1fr;
+        }
+
+        .segment-detail-stats {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .weekly-comparison {
+            grid-template-columns: 1fr;
+        }
+
+        .settings-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .hourly-insights {
+            grid-template-columns: 1fr;
+        }
+
+        .forecast-summary {
+            grid-template-columns: 1fr;
+        }
+
+        .time-insights-summary .insights-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="behavior-analysis-container">
+    <div class="page-header">
+        <h1><i class="fas fa-chart-area"></i> 行为分析中心</h1>
+        <p class="subtitle">深度分析用户行为模式与转化路径</p>
+    </div>
+
+    <div class="tab-navigation">
+        <button class="tab-button active" data-tab="path">
+            <i class="fas fa-project-diagram"></i> 行为路径分析
+        </button>
+        <button class="tab-button" data-tab="funnel">
+            <i class="fas fa-filter"></i> 转化漏斗
+        </button>
+        <button class="tab-button" data-tab="behavior">
+            <i class="fas fa-chart-line"></i> 行为可视化
+        </button>
+        <button class="tab-button" data-tab="time">
+            <i class="fas fa-clock"></i> 时间模式
+        </button>
+        <button class="tab-button" data-tab="rfm">
+            <i class="fas fa-users"></i> RFM分群
+        </button>
+    </div>
+
+    <!-- 行为路径桑基图 -->
+    <div id="pathTab" class="tab-content active">
+        <div class="analysis-section">
+            <div class="section-header">
+                <h2><i class="fas fa-route"></i> 用户行为路径桑基图</h2>
+                <p class="section-desc">可视化用户从浏览到购买的完整行为链路</p>
+            </div>
+            
+            <div class="chart-controls">
+                <div class="control-item">
+                    <label>路径深度</label>
+                    <select id="pathDepth" class="form-select-sm">
+                        <option value="2">2层</option>
+                        <option value="3" selected>3层</option>
+                        <option value="4">4层</option>
+                        <option value="5">5层</option>
+                    </select>
+                </div>
+                <div class="control-item">
+                    <label>最小流量</label>
+                    <input type="number" id="minFlow" class="form-control-sm" value="10" min="1">
+                </div>
+                <button id="refreshPath" class="btn btn-sm btn-primary">
+                    <i class="fas fa-sync-alt"></i> 刷新
+                </button>
+            </div>
+            
+            <div class="chart-container">
+                <div id="sankeyChart" style="width: 100%; height: 600px;"></div>
+            </div>
+            
+            <div class="path-insights">
+                <h3><i class="fas fa-lightbulb"></i> 路径洞察</h3>
+                <div class="insights-grid">
+                    <div class="insight-card">
+                        <div class="insight-label">最热门路径</div>
+                        <div class="insight-value" id="hotPath">浏览 → 加购 → 购买</div>
+                        <div class="insight-percent">占比 45.2%</div>
+                    </div>
+                    <div class="insight-card">
+                        <div class="insight-label">转化最高路径</div>
+                        <div class="insight-value" id="bestPath">收藏 → 加购 → 购买</div>
+                        <div class="insight-percent">转化率 68.5%</div>
+                    </div>
+                    <div class="insight-card">
+                        <div class="insight-label">流失最多节点</div>
+                        <div class="insight-value" id="lostNode">加购后未购买</div>
+                        <div class="insight-percent">流失 2,340人</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 转化漏斗分析 -->
+    <div id="funnelTab" class="tab-content">
+        <div class="analysis-section">
+            <!-- 数据新鲜度提示 -->
+            <div class="data-freshness">
+                <i class="fas fa-clock"></i> 数据最后更新时间：<span id="lastUpdateTime">2026-04-16 18:30:25</span>
+                <button class="btn-refresh" onclick="refreshFunnelData()">
+                    <i class="fas fa-sync-alt"></i> 刷新
+                </button>
+            </div>
+
+            <div class="section-header">
+                <h2><i class="fas fa-filter"></i> 转化漏斗深度分析</h2>
+                <p class="section-desc">追踪用户转化路径，洞察流失原因，对标行业基准</p>
+            </div>
+            
+            <!-- 筛选控制器 -->
+            <div class="funnel-controls">
+                <div class="control-group">
+                    <label><i class="fas fa-th"></i> 商品品类</label>
+                    <select id="categoryFilter" class="form-select">
+                        <option value="all" selected>全部品类</option>
+                        <option value="clothing">服装</option>
+                        <option value="electronics">3C数码</option>
+                        <option value="beauty">美妆</option>
+                        <option value="food">食品</option>
+                        <option value="home">家居</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label><i class="fas fa-user-tag"></i> 用户分层</label>
+                    <select id="userSegmentFilter" class="form-select">
+                        <option value="all" selected>全部用户</option>
+                        <option value="new">新用户</option>
+                        <option value="old">老用户</option>
+                        <option value="high_value">高价值用户</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label><i class="fas fa-industry"></i> 行业基准</label>
+                    <select id="benchmarkFilter" class="form-select">
+                        <option value="overall" selected>行业整体</option>
+                        <option value="category">分品类对标</option>
+                        <option value="segment">分用户层对标</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- 主漏斗图 + 行业对标 -->
+            <div class="funnel-comparison-section">
+                <div class="funnel-chart-wrapper">
+                    <div class="chart-title">
+                        <h3>转化漏斗（可点击流失环节查看归因）</h3>
+                        <div class="legend">
+                            <span class="legend-item"><i class="fas fa-circle" style="color: #667eea;"></i> 您的数据</span>
+                            <span class="legend-item"><i class="fas fa-circle" style="color: #f093fb;"></i> 行业基准</span>
+                        </div>
+                    </div>
+                    <div id="funnelChart" style="width: 100%; height: 450px;"></div>
+                </div>
+            </div>
+
+            <!-- 流失归因弹窗 -->
+            <div id="churnAttributionModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-chart-pie"></i> <span id="modalStageName"></span> 流失原因分析</h3>
+                        <button class="modal-close" onclick="closeChurnModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="churn-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">流失用户数</span>
+                                <span class="stat-value" id="churnCount">6,500</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">流失率</span>
+                                <span class="stat-value danger" id="churnRate">65%</span>
+                            </div>
+                        </div>
+                        <div id="churnReasonChart" style="width: 100%; height: 300px;"></div>
+                        <div class="churn-insights">
+                            <h4><i class="fas fa-lightbulb"></i> 流失原因解读</h4>
+                            <ul id="churnInsightsList">
+                                <li><strong>价格敏感型用户</strong>占比60%：建议设置满减活动、优惠券</li>
+                                <li><strong>库存不足</strong>占比25%：建议补货热销商品，显示库存紧张提示</li>
+                                <li><strong>流程复杂</strong>占比15%：建议简化加购流程，支持一键购买</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 转化路径分析（桑基图增强） -->
+            <div class="path-analysis-section">
+                <div class="section-title">
+                    <h3><i class="fas fa-project-diagram"></i> 转化路径价值量化</h3>
+                    <p class="section-desc-sm">颜色深浅代表转化效率，粗细代表用户量</p>
+                </div>
+                <div id="pathSankeyChart" style="width: 100%; height: 400px;"></div>
+                <div class="path-metrics">
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background: #667eea;">
+                            <i class="fas fa-route"></i>
+                        </div>
+                        <div class="metric-content">
+                            <span class="metric-label">主要路径</span>
+                            <h4>浏览→加购→购买</h4>
+                            <div class="metric-detail">
+                                <span>转化率: <strong>2.3%</strong></span>
+                                <span>UV占比: <strong>35%</strong></span>
+                                <span>贡献度: <strong>60%</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background: #f093fb;">
+                            <i class="fas fa-exchange-alt"></i>
+                        </div>
+                        <div class="metric-content">
+                            <span class="metric-label">替代路径</span>
+                            <h4>浏览→收藏→购买</h4>
+                            <div class="metric-detail">
+                                <span>转化率: <strong>3.1%</strong></span>
+                                <span>UV占比: <strong>18%</strong></span>
+                                <span>贡献度: <strong>25%</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background: #43e97b;">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <div class="metric-content">
+                            <span class="metric-label">直接路径</span>
+                            <h4>浏览→购买</h4>
+                            <div class="metric-detail">
+                                <span>转化率: <strong>1.5%</strong></span>
+                                <span>UV占比: <strong>15%</strong></span>
+                                <span>贡献度: <strong>15%</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 转化率时间趋势对比 -->
+            <div class="trend-comparison-section">
+                <div class="section-title">
+                    <h3><i class="fas fa-chart-line"></i> 转化率时间趋势对比</h3>
+                    <div class="time-range-selector">
+                        <button class="time-btn" data-range="7d">近7天</button>
+                        <button class="time-btn active" data-range="30d">近30天</button>
+                        <button class="time-btn" data-range="90d">近90天</button>
+                    </div>
+                </div>
+                <div id="trendComparisonChart" style="width: 100%; height: 350px;"></div>
+                <div class="trend-insights">
+                    <div class="insight-item warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>
+                            <strong>加购→购买转化率下降</strong>
+                            <p>近7天从7.0%降至6.8%，而行业平均从14%升至15%，需关注</p>
+                        </div>
+                    </div>
+                    <div class="insight-item success">
+                        <i class="fas fa-check-circle"></i>
+                        <div>
+                            <strong>浏览→加购转化率上升</strong>
+                            <p>近30天从33%升至35%，优于行业平均32%</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 用户分层转化对比 -->
+            <div class="segment-comparison-section">
+                <div class="section-title">
+                    <h3><i class="fas fa-users"></i> 用户分层转化效率对比</h3>
+                </div>
+                <div id="segmentComparisonChart" style="width: 100%; height: 350px;"></div>
+                <div class="segment-table">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>用户分层</th>
+                                <th>浏览→加购</th>
+                                <th>加购→购买</th>
+                                <th>整体转化率</th>
+                                <th>行业对标</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><i class="fas fa-star"></i> 高价值用户</td>
+                                <td><span class="rate-good">45%</span></td>
+                                <td><span class="rate-good">18%</span></td>
+                                <td><span class="rate-good">8.1%</span></td>
+                                <td>优于行业 +2.5%</td>
+                            </tr>
+                            <tr>
+                                <td><i class="fas fa-user-check"></i> 老用户</td>
+                                <td><span class="rate-good">38%</span></td>
+                                <td><span class="rate-good">12%</span></td>
+                                <td><span class="rate-medium">4.6%</span></td>
+                                <td>持平行业</td>
+                            </tr>
+                            <tr class="highlight-row">
+                                <td><i class="fas fa-user-plus"></i> 新用户</td>
+                                <td><span class="rate-medium">28%</span></td>
+                                <td><span class="rate-poor">5%</span></td>
+                                <td><span class="rate-poor">1.4%</span></td>
+                                <td>低于行业 -3.2% ⚠️</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 分析逻辑说明 -->
+            <div class="analysis-logic">
+                <div class="logic-header">
+                    <h3><i class="fas fa-info-circle"></i> 分析逻辑说明</h3>
+                </div>
+                <div class="logic-content">
+                    <div class="logic-item">
+                        <h4>📊 转化率计算公式</h4>
+                        <div class="formula-box">
+                            <p><strong>某环节转化率</strong> = 该环节完成行为的用户数 ÷ 上一环节进入的用户数</p>
+                            <p class="example">示例：加购→购买转化率 = 购买用户数 ÷ 加购用户数</p>
+                            <p class="example">如：1,200 ÷ 3,500 = 34.3%</p>
+                        </div>
+                    </div>
+                    <div class="logic-item">
+                        <h4>📈 行业基准数据来源</h4>
+                        <div class="source-box">
+                            <p><strong>数据来源</strong>：阿里云天池《电商行为分析行业报告》（2025 Q4）</p>
+                            <p><strong>样本量</strong>：覆盖500+电商平台，1000万+用户行为数据</p>
+                            <p><strong>更新频率</strong>：季度更新</p>
+                            <p class="note">注：不同品类、用户分层的行业基准可能有显著差异</p>
+                        </div>
+                    </div>
+                    <div class="logic-item">
+                        <h4>🎯 流失归因方法</h4>
+                        <div class="method-box">
+                            <p>通过关联分析流失用户的行为特征、商品属性、价格敏感度等维度，识别流失主因</p>
+                            <ul>
+                                <li><strong>价格敏感型</strong>：对比浏览商品价格 > 平均价格30%，且未使用优惠券</li>
+                                <li><strong>库存不足</strong>：浏览商品中 > 50%缺货或库存 < 10件</li>
+                                <li><strong>流程复杂</strong>：停留时长 > 3分钟但未完成操作，或多次返回上一步</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 行为可视化 -->
+    <div id="behaviorTab" class="tab-content">
+        <div class="analysis-section">
+            <div class="section-header">
+                <h2><i class="fas fa-chart-line"></i> 行为数据可视化</h2>
+                <p class="section-desc">多维度展示用户行为数据</p>
+            </div>
+            
+            <div class="charts-grid">
+                <div class="chart-box">
+                    <h3>行为趋势图</h3>
+                    <div id="behaviorTrendChart" style="width: 100%; height: 350px;"></div>
+                </div>
+                <div class="chart-box">
+                    <h3>行为分布</h3>
+                    <div id="behaviorPieChart" style="width: 100%; height: 350px;"></div>
+                </div>
+            </div>
+            
+            <div class="charts-grid">
+                <div class="chart-box">
+                    <h3>用户活跃度热力图</h3>
+                    <div id="heatmapChart" style="width: 100%; height: 350px;"></div>
+                </div>
+                <div class="chart-box">
+                    <h3>商品类目分析</h3>
+                    <div id="categoryChart" style="width: 100%; height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 时间模式分析 -->
+    <div id="timeTab" class="tab-content">
+        <div class="analysis-section">
+            <div class="section-header">
+                <h2><i class="fas fa-clock"></i> 用户行为时间模式深度分析</h2>
+                <p class="section-desc">洞察用户活跃时段、周期规律与行为预测</p>
+            </div>
+
+            <!-- 分析设置面板 -->
+            <div class="time-analysis-settings">
+                <div class="settings-header" onclick="toggleTimeSettings()">
+                    <h3><i class="fas fa-sliders-h"></i> 分析设置</h3>
+                    <button class="toggle-btn">
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                </div>
+                <div class="settings-content" id="timeSettingsContent">
+                    <div class="settings-grid">
+                        <div class="setting-item">
+                            <label><i class="fas fa-tag"></i> 行为类型</label>
+                            <select id="timeBehaviorType" class="form-select">
+                                <option value="all" selected>全部行为</option>
+                                <option value="pv">浏览</option>
+                                <option value="cart">加购</option>
+                                <option value="fav">收藏</option>
+                                <option value="buy">购买</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label><i class="fas fa-calendar-alt"></i> 时间粒度</label>
+                            <select id="timeGranularity" class="form-select">
+                                <option value="hour" selected>小时</option>
+                                <option value="day">天</option>
+                                <option value="week">周</option>
+                                <option value="month">月</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label><i class="fas fa-history"></i> 对比周期</label>
+                            <select id="timeComparisonPeriod" class="form-select">
+                                <option value="7d" selected>近7天</option>
+                                <option value="30d">近30天</option>
+                                <option value="90d">近90天</option>
+                                <option value="custom">自定义</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label><i class="fas fa-users"></i> 用户分群</label>
+                            <select id="timeUserSegment" class="form-select">
+                                <option value="all" selected>全部用户</option>
+                                <option value="new">新用户</option>
+                                <option value="old">老用户</option>
+                                <option value="high_value">高价值用户</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="settings-actions">
+                        <button class="btn-apply" onclick="applyTimeSettings()">
+                            <i class="fas fa-check"></i> 应用设置
+                        </button>
+                        <button class="btn-reset" onclick="resetTimeSettings()">
+                            <i class="fas fa-undo"></i> 重置
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 24小时行为模式（用户分层对比 + 异常检测） -->
+            <div class="hourly-pattern-section">
+                <div class="section-title">
+                    <h3><i class="fas fa-chart-line"></i> 24小时行为模式分析</h3>
+                    <div class="legend-box">
+                        <span class="legend-item"><i class="fas fa-circle" style="color: #4facfe;"></i> 新用户</span>
+                        <span class="legend-item"><i class="fas fa-circle" style="color: #f093fb;"></i> 老用户</span>
+                        <span class="legend-item"><i class="fas fa-circle" style="color: #43e97b;"></i> 高价值用户</span>
+                        <span class="legend-item"><i class="fas fa-exclamation-triangle" style="color: #dc3545;"></i> 异常时段</span>
+                    </div>
+                </div>
+                <div id="hourlySegmentChart" style="width: 100%; height: 400px;"></div>
+                <div class="hourly-insights">
+                    <div class="insight-box info">
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <strong>高峰时段识别</strong>
+                            <p>20:00-22:00为全天活跃高峰，高价值用户占比达35%</p>
+                        </div>
+                    </div>
+                    <div class="insight-box warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>
+                            <strong>异常检测</strong>
+                            <p>03:00-04:00行为骤降至日均10%，因系统维护导致</p>
+                        </div>
+                    </div>
+                    <div class="insight-box success">
+                        <i class="fas fa-lightbulb"></i>
+                        <div>
+                            <strong>运营建议</strong>
+                            <p>建议在19:30-20:30推送营销活动，此时段用户转化率最高</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 周行为模式（周期规律 + 行业对标） -->
+            <div class="weekly-pattern-section">
+                <div class="section-title">
+                    <h3><i class="fas fa-calendar-week"></i> 周行为模式与周期规律</h3>
+                </div>
+                <div class="weekly-comparison">
+                    <div class="main-chart">
+                        <div id="weekdayPatternChart" style="width: 100%; height: 350px;"></div>
+                    </div>
+                    <div class="benchmark-chart">
+                        <h4>行业平均周分布</h4>
+                        <div id="weekdayBenchmarkChart" style="width: 100%; height: 250px;"></div>
+                        <p class="benchmark-note">
+                            <i class="fas fa-info-circle"></i> 
+                            数据来源：阿里云天池电商行业报告
+                        </p>
+                    </div>
+                </div>
+                <div class="weekly-insights">
+                    <div class="insight-tag primary">
+                        <i class="fas fa-chart-line"></i>
+                        <strong>周期规律：</strong>周一至周五呈稳定上升趋势，周六达峰值，周日小幅回落
+                    </div>
+                    <div class="insight-tag success">
+                        <i class="fas fa-arrow-up"></i>
+                        <strong>周末效应：</strong>周六活跃度比平日高30%，符合电商行业周末购物习惯
+                    </div>
+                    <div class="insight-tag info">
+                        <i class="fas fa-balance-scale"></i>
+                        <strong>行业对标：</strong>周六峰值表现优于行业平均15%，周末运营策略有效
+                    </div>
+                </div>
+            </div>
+
+            <!-- 日期趋势分析 + 未来预测 -->
+            <div class="trend-forecast-section">
+                <div class="section-title">
+                    <h3><i class="fas fa-chart-area"></i> 日期趋势与未来预测</h3>
+                    <div class="forecast-toggle">
+                        <label>
+                            <input type="checkbox" id="showForecast" checked onchange="toggleForecast()">
+                            显示预测曲线
+                        </label>
+                    </div>
+                </div>
+                <div id="trendForecastChart" style="width: 100%; height: 400px;"></div>
+                <div class="forecast-summary">
+                    <div class="forecast-card">
+                        <i class="fas fa-calendar-day"></i>
+                        <div>
+                            <span class="label">明日预测</span>
+                            <span class="value">18,500 ± 300</span>
+                            <span class="confidence">置信度 95%</span>
+                        </div>
+                    </div>
+                    <div class="forecast-card">
+                        <i class="fas fa-calendar-week"></i>
+                        <div>
+                            <span class="label">下周六预测</span>
+                            <span class="value">19,000 ± 500</span>
+                            <span class="confidence">置信度 90%</span>
+                        </div>
+                    </div>
+                    <div class="forecast-card">
+                        <i class="fas fa-chart-line"></i>
+                        <div>
+                            <span class="label">趋势判断</span>
+                            <span class="value trend-up">稳定增长</span>
+                            <span class="confidence">预计增长 8%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 时间洞察总结 -->
+            <div class="time-insights-summary">
+                <h3><i class="fas fa-lightbulb"></i> 核心时间洞察</h3>
+                <div class="insights-grid">
+                    <div class="insight-card clickable" onclick="drillDownToUserProfile('peak_hour')">
+                        <div class="insight-icon" style="background: #667eea;">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="insight-content">
+                            <div class="insight-label">黄金时段</div>
+                            <div class="insight-value">21:00 - 22:00</div>
+                            <div class="insight-detail">
+                                <span>活跃度占比 <strong>15.2%</strong></span>
+                                <span>高价值用户占比 <strong>35%</strong></span>
+                            </div>
+                            <div class="drill-hint">
+                                <i class="fas fa-mouse-pointer"></i> 点击查看该时段用户画像
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="insight-card clickable" onclick="drillDownToUserProfile('weekend')">
+                        <div class="insight-icon" style="background: #f093fb;">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div class="insight-content">
+                            <div class="insight-label">最佳活跃日</div>
+                            <div class="insight-value">周六</div>
+                            <div class="insight-detail">
+                                <span>活跃度 <strong>比平日高30%</strong></span>
+                                <span>转化率 <strong>18.5%</strong></span>
+                            </div>
+                            <div class="drill-hint">
+                                <i class="fas fa-mouse-pointer"></i> 点击查看周六用户特征
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="insight-card">
+                        <div class="insight-icon" style="background: #43e97b;">
+                            <i class="fas fa-bell"></i>
+                        </div>
+                        <div class="insight-content">
+                            <div class="insight-label">推荐推送时间</div>
+                            <div class="insight-value">19:30 - 20:30</div>
+                            <div class="insight-detail">
+                                <span>点击率 <strong>25.8%</strong></span>
+                                <span>转化率 <strong>12.3%</strong></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="insight-card">
+                        <div class="insight-icon" style="background: #fa709a;">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="insight-content">
+                            <div class="insight-label">低谷时段</div>
+                            <div class="insight-value">03:00 - 05:00</div>
+                            <div class="insight-detail">
+                                <span>活跃度仅 <strong>2.1%</strong></span>
+                                <span>可安排系统维护</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RFM用户分群 -->
+    <div id="rfmTab" class="tab-content">
+        <div class="analysis-section">
+            <div class="section-header">
+                <h2><i class="fas fa-users"></i> RFM用户价值分群</h2>
+                <p class="section-desc">基于RFM模型进行用户精准分层与运营策略制定</p>
+            </div>
+
+            <!-- RFM计算规则说明 -->
+            <div class="rfm-rules-info">
+                <div class="rules-header">
+                    <h3><i class="fas fa-calculator"></i> RFM计算规则说明</h3>
+                    <button class="toggle-rules" onclick="toggleRules()">
+                        <i class="fas fa-chevron-up"></i> 收起
+                    </button>
+                </div>
+                <div class="rules-content" id="rfmRulesContent">
+                    <div class="rule-item">
+                        <div class="rule-icon" style="background: #667eea;">
+                            <span>R</span>
+                        </div>
+                        <div class="rule-detail">
+                            <h4>R - Recency（最近消费）</h4>
+                            <p>最近一次消费距今的天数</p>
+                            <div class="rule-threshold">
+                                <span class="badge badge-success">近：≤7天</span>
+                                <span class="badge badge-warning">中：8-29天</span>
+                                <span class="badge badge-danger">远：≥30天</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="rule-item">
+                        <div class="rule-icon" style="background: #f093fb;">
+                            <span>F</span>
+                        </div>
+                        <div class="rule-detail">
+                            <h4>F - Frequency（消费频次）</h4>
+                            <p>近30天消费次数</p>
+                            <div class="rule-threshold">
+                                <span class="badge badge-success">高：≥10次</span>
+                                <span class="badge badge-warning">中：3-9次</span>
+                                <span class="badge badge-danger">低：≤2次</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="rule-item">
+                        <div class="rule-icon" style="background: #43e97b;">
+                            <span>M</span>
+                        </div>
+                        <div class="rule-detail">
+                            <h4>M - Monetary（消费金额）</h4>
+                            <p>近30天消费金额</p>
+                            <div class="rule-threshold">
+                                <span class="badge badge-success">高：≥5000元</span>
+                                <span class="badge badge-warning">中：500-4999元</span>
+                                <span class="badge badge-danger">低：≤500元</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="rule-item full-width">
+                        <div class="rule-icon" style="background: #4facfe;">
+                            <i class="fas fa-users-cog"></i>
+                        </div>
+                        <div class="rule-detail">
+                            <h4>分群规则</h4>
+                            <p>结合R/F/M的高低，定义用户价值分层</p>
+                            <div class="segment-examples">
+                                <span class="segment-tag vip">高价值用户：R近 + F高 + M高</span>
+                                <span class="segment-tag potential">潜力用户：R近 + F中 + M中</span>
+                                <span class="segment-tag normal">一般用户：R中 + F中 + M中</span>
+                                <span class="segment-tag churn">流失风险：R远 + F低 + M低</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 筛选控制器 -->
+            <div class="rfm-controls">
+                <div class="control-group">
+                    <label><i class="fas fa-filter"></i> 用户分群</label>
+                    <select id="rfmSegmentFilter" class="form-select">
+                        <option value="all" selected>全部分群</option>
+                        <option value="vip">高价值用户</option>
+                        <option value="potential">潜力用户</option>
+                        <option value="normal">一般用户</option>
+                        <option value="churn">流失风险</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label><i class="fas fa-calendar"></i> 时间范围</label>
+                    <select id="rfmTimeRange" class="form-select">
+                        <option value="7d">近7天</option>
+                        <option value="30d" selected>近30天</option>
+                        <option value="90d">近90天</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label><i class="fas fa-th"></i> 商品品类</label>
+                    <select id="rfmCategoryFilter" class="form-select">
+                        <option value="all" selected>全部品类</option>
+                        <option value="luxury">奢侈品</option>
+                        <option value="electronics">3C数码</option>
+                        <option value="daily">日用品</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 分群分布可视化 -->
+            <div class="rfm-distribution-section">
+                <div class="section-title">
+                    <h3><i class="fas fa-chart-pie"></i> 用户分群分布</h3>
+                </div>
+                <div class="distribution-charts">
+                    <div class="chart-wrapper">
+                        <h4>分群数量占比</h4>
+                        <div id="rfmPieChart" style="width: 100%; height: 300px;"></div>
+                    </div>
+                    <div class="chart-wrapper">
+                        <h4>分群数量对比</h4>
+                        <div id="rfmBarChart" style="width: 100%; height: 300px;"></div>
+                    </div>
+                </div>
+                
+                <!-- 分群卡片（可点击查看详情） -->
+                <div class="segment-cards">
+                    <div class="segment-card vip" onclick="showSegmentDetail('vip')">
+                        <div class="card-icon">
+                            <i class="fas fa-crown"></i>
+                        </div>
+                        <div class="card-content">
+                            <h4>高价值用户</h4>
+                            <div class="card-stats">
+                                <span class="count">6,237</span>
+                                <span class="percent">8%</span>
+                            </div>
+                            <p class="card-desc">近期活跃、高频高额消费</p>
+                        </div>
+                        <i class="fas fa-chevron-right card-arrow"></i>
+                    </div>
+                    <div class="segment-card potential" onclick="showSegmentDetail('potential')">
+                        <div class="card-icon">
+                            <i class="fas fa-rocket"></i>
+                        </div>
+                        <div class="card-content">
+                            <h4>潜力用户</h4>
+                            <div class="card-stats">
+                                <span class="count">15,594</span>
+                                <span class="percent">20%</span>
+                            </div>
+                            <p class="card-desc">近期活跃、中频中额消费</p>
+                        </div>
+                        <i class="fas fa-chevron-right card-arrow"></i>
+                    </div>
+                    <div class="segment-card normal" onclick="showSegmentDetail('normal')">
+                        <div class="card-icon">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="card-content">
+                            <h4>一般用户</h4>
+                            <div class="card-stats">
+                                <span class="count">52,239</span>
+                                <span class="percent">67%</span>
+                            </div>
+                            <p class="card-desc">中等活跃度和消费水平</p>
+                        </div>
+                        <i class="fas fa-chevron-right card-arrow"></i>
+                    </div>
+                    <div class="segment-card churn" onclick="showSegmentDetail('churn')">
+                        <div class="card-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="card-content">
+                            <h4>流失风险</h4>
+                            <div class="card-stats">
+                                <span class="count">3,898</span>
+                                <span class="percent">5%</span>
+                            </div>
+                            <p class="card-desc">长期未购、低频低额消费</p>
+                        </div>
+                        <i class="fas fa-chevron-right card-arrow"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RFM矩阵可视化 -->
+            <div class="rfm-matrix-section">
+                <div class="section-title">
+                    <h3><i class="fas fa-th"></i> RFM三维矩阵分布</h3>
+                    <p class="section-desc-sm">气泡大小代表用户数量，颜色代表分群类型</p>
+                </div>
+                <div id="rfmBubbleChart" style="width: 100%; height: 450px;"></div>
+                <div class="benchmark-note">
+                    <i class="fas fa-info-circle"></i> 
+                    <span>行业基准：高价值用户占比10%，潜力用户占比15%，流失风险用户占比8%</span>
+                </div>
+            </div>
+
+            <!-- 分群趋势分析 -->
+            <div class="rfm-trend-section">
+                <div class="section-title">
+                    <h3><i class="fas fa-chart-line"></i> 分群趋势变化</h3>
+                    <div class="trend-summary">
+                        <span class="trend-item up">高价值用户 <strong>↑5%</strong></span>
+                        <span class="trend-item down">流失风险 <strong>↓3%</strong></span>
+                    </div>
+                </div>
+                <div id="rfmTrendChart" style="width: 100%; height: 350px;"></div>
+            </div>
+
+            <!-- 分群行为对比 -->
+            <div class="behavior-comparison-section">
+                <div class="section-title">
+                    <h3><i class="fas fa-random"></i> 分群行为特征对比</h3>
+                </div>
+                
+                <!-- 行为特征雷达图 -->
+                <div class="comparison-charts">
+                    <div class="chart-wrapper">
+                        <h4>行为特征对比（雷达图）</h4>
+                        <div id="behaviorRadarChart" style="width: 100%; height: 350px;"></div>
+                    </div>
+                    <div class="chart-wrapper">
+                        <h4>品类偏好对比</h4>
+                        <div id="categoryComparisonChart" style="width: 100%; height: 350px;"></div>
+                    </div>
+                </div>
+
+                <!-- 转化路径对比（桑基图） -->
+                <div class="path-comparison">
+                    <h4><i class="fas fa-project-diagram"></i> 分群转化路径差异</h4>
+                    <div id="pathComparisonSankey" style="width: 100%; height: 400px;"></div>
+                </div>
+
+                <!-- 行为详情表格 -->
+                <div class="behavior-table">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>用户分群</th>
+                                <th>浏览品类偏好</th>
+                                <th>加购频次</th>
+                                <th>购买时段</th>
+                                <th>主要路径</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="vip-row">
+                                <td><i class="fas fa-crown"></i> 高价值用户</td>
+                                <td>奢侈品40% / 3C35%</td>
+                                <td><span class="metric-high">12次/月</span></td>
+                                <td>20:00-22:00</td>
+                                <td>浏览→加购→购买 (70%)</td>
+                            </tr>
+                            <tr>
+                                <td><i class="fas fa-rocket"></i> 潜力用户</td>
+                                <td>3C45% / 服装30%</td>
+                                <td><span class="metric-medium">6次/月</span></td>
+                                <td>19:00-21:00</td>
+                                <td>浏览→收藏→购买 (55%)</td>
+                            </tr>
+                            <tr>
+                                <td><i class="fas fa-user"></i> 一般用户</td>
+                                <td>日用品50% / 服装25%</td>
+                                <td><span class="metric-medium">3次/月</span></td>
+                                <td>12:00-14:00</td>
+                                <td>浏览→加购→购买 (45%)</td>
+                            </tr>
+                            <tr class="churn-row">
+                                <td><i class="fas fa-exclamation-triangle"></i> 流失风险</td>
+                                <td>日用品60% / 食品30%</td>
+                                <td><span class="metric-low">2次/月</span></td>
+                                <td>02:00-04:00</td>
+                                <td>浏览→收藏→放弃 (50%)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 运营建议 -->
+            <div class="operation-strategy-section">
+                <div class="section-title">
+                    <h3><i class="fas fa-lightbulb"></i> 分群运营策略</h3>
+                </div>
+                <div class="strategy-cards">
+                    <div class="strategy-card vip-strategy">
+                        <div class="strategy-header">
+                            <h4><i class="fas fa-crown"></i> 高价值用户</h4>
+                            <span class="user-count">6,237人</span>
+                        </div>
+                        <div class="strategy-content">
+                            <div class="strategy-item">
+                                <i class="fas fa-gift"></i>
+                                <div>
+                                    <strong>专属权益</strong>
+                                    <p>推送满5000减800优惠券</p>
+                                    <span class="effect-tag">预计复购率 ↑10%</span>
+                                </div>
+                            </div>
+                            <div class="strategy-item">
+                                <i class="fas fa-star"></i>
+                                <div>
+                                    <strong>新品内测</strong>
+                                    <p>邀请参与高端新品内测</p>
+                                    <span class="effect-tag">预计参与率 65%</span>
+                                </div>
+                            </div>
+                            <div class="strategy-item">
+                                <i class="fas fa-headset"></i>
+                                <div>
+                                    <strong>VIP客服</strong>
+                                    <p>提供专属客服通道</p>
+                                    <span class="effect-tag">预计满意度 ↑15%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="strategy-card potential-strategy">
+                        <div class="strategy-header">
+                            <h4><i class="fas fa-rocket"></i> 潜力用户</h4>
+                            <span class="user-count">15,594人</span>
+                        </div>
+                        <div class="strategy-content">
+                            <div class="strategy-item">
+                                <i class="fas fa-ticket-alt"></i>
+                                <div>
+                                    <strong>满减活动</strong>
+                                    <p>推送满减券+爆款推荐</p>
+                                    <span class="effect-tag">预计转化率 ↑12%</span>
+                                </div>
+                            </div>
+                            <div class="strategy-item">
+                                <i class="fas fa-shopping-cart"></i>
+                                <div>
+                                    <strong>加购引导</strong>
+                                    <p>引导完成首次加购</p>
+                                    <span class="effect-tag">预计加购率 ↑20%</span>
+                                </div>
+                            </div>
+                            <div class="strategy-item">
+                                <i class="fas fa-bell"></i>
+                                <div>
+                                    <strong>活动提醒</strong>
+                                    <p>推送限时促销活动</p>
+                                    <span class="effect-tag">预计打开率 45%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="strategy-card churn-strategy">
+                        <div class="strategy-header">
+                            <h4><i class="fas fa-exclamation-triangle"></i> 流失风险</h4>
+                            <span class="user-count">3,898人</span>
+                        </div>
+                        <div class="strategy-content">
+                            <div class="strategy-item">
+                                <i class="fas fa-envelope"></i>
+                                <div>
+                                    <strong>召回邮件</strong>
+                                    <p>发送限时折扣+专属福利</p>
+                                    <span class="effect-tag">预计回流率 ↑8%</span>
+                                </div>
+                            </div>
+                            <div class="strategy-item">
+                                <i class="fas fa-bell"></i>
+                                <div>
+                                    <strong>加购提醒</strong>
+                                    <p>触发"商品降价20%"提醒</p>
+                                    <span class="effect-tag">预计转化率 ↑6%</span>
+                                </div>
+                            </div>
+                            <div class="strategy-item">
+                                <i class="fas fa-tag"></i>
+                                <div>
+                                    <strong>高性价比推荐</strong>
+                                    <p>推送日用品专场</p>
+                                    <span class="effect-tag">预计点击率 35%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 分群详情弹窗 -->
+            <div id="segmentDetailModal" class="modal" style="display: none;">
+                <div class="modal-content large">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-user-circle"></i> <span id="segmentModalTitle"></span> 详情</h3>
+                        <button class="modal-close" onclick="closeSegmentModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="segment-detail-stats">
+                            <div class="detail-stat">
+                                <span class="stat-label">用户数量</span>
+                                <span class="stat-value" id="detailCount">0</span>
+                            </div>
+                            <div class="detail-stat">
+                                <span class="stat-label">占比</span>
+                                <span class="stat-value" id="detailPercent">0%</span>
+                            </div>
+                            <div class="detail-stat">
+                                <span class="stat-label">人均消费</span>
+                                <span class="stat-value" id="detailAvgSpend">¥0</span>
+                            </div>
+                            <div class="detail-stat">
+                                <span class="stat-label">活跃度</span>
+                                <span class="stat-value" id="detailActivity">0%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-section">
+                            <h4><i class="fas fa-chart-bar"></i> 消费特征</h4>
+                            <div id="detailCharacteristics"></div>
+                        </div>
+                        
+                        <div class="detail-section">
+                            <h4><i class="fas fa-route"></i> 行为路径</h4>
+                            <div id="detailBehaviorPath"></div>
+                        </div>
+                        
+                        <div class="detail-section">
+                            <h4><i class="fas fa-bullseye"></i> 运营建议</h4>
+                            <div id="detailStrategies"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block page_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab切换逻辑
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const tabName = this.getAttribute('data-tab');
+
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+
+            this.classList.add('active');
+            const targetTab = document.getElementById(tabName + 'Tab');
+            targetTab.classList.add('active');
+            
+            // 初始化对应标签页的图表
+            initTabCharts(tabName);
+        });
+    });
+
+    // 存储所有图表实例
+    const charts = {};
+
+    // ============ 用户行为路径桑基图 ============
+    function initSankeyChart() {
+        const sankeyChart = echarts.init(document.getElementById('sankeyChart'));
+        charts.sankey = sankeyChart;
+
+        const option = {
+            title: {
+                text: '用户行为路径流转图',
+                left: 'center',
+                textStyle: {
+                    fontSize: 18,
+                    fontWeight: 'bold'
+                }
+            },
+            tooltip: {
+                trigger: 'item',
+                triggerOn: 'mousemove',
+                formatter: function(params) {
+                    if (params.dataType === 'edge') {
+                        return params.data.source + ' → ' + params.data.target + '<br/>流量: ' + params.data.value + '人';
+                    } else {
+                        return params.data.name + '<br/>总量: ' + params.data.value + '人';
+                    }
+                }
+            },
+            series: [
+                {
+                    type: 'sankey',
+                    data: [
+                        { name: '浏览(PV)' },
+                        { name: '加购(Cart)' },
+                        { name: '收藏(Fav)' },
+                        { name: '购买(Buy)' },
+                        { name: '流失-未加购' },
+                        { name: '流失-加购未买' },
+                        { name: '流失-收藏未买' }
+                    ],
+                    links: [
+                        { source: '浏览(PV)', target: '加购(Cart)', value: 3500 },
+                        { source: '浏览(PV)', target: '收藏(Fav)', value: 1800 },
+                        { source: '浏览(PV)', target: '流失-未加购', value: 4700 },
+                        { source: '加购(Cart)', target: '购买(Buy)', value: 1200 },
+                        { source: '加购(Cart)', target: '流失-加购未买', value: 2300 },
+                        { source: '收藏(Fav)', target: '购买(Buy)', value: 600 },
+                        { source: '收藏(Fav)', target: '流失-收藏未买', value: 1200 }
+                    ],
+                    itemStyle: {
+                        color: function(params) {
+                            const colors = ['#5470C6', '#91CC75', '#FAC858', '#EE6666', '#73C0DE', '#3BA272', '#FC8452'];
+                            return colors[params.dataIndex % colors.length];
+                        },
+                        borderColor: '#fff',
+                        borderWidth: 1
+                    },
+                    lineStyle: {
+                        color: 'source',
+                        curveness: 0.5,
+                        opacity: 0.3
+                    },
+                    emphasis: {
+                        focus: 'adjacency',
+                        lineStyle: {
+                            opacity: 0.6
+                        }
+                    },
+                    label: {
+                        fontSize: 12,
+                        fontWeight: 'bold'
+                    }
+                }
+            ]
+        };
+
+        sankeyChart.setOption(option);
+
+        // 点击节点下钻
+        sankeyChart.on('click', function(params) {
+            if (params.dataType === 'node') {
+                console.log('下钻到节点:', params.name);
+                alert('查看 "' + params.name + '" 的详细数据\n（此功能需要后端数据支持）');
+            }
+        });
+
+        return sankeyChart;
+    }
+
+    // ============ 转化漏斗图（含行业对标） ============
+    function initFunnelChart() {
+        const funnelChart = echarts.init(document.getElementById('funnelChart'));
+        charts.funnel = funnelChart;
+
+        // 您的数据
+        const yourData = [
+            { value: 100, name: '浏览(PV)', actual: 10000, rate: 100 },
+            { value: 35, name: '加购(Cart)', actual: 3500, rate: 35, churn: 65 },
+            { value: 18, name: '收藏(Fav)', actual: 1800, rate: 18, churn: 49 },
+            { value: 12, name: '购买(Buy)', actual: 1200, rate: 12, churn: 33 }
+        ];
+
+        // 行业基准数据（根据筛选器动态变化）
+        const industryData = [
+            { value: 100, name: '浏览(PV)', rate: 100 },
+            { value: 32, name: '加购(Cart)', rate: 32 },
+            { value: 20, name: '收藏(Fav)', rate: 20 },
+            { value: 15, name: '购买(Buy)', rate: 15 }
+        ];
+
+        const option = {
+            tooltip: {
+                trigger: 'item',
+                formatter: function(params) {
+                    if (params.seriesName === '您的数据') {
+                        const data = yourData[params.dataIndex];
+                        return `${params.name}<br/>用户数: ${data.actual}人<br/>转化率: ${data.rate}%` +
+                               (data.churn ? `<br/><span style="color:#dc3545">流失率: ${data.churn}%</span>` : '');
+                    } else {
+                        const data = industryData[params.dataIndex];
+                        return `${params.name}<br/>行业平均转化率: ${data.rate}%`;
+                    }
+                }
+            },
+            series: [
+                {
+                    name: '您的数据',
+                    type: 'funnel',
+                    left: '5%',
+                    width: '45%',
+                    label: {
+                        formatter: '{b}\n{c}%'
+                    },
+                    labelLine: {
+                        show: false
+                    },
+                    itemStyle: {
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    },
+                    emphasis: {
+                        label: {
+                            fontSize: 18,
+                            fontWeight: 'bold'
+                        }
+                    },
+                    data: yourData.map(item => ({
+                        value: item.value,
+                        name: item.name,
+                        itemStyle: { 
+                            color: item.name === '浏览(PV)' ? '#667eea' :
+                                   item.name === '加购(Cart)' ? '#4facfe' :
+                                   item.name === '收藏(Fav)' ? '#f093fb' : '#43e97b'
+                        }
+                    }))
+                },
+                {
+                    name: '行业基准',
+                    type: 'funnel',
+                    left: '55%',
+                    width: '40%',
+                    label: {
+                        position: 'inside',
+                        formatter: '{b}\n{c}%',
+                        color: '#fff'
+                    },
+                    labelLine: {
+                        show: false
+                    },
+                    itemStyle: {
+                        borderColor: '#fff',
+                        borderWidth: 2,
+                        opacity: 0.6
+                    },
+                    emphasis: {
+                        itemStyle: {
+                            opacity: 0.8
+                        }
+                    },
+                    data: industryData.map(item => ({
+                        value: item.value,
+                        name: item.name,
+                        itemStyle: { 
+                            color: item.name === '浏览(PV)' ? '#667eea' :
+                                   item.name === '加购(Cart)' ? '#4facfe' :
+                                   item.name === '收藏(Fav)' ? '#f093fb' : '#43e97b'
+                        }
+                    }))
+                }
+            ]
+        };
+
+        funnelChart.setOption(option);
+
+        // 点击流失环节查看归因
+        funnelChart.on('click', function(params) {
+            if (params.seriesName === '您的数据' && params.dataIndex > 0) {
+                showChurnAttribution(params.name, params.dataIndex);
+            }
+        });
+
+        return funnelChart;
+    }
+
+    // 显示流失归因弹窗
+    function showChurnAttribution(stageName, stageIndex) {
+        const modal = document.getElementById('churnAttributionModal');
+        document.getElementById('modalStageName').textContent = stageName;
+        
+        // 模拟流失数据
+        const churnData = {
+            1: { count: 6500, rate: 65, reasons: [
+                { name: '价格敏感型', value: 60 },
+                { name: '库存不足', value: 25 },
+                { name: '流程复杂', value: 15 }
+            ]},
+            2: { count: 1700, rate: 49, reasons: [
+                { name: '商品不符预期', value: 45 },
+                { name: '价格因素', value: 35 },
+                { name: '竞品对比', value: 20 }
+            ]},
+            3: { count: 600, rate: 33, reasons: [
+                { name: '支付问题', value: 40 },
+                { name: '改变主意', value: 35 },
+                { name: '价格过高', value: 25 }
+            ]}
+        };
+
+        const data = churnData[stageIndex];
+        document.getElementById('churnCount').textContent = data.count.toLocaleString();
+        document.getElementById('churnRate').textContent = data.rate + '%';
+
+        // 渲染流失原因饼图
+        const churnChart = echarts.init(document.getElementById('churnReasonChart'));
+        churnChart.setOption({
+            tooltip: { trigger: 'item' },
+            series: [{
+                type: 'pie',
+                radius: ['40%', '70%'],
+                avoidLabelOverlap: false,
+                label: {
+                    show: true,
+                    formatter: '{b}: {d}%'
+                },
+                data: data.reasons.map(r => ({
+                    value: r.value,
+                    name: r.name,
+                    itemStyle: {
+                        color: r.name.includes('价格') ? '#fa709a' :
+                               r.name.includes('库存') ? '#f093fb' : '#667eea'
+                    }
+                }))
+            }]
+        });
+
+        modal.style.display = 'flex';
+    }
+
+    // 关闭流失归因弹窗
+    function closeChurnModal() {
+        document.getElementById('churnAttributionModal').style.display = 'none';
+    }
+
+    // ============ 转化路径桑基图增强版 ============
+    function initPathSankeyChart() {
+        const sankeyChart = echarts.init(document.getElementById('pathSankeyChart'));
+        
+        const option = {
+            tooltip: { trigger: 'item' },
+            series: [{
+                type: 'sankey',
+                layout: 'none',
+                emphasis: { focus: 'adjacency' },
+                data: [
+                    { name: '浏览' },
+                    { name: '加购' },
+                    { name: '收藏' },
+                    { name: '购买' }
+                ],
+                links: [
+                    { source: '浏览', target: '加购', value: 3500 },
+                    { source: '浏览', target: '收藏', value: 1800 },
+                    { source: '浏览', target: '购买', value: 150 },
+                    { source: '加购', target: '购买', value: 800 },
+                    { source: '收藏', target: '购买', value: 250 }
+                ],
+                lineStyle: {
+                    color: 'gradient',
+                    curveness: 0.5
+                },
+                label: {
+                    color: '#333',
+                    fontWeight: 'bold'
+                }
+            }]
+        };
+
+        sankeyChart.setOption(option);
+        return sankeyChart;
+    }
+
+    // ============ 转化率时间趋势对比图 ============
+    function initTrendComparisonChart() {
+        const trendChart = echarts.init(document.getElementById('trendComparisonChart'));
+        
+        const dates = [];
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            dates.push((d.getMonth() + 1) + '-' + d.getDate());
+        }
+
+        const option = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'cross' }
+            },
+            legend: {
+                data: ['您的加购转化', '您的购买转化', '行业加购基准', '行业购买基准']
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                boundaryGap: false,
+                data: dates
+            },
+            yAxis: {
+                type: 'value',
+                axisLabel: { formatter: '{value}%' }
+            },
+            series: [
+                {
+                    name: '您的加购转化',
+                    type: 'line',
+                    data: Array.from({length: 30}, (_, i) => 33 + Math.random() * 4),
+                    smooth: true,
+                    lineStyle: { width: 3, color: '#667eea' },
+                    itemStyle: { color: '#667eea' }
+                },
+                {
+                    name: '您的购买转化',
+                    type: 'line',
+                    data: Array.from({length: 30}, (_, i) => 6.5 + Math.random() * 1.5),
+                    smooth: true,
+                    lineStyle: { width: 3, color: '#43e97b' },
+                    itemStyle: { color: '#43e97b' }
+                },
+                {
+                    name: '行业加购基准',
+                    type: 'line',
+                    data: Array.from({length: 30}, () => 32),
+                    lineStyle: { type: 'dashed', color: '#f093fb' },
+                    itemStyle: { color: '#f093fb' }
+                },
+                {
+                    name: '行业购买基准',
+                    type: 'line',
+                    data: Array.from({length: 30}, () => 14.5),
+                    lineStyle: { type: 'dashed', color: '#fa709a' },
+                    itemStyle: { color: '#fa709a' }
+                }
+            ]
+        };
+
+        trendChart.setOption(option);
+        return trendChart;
+    }
+
+    // ============ 用户分层转化对比图 ============
+    function initSegmentComparisonChart() {
+        const segmentChart = echarts.init(document.getElementById('segmentComparisonChart'));
+        
+        const option = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'shadow' }
+            },
+            legend: {
+                data: ['浏览→加购', '加购→购买', '整体转化率']
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                data: ['高价值用户', '老用户', '新用户']
+            },
+            yAxis: {
+                type: 'value',
+                axisLabel: { formatter: '{value}%' }
+            },
+            series: [
+                {
+                    name: '浏览→加购',
+                    type: 'bar',
+                    data: [45, 38, 28],
+                    itemStyle: { color: '#667eea' }
+                },
+                {
+                    name: '加购→购买',
+                    type: 'bar',
+                    data: [18, 12, 5],
+                    itemStyle: { color: '#43e97b' }
+                },
+                {
+                    name: '整体转化率',
+                    type: 'bar',
+                    data: [8.1, 4.6, 1.4],
+                    itemStyle: { color: '#f093fb' }
+                }
+            ]
+        };
+
+        segmentChart.setOption(option);
+        return segmentChart;
+    }
+
+    // ============ 刷新漏斗数据 ============
+    function refreshFunnelData() {
+        const btn = event.target.closest('.btn-refresh');
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 更新中...';
+        btn.disabled = true;
+
+        setTimeout(() => {
+            const now = new Date();
+            const timeStr = now.getFullYear() + '-' + 
+                          String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                          String(now.getDate()).padStart(2, '0') + ' ' +
+                          String(now.getHours()).padStart(2, '0') + ':' +
+                          String(now.getMinutes()).padStart(2, '0') + ':' +
+                          String(now.getSeconds()).padStart(2, '0');
+            
+            document.getElementById('lastUpdateTime').textContent = timeStr;
+            
+            // 重新初始化所有漏斗相关图表
+            if (charts.funnel) {
+                charts.funnel.dispose();
+                initFunnelChart();
+            }
+            
+            btn.innerHTML = '<i class="fas fa-sync-alt"></i> 刷新';
+            btn.disabled = false;
+        }, 1500);
+    }
+
+    // ============ 行为趋势图 ============
+    function initBehaviorTrendChart() {
+        const trendChart = echarts.init(document.getElementById('behaviorTrendChart'));
+        charts.behaviorTrend = trendChart;
+
+        const dates = [];
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            dates.push(date.getMonth() + 1 + '-' + date.getDate());
+        }
+
+        const option = {
+            tooltip: {
+                trigger: 'axis'
+            },
+            legend: {
+                data: ['浏览', '加购', '收藏', '购买']
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                boundaryGap: false,
+                data: dates
+            },
+            yAxis: {
+                type: 'value'
+            },
+            series: [
+                {
+                    name: '浏览',
+                    type: 'line',
+                    stack: 'Total',
+                    data: [1200, 1320, 1010, 1340, 1290, 1330, 1400],
+                    areaStyle: { opacity: 0.3 },
+                    itemStyle: { color: '#5470C6' }
+                },
+                {
+                    name: '加购',
+                    type: 'line',
+                    stack: 'Total',
+                    data: [420, 470, 390, 490, 450, 480, 500],
+                    areaStyle: { opacity: 0.3 },
+                    itemStyle: { color: '#91CC75' }
+                },
+                {
+                    name: '收藏',
+                    type: 'line',
+                    stack: 'Total',
+                    data: [200, 230, 190, 240, 220, 250, 260],
+                    areaStyle: { opacity: 0.3 },
+                    itemStyle: { color: '#FAC858' }
+                },
+                {
+                    name: '购买',
+                    type: 'line',
+                    stack: 'Total',
+                    data: [140, 160, 130, 180, 150, 170, 180],
+                    areaStyle: { opacity: 0.3 },
+                    itemStyle: { color: '#EE6666' }
+                }
+            ]
+        };
+
+        trendChart.setOption(option);
+        return trendChart;
+    }
+
+    // ============ 行为分布饼图 ============
+    function initBehaviorPieChart() {
+        const pieChart = echarts.init(document.getElementById('behaviorPieChart'));
+        charts.behaviorPie = pieChart;
+
+        const option = {
+            tooltip: {
+                trigger: 'item'
+            },
+            legend: {
+                orient: 'vertical',
+                left: 'left'
+            },
+            series: [
+                {
+                    name: '行为类型',
+                    type: 'pie',
+                    radius: '50%',
+                    data: [
+                        { value: 10000, name: '浏览(PV)', itemStyle: { color: '#5470C6' } },
+                        { value: 3500, name: '加购(Cart)', itemStyle: { color: '#91CC75' } },
+                        { value: 1800, name: '收藏(Fav)', itemStyle: { color: '#FAC858' } },
+                        { value: 1200, name: '购买(Buy)', itemStyle: { color: '#EE6666' } }
+                    ],
+                    emphasis: {
+                        itemStyle: {
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    }
+                }
+            ]
+        };
+
+        pieChart.setOption(option);
+
+        // 点击扇形下钻
+        pieChart.on('click', function(params) {
+            console.log('下钻到:', params.name);
+            alert('查看 "' + params.name + '" 的详细分析');
+        });
+
+        return pieChart;
+    }
+
+    // ============ 用户活跃度热力图 ============
+    function initHeatmapChart() {
+        const heatmap = echarts.init(document.getElementById('heatmapChart'));
+        charts.heatmap = heatmap;
+
+        const hours = [];
+        const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+        for (let i = 0; i < 24; i++) {
+            hours.push(i + '时');
+        }
+
+        const data = [];
+        for (let i = 0; i < 7; i++) {
+            for (let j = 0; j < 24; j++) {
+                data.push([j, i, Math.floor(Math.random() * 100)]);
+            }
+        }
+
+        const option = {
+            tooltip: {
+                position: 'top',
+                formatter: function(params) {
+                    return days[params.value[1]] + ' ' + hours[params.value[0]] + '<br/>活跃度: ' + params.value[2];
+                }
+            },
+            grid: {
+                height: '70%',
+                top: '10%'
+            },
+            xAxis: {
+                type: 'category',
+                data: hours,
+                splitArea: {
+                    show: true
+                }
+            },
+            yAxis: {
+                type: 'category',
+                data: days,
+                splitArea: {
+                    show: true
+                }
+            },
+            visualMap: {
+                min: 0,
+                max: 100,
+                calculable: true,
+                orient: 'horizontal',
+                left: 'center',
+                bottom: '5%',
+                inRange: {
+                    color: ['#f0f9ff', '#6f068bad']
+                }
+            },
+            series: [
+                {
+                    name: '活跃度',
+                    type: 'heatmap',
+                    data: data,
+                    label: {
+                        show: false
+                    },
+                    emphasis: {
+                        itemStyle: {
+                            shadowBlur: 10,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    }
+                }
+            ]
+        };
+
+        heatmap.setOption(option);
+        return heatmap;
+    }
+
+    // ============ 商品类目分析 ============
+    function initCategoryChart() {
+        const categoryChart = echarts.init(document.getElementById('categoryChart'));
+        charts.category = categoryChart;
+
+        const option = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'shadow'
+                }
+            },
+            legend: {},
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'value'
+            },
+            yAxis: {
+                type: 'category',
+                data: ['电子产品', '服装鞋包', '食品', '美妆', '家居']
+            },
+            series: [
+                {
+                    name: '浏览量',
+                    type: 'bar',
+                    data: [2800, 2400, 1800, 2200, 1600],
+                    itemStyle: { color: '#5470C6' }
+                },
+                {
+                    name: '转化量',
+                    type: 'bar',
+                    data: [420, 380, 260, 340, 220],
+                    itemStyle: { color: '#91CC75' }
+                }
+            ]
+        };
+
+        categoryChart.setOption(option);
+
+        // 点击类目下钻
+        categoryChart.on('click', function(params) {
+            console.log('下钻到类目:', params.name);
+            document.getElementById('categoryFilter').value = params.name;
+            // 切换到漏斗标签页并过滤
+            document.querySelector('[data-tab="funnel"]').click();
+        });
+
+        return categoryChart;
+    }
+
+    // ============ 24小时用户分层对比图（含异常检测） ============
+    function initHourlySegmentChart() {
+        const hourlyChart = echarts.init(document.getElementById('hourlySegmentChart'));
+        
+        const hours = [];
+        for (let i = 0; i < 24; i++) {
+            hours.push(i + ':00');
+        }
+
+        // 模拟三类用户的24小时行为数据
+        const newUserData = [80, 50, 30, 15, 10, 25, 60, 150, 280, 320, 350, 380, 
+                             400, 380, 360, 340, 320, 380, 440, 500, 550, 420, 300, 180];
+        const oldUserData = [150, 100, 70, 40, 25, 60, 120, 250, 400, 480, 520, 550,
+                             580, 560, 540, 520, 500, 580, 660, 750, 820, 620, 450, 280];
+        const highValueData = [90, 60, 40, 20, 15, 35, 80, 180, 320, 380, 420, 450,
+                               480, 460, 440, 420, 400, 480, 560, 640, 720, 540, 380, 220];
+
+        const option = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'cross' }
+            },
+            legend: {
+                data: ['新用户', '老用户', '高价值用户'],
+                top: 10
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                data: hours,
+                boundaryGap: false
+            },
+            yAxis: {
+                type: 'value',
+                name: '活跃用户数'
+            },
+            series: [
+                {
+                    name: '新用户',
+                    type: 'line',
+                    data: newUserData,
+                    smooth: true,
+                    lineStyle: { color: '#4facfe', width: 2 },
+                    itemStyle: { color: '#4facfe' },
+                    areaStyle: { color: 'rgba(79, 172, 254, 0.1)' }
+                },
+                {
+                    name: '老用户',
+                    type: 'line',
+                    data: oldUserData,
+                    smooth: true,
+                    lineStyle: { color: '#f093fb', width: 2 },
+                    itemStyle: { color: '#f093fb' },
+                    areaStyle: { color: 'rgba(240, 147, 251, 0.1)' }
+                },
+                {
+                    name: '高价值用户',
+                    type: 'line',
+                    data: highValueData,
+                    smooth: true,
+                    lineStyle: { color: '#43e97b', width: 2 },
+                    itemStyle: { color: '#43e97b' },
+                    areaStyle: { color: 'rgba(67, 233, 123, 0.1)' }
+                },
+                {
+                    name: '异常标注',
+                    type: 'line',
+                    data: [],
+                    markArea: {
+                        itemStyle: {
+                            color: 'rgba(220, 53, 69, 0.2)'
+                        },
+                        data: [
+                            [
+                                { name: '系统维护', xAxis: '3:00' },
+                                { xAxis: '4:00' }
+                            ]
+                        ],
+                        label: {
+                            show: true,
+                            position: 'top',
+                            formatter: '异常时段\n系统维护',
+                            color: '#dc3545',
+                            fontSize: 11
+                        }
+                    }
+                }
+            ]
+        };
+
+        hourlyChart.setOption(option);
+        
+        // 点击事件：钻取到用户画像
+        hourlyChart.on('click', function(params) {
+            if (params.componentType === 'series') {
+                const hour = params.name;
+                drillDownToUserProfile('hour_' + hour);
+            }
+        });
+        
+        return hourlyChart;
+    }
+
+    // ============ 周行为模式图（含趋势线） ============
+    function initWeekdayPatternChart() {
+        const weekdayChart = echarts.init(document.getElementById('weekdayPatternChart'));
+        
+        const weekData = [12800, 13200, 13600, 14200, 15100, 19600, 17800];
+        const trendData = [12500, 13000, 13700, 14300, 15000, 19000, 17500];
+
+        const option = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'shadow' }
+            },
+            legend: {
+                data: ['实际活跃度', '趋势拟合线']
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+            },
+            yAxis: {
+                type: 'value',
+                name: '活跃用户数'
+            },
+            series: [
+                {
+                    name: '实际活跃度',
+                    type: 'bar',
+                    data: weekData,
+                    itemStyle: {
+                        color: function(params) {
+                            const colors = ['#667eea', '#667eea', '#667eea', '#667eea', '#667eea', '#43e97b', '#f093fb'];
+                            return colors[params.dataIndex];
+                        }
+                    },
+                    label: {
+                        show: true,
+                        position: 'top',
+                        formatter: '{c}'
+                    }
+                },
+                {
+                    name: '趋势拟合线',
+                    type: 'line',
+                    data: trendData,
+                    smooth: true,
+                    lineStyle: {
+                        color: '#fa709a',
+                        width: 3,
+                        type: 'dashed'
+                    },
+                    itemStyle: { color: '#fa709a' },
+                    symbolSize: 8
+                }
+            ]
+        };
+
+        weekdayChart.setOption(option);
+        
+        // 点击事件：钻取
+        weekdayChart.on('click', function(params) {
+            if (params.seriesName === '实际活跃度') {
+                drillDownToUserProfile('weekday_' + params.name);
+            }
+        });
+        
+        return weekdayChart;
+    }
+
+    // ============ 行业基准周分布迷你图 ============
+    function initWeekdayBenchmarkChart() {
+        const benchmarkChart = echarts.init(document.getElementById('weekdayBenchmarkChart'));
+        
+        const option = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'shadow' }
+            },
+            grid: {
+                left: '10%',
+                right: '10%',
+                bottom: '15%',
+                top: '10%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                data: ['一', '二', '三', '四', '五', '六', '日'],
+                axisLabel: { fontSize: 11 }
+            },
+            yAxis: {
+                type: 'value',
+                axisLabel: { fontSize: 11 }
+            },
+            series: [{
+                type: 'bar',
+                data: [11000, 11500, 12000, 12500, 13200, 17000, 15500],
+                itemStyle: {
+                    color: '#adb5bd',
+                    opacity: 0.7
+                },
+                barWidth: '60%'
+            }]
+        };
+
+        benchmarkChart.setOption(option);
+        return benchmarkChart;
+    }
+
+    // ============ 日期趋势预测图 ============
+    function initTrendForecastChart() {
+        const forecastChart = echarts.init(document.getElementById('trendForecastChart'));
+        
+        const dates = [];
+        const historicalData = [];
+        const forecastData = [];
+        const upperBound = [];
+        const lowerBound = [];
+
+        // 历史30天数据
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            dates.push((d.getMonth() + 1) + '-' + d.getDate());
+            historicalData.push(16000 + Math.random() * 2000 + i * 50);
+        }
+
+        // 未来7天预测
+        for (let i = 1; i <= 7; i++) {
+            const d = new Date();
+            d.setDate(d.getDate() + i);
+            dates.push((d.getMonth() + 1) + '-' + d.getDate());
+            
+            const forecast = 18000 + i * 100 + Math.random() * 200;
+            forecastData.push(forecast);
+            upperBound.push(forecast + 400);
+            lowerBound.push(forecast - 400);
+        }
+
+        const option = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'cross' }
+            },
+            legend: {
+                data: ['历史数据', '预测数据', '置信区间']
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                data: dates,
+                boundaryGap: false
+            },
+            yAxis: {
+                type: 'value',
+                name: '活跃用户数'
+            },
+            series: [
+                {
+                    name: '历史数据',
+                    type: 'line',
+                    data: historicalData.concat(Array(7).fill(null)),
+                    smooth: true,
+                    lineStyle: { color: '#667eea', width: 3 },
+                    itemStyle: { color: '#667eea' },
+                    areaStyle: {
+                        color: {
+                            type: 'linear',
+                            x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                                { offset: 0, color: 'rgba(102, 126, 234, 0.3)' },
+                                { offset: 1, color: 'rgba(102, 126, 234, 0.05)' }
+                            ]
+                        }
+                    }
+                },
+                {
+                    name: '预测数据',
+                    type: 'line',
+                    data: Array(30).fill(null).concat(forecastData),
+                    smooth: true,
+                    lineStyle: { 
+                        color: '#4facfe', 
+                        width: 3,
+                        type: 'dashed'
+                    },
+                    itemStyle: { color: '#4facfe' }
+                },
+                {
+                    name: '置信区间',
+                    type: 'line',
+                    data: Array(30).fill(null).concat(upperBound),
+                    lineStyle: { opacity: 0 },
+                    stack: 'confidence-band',
+                    symbol: 'none'
+                },
+                {
+                    name: '置信区间下限',
+                    type: 'line',
+                    data: Array(30).fill(null).concat(lowerBound.map((v, i) => upperBound[i] - v)),
+                    lineStyle: { opacity: 0 },
+                    areaStyle: {
+                        color: 'rgba(79, 172, 254, 0.2)'
+                    },
+                    stack: 'confidence-band',
+                    symbol: 'none'
+                }
+            ]
+        };
+
+        forecastChart.setOption(option);
+        return forecastChart;
+    }
+
+    // ============ 24小时活跃度 ============
+    function initHourlyChart() {
+        const hourlyChart = echarts.init(document.getElementById('hourlyChart'));
+        charts.hourly = hourlyChart;
+
+        const hours = [];
+        for (let i = 0; i < 24; i++) {
+            hours.push(i + ':00');
+        }
+
+        const option = {
+            tooltip: {
+                trigger: 'axis'
+            },
+            xAxis: {
+                type: 'category',
+                data: hours
+            },
+            yAxis: {
+                type: 'value',
+                name: '活跃用户数'
+            },
+            series: [
+                {
+                    data: [120, 80, 60, 40, 30, 50, 100, 200, 350, 420, 450, 480, 
+                           500, 480, 460, 440, 420, 480, 550, 620, 680, 520, 380, 220],
+                    type: 'line',
+                    smooth: true,
+                    areaStyle: {
+                        color: {
+                            type: 'linear',
+                            x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                                { offset: 0, color: 'rgba(111, 6, 139, 0.5)' },
+                                { offset: 1, color: 'rgba(111, 6, 139, 0.1)' }
+                            ]
+                        }
+                    },
+                    itemStyle: { color: '#6f068bad' },
+                    markPoint: {
+                        data: [
+                            { type: 'max', name: '最大值' },
+                            { type: 'min', name: '最小值' }
+                        ]
+                    },
+                    markLine: {
+                        data: [{ type: 'average', name: '平均值' }]
+                    }
+                }
+            ]
+        };
+
+        hourlyChart.setOption(option);
+        return hourlyChart;
+    }
+
+    // ============ 星期分布 ============
+    function initWeekdayChart() {
+        const weekdayChart = echarts.init(document.getElementById('weekdayChart'));
+        charts.weekday = weekdayChart;
+
+        const option = {
+            tooltip: {
+                trigger: 'axis'
+            },
+            xAxis: {
+                type: 'category',
+                data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+            },
+            yAxis: {
+                type: 'value'
+            },
+            series: [
+                {
+                    data: [2800, 2600, 2700, 2900, 3100, 3800, 3600],
+                    type: 'bar',
+                    itemStyle: {
+                        color: function(params) {
+                            const colors = ['#5470C6', '#5470C6', '#5470C6', '#5470C6', '#5470C6', '#91CC75', '#91CC75'];
+                            return colors[params.dataIndex];
+                        }
+                    }
+                }
+            ]
+        };
+
+        weekdayChart.setOption(option);
+        return weekdayChart;
+    }
+
+    // ============ 月度趋势 ============
+    function initMonthlyChart() {
+        const monthlyChart = echarts.init(document.getElementById('monthlyChart'));
+        charts.monthly = monthlyChart;
+
+        const option = {
+            tooltip: {
+                trigger: 'axis'
+            },
+            xAxis: {
+                type: 'category',
+                data: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
+            },
+            yAxis: {
+                type: 'value'
+            },
+            series: [
+                {
+                    data: [28000, 26000, 32000, 35000, 38000, 42000, 45000, 48000, 46000, 50000, 52000, 55000],
+                    type: 'line',
+                    smooth: true,
+                    itemStyle: { color: '#6f068bad' },
+                    lineStyle: { width: 3 }
+                }
+            ]
+        };
+
+        monthlyChart.setOption(option);
+        return monthlyChart;
+    }
+
+    // ============ RFM分群分布饼图 ============
+    function initRFMPieChart() {
+        const pieChart = echarts.init(document.getElementById('rfmPieChart'));
+        const option = {
+            tooltip: { trigger: 'item' },
+            series: [{
+                type: 'pie',
+                radius: ['40%', '70%'],
+                avoidLabelOverlap: false,
+                label: {
+                    show: true,
+                    formatter: '{b}\n{d}%'
+                },
+                data: [
+                    { value: 6237, name: '高价值用户', itemStyle: { color: '#667eea' } },
+                    { value: 15594, name: '潜力用户', itemStyle: { color: '#f093fb' } },
+                    { value: 52239, name: '一般用户', itemStyle: { color: '#adb5bd' } },
+                    { value: 3898, name: '流失风险', itemStyle: { color: '#fa709a' } }
+                ]
+            }]
+        };
+        pieChart.setOption(option);
+        return pieChart;
+    }
+
+    // ============ RFM分群柱状图 ============
+    function initRFMBarChart() {
+        const barChart = echarts.init(document.getElementById('rfmBarChart'));
+        const option = {
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+            xAxis: {
+                type: 'category',
+                data: ['高价值用户', '潜力用户', '一般用户', '流失风险']
+            },
+            yAxis: { type: 'value' },
+            series: [{
+                type: 'bar',
+                data: [
+                    { value: 6237, itemStyle: { color: '#667eea' } },
+                    { value: 15594, itemStyle: { color: '#f093fb' } },
+                    { value: 52239, itemStyle: { color: '#adb5bd' } },
+                    { value: 3898, itemStyle: { color: '#fa709a' } }
+                ],
+                label: { show: true, position: 'top' }
+            }]
+        };
+        barChart.setOption(option);
+        return barChart;
+    }
+
+    // ============ RFM气泡矩阵图 ============
+    function initRFMBubbleChart() {
+        const bubbleChart = echarts.init(document.getElementById('rfmBubbleChart'));
+        const option = {
+            tooltip: {
+                trigger: 'item',
+                formatter: function(params) {
+                    return params.seriesName + '<br/>' +
+                           'R值: ' + params.value[0] + '<br/>' +
+                           'F值: ' + params.value[1] + '<br/>' +
+                           'M值: ' + params.value[2] + '<br/>' +
+                           '用户数: ' + params.value[3];
+                }
+            },
+            grid: { left: '10%', right: '10%', bottom: '10%', top: '10%', containLabel: true },
+            xAxis: {
+                name: 'R - 最近消费',
+                nameLocation: 'middle',
+                nameGap: 30,
+                min: 0,
+                max: 100
+            },
+            yAxis: {
+                name: 'F - 消费频次',
+                nameLocation: 'middle',
+                nameGap: 40,
+                min: 0,
+                max: 100
+            },
+            series: [
+                {
+                    name: '高价值用户',
+                    type: 'scatter',
+                    symbolSize: function(val) { return val[3] / 100; },
+                    data: [[90, 95, 95, 6237]],
+                    itemStyle: { color: '#667eea', opacity: 0.7 }
+                },
+                {
+                    name: '潜力用户',
+                    type: 'scatter',
+                    symbolSize: function(val) { return val[3] / 100; },
+                    data: [[75, 60, 65, 15594]],
+                    itemStyle: { color: '#f093fb', opacity: 0.7 }
+                },
+                {
+                    name: '一般用户',
+                    type: 'scatter',
+                    symbolSize: function(val) { return val[3] / 100; },
+                    data: [[50, 50, 50, 52239]],
+                    itemStyle: { color: '#adb5bd', opacity: 0.7 }
+                },
+                {
+                    name: '流失风险',
+                    type: 'scatter',
+                    symbolSize: function(val) { return val[3] / 100; },
+                    data: [[20, 15, 10, 3898]],
+                    itemStyle: { color: '#fa709a', opacity: 0.7 }
+                }
+            ]
+        };
+        bubbleChart.setOption(option);
+        return bubbleChart;
+    }
+
+    // ============ RFM分群趋势图 ============
+    function initRFMTrendChart() {
+        const trendChart = echarts.init(document.getElementById('rfmTrendChart'));
+        const dates = [];
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            dates.push((d.getMonth() + 1) + '-' + d.getDate());
+        }
+        
+        const option = {
+            tooltip: { trigger: 'axis' },
+            legend: { data: ['高价值用户', '潜力用户', '一般用户', '流失风险'] },
+            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+            xAxis: { type: 'category', boundaryGap: false, data: dates },
+            yAxis: { type: 'value' },
+            series: [
+                {
+                    name: '高价值用户',
+                    type: 'line',
+                    data: Array.from({length: 30}, (_, i) => 5900 + Math.random() * 600),
+                    smooth: true,
+                    lineStyle: { color: '#667eea', width: 3 },
+                    itemStyle: { color: '#667eea' }
+                },
+                {
+                    name: '潜力用户',
+                    type: 'line',
+                    data: Array.from({length: 30}, (_, i) => 15000 + Math.random() * 1200),
+                    smooth: true,
+                    lineStyle: { color: '#f093fb', width: 3 },
+                    itemStyle: { color: '#f093fb' }
+                },
+                {
+                    name: '一般用户',
+                    type: 'line',
+                    data: Array.from({length: 30}, (_, i) => 52000 + Math.random() * 500),
+                    smooth: true,
+                    lineStyle: { color: '#adb5bd', width: 3 },
+                    itemStyle: { color: '#adb5bd' }
+                },
+                {
+                    name: '流失风险',
+                    type: 'line',
+                    data: Array.from({length: 30}, (_, i) => 4000 - Math.random() * 200),
+                    smooth: true,
+                    lineStyle: { color: '#fa709a', width: 3 },
+                    itemStyle: { color: '#fa709a' }
+                }
+            ]
+        };
+        trendChart.setOption(option);
+        return trendChart;
+    }
+
+    // ============ 行为特征雷达图 ============
+    function initBehaviorRadarChart() {
+        const radarChart = echarts.init(document.getElementById('behaviorRadarChart'));
+        const option = {
+            tooltip: {},
+            legend: { data: ['高价值用户', '潜力用户', '流失风险'] },
+            radar: {
+                indicator: [
+                    { name: '购买频次', max: 100 },
+                    { name: '客单价', max: 100 },
+                    { name: '活跃度', max: 100 },
+                    { name: '品类多样性', max: 100 },
+                    { name: '复购率', max: 100 }
+                ]
+            },
+            series: [{
+                type: 'radar',
+                data: [
+                    {
+                        value: [95, 90, 85, 80, 90],
+                        name: '高价值用户',
+                        itemStyle: { color: '#667eea' },
+                        areaStyle: { opacity: 0.3 }
+                    },
+                    {
+                        value: [60, 65, 70, 60, 55],
+                        name: '潜力用户',
+                        itemStyle: { color: '#f093fb' },
+                        areaStyle: { opacity: 0.3 }
+                    },
+                    {
+                        value: [15, 20, 25, 30, 10],
+                        name: '流失风险',
+                        itemStyle: { color: '#fa709a' },
+                        areaStyle: { opacity: 0.3 }
+                    }
+                ]
+            }]
+        };
+        radarChart.setOption(option);
+        return radarChart;
+    }
+
+    // ============ 品类偏好对比图 ============
+    function initCategoryComparisonChart() {
+        const categoryChart = echarts.init(document.getElementById('categoryComparisonChart'));
+        const option = {
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+            legend: { data: ['高价值用户', '潜力用户', '流失风险'] },
+            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+            xAxis: { type: 'value', max: 100 },
+            yAxis: {
+                type: 'category',
+                data: ['奢侈品', '3C数码', '服装', '日用品']
+            },
+            series: [
+                {
+                    name: '高价值用户',
+                    type: 'bar',
+                    stack: 'total',
+                    data: [40, 35, 15, 10],
+                    itemStyle: { color: '#667eea' }
+                },
+                {
+                    name: '潜力用户',
+                    type: 'bar',
+                    stack: 'total',
+                    data: [10, 45, 30, 15],
+                    itemStyle: { color: '#f093fb' }
+                },
+                {
+                    name: '流失风险',
+                    type: 'bar',
+                    stack: 'total',
+                    data: [5, 10, 25, 60],
+                    itemStyle: { color: '#fa709a' }
+                }
+            ]
+        };
+        categoryChart.setOption(option);
+        return categoryChart;
+    }
+
+    // ============ 转化路径对比桑基图 ============
+    function initPathComparisonSankey() {
+        const sankeyChart = echarts.init(document.getElementById('pathComparisonSankey'));
+        const option = {
+            tooltip: { trigger: 'item' },
+            series: [{
+                type: 'sankey',
+                layout: 'none',
+                emphasis: { focus: 'adjacency' },
+                data: [
+                    { name: '浏览-高价值' },
+                    { name: '加购-高价值' },
+                    { name: '购买-高价值' },
+                    { name: '浏览-流失' },
+                    { name: '收藏-流失' },
+                    { name: '放弃-流失' }
+                ],
+                links: [
+                    { source: '浏览-高价值', target: '加购-高价值', value: 700 },
+                    { source: '加购-高价值', target: '购买-高价值', value: 490 },
+                    { source: '浏览-流失', target: '收藏-流失', value: 500 },
+                    { source: '收藏-流失', target: '放弃-流失', value: 250 }
+                ],
+                lineStyle: { color: 'gradient', curveness: 0.5 }
+            }]
+        };
+        sankeyChart.setOption(option);
+        return sankeyChart;
+    }
+
+    // ============ 初始化对应标签页的图表 ============
+    function initTabCharts(tabName) {
+        setTimeout(() => {
+            if (tabName === 'path' && !charts.sankey) {
+                initSankeyChart();
+            } else if (tabName === 'funnel') {
+                // 初始化漏斗相关所有图表
+                if (!charts.funnel) initFunnelChart();
+                if (!charts.pathSankey) charts.pathSankey = initPathSankeyChart();
+                if (!charts.trendComparison) charts.trendComparison = initTrendComparisonChart();
+                if (!charts.segmentComparison) charts.segmentComparison = initSegmentComparisonChart();
+            } else if (tabName === 'behavior') {
+                if (!charts.behaviorTrend) initBehaviorTrendChart();
+                if (!charts.behaviorPie) initBehaviorPieChart();
+                if (!charts.heatmap) initHeatmapChart();
+                if (!charts.category) initCategoryChart();
+            } else if (tabName === 'time') {
+                // 初始化时间模式相关所有图表
+                if (!charts.hourlySegment) charts.hourlySegment = initHourlySegmentChart();
+                if (!charts.weekdayPattern) charts.weekdayPattern = initWeekdayPatternChart();
+                if (!charts.weekdayBenchmark) charts.weekdayBenchmark = initWeekdayBenchmarkChart();
+                if (!charts.trendForecast) charts.trendForecast = initTrendForecastChart();
+            } else if (tabName === 'rfm') {
+                // 初始化RFM相关所有图表
+                if (!charts.rfmPie) charts.rfmPie = initRFMPieChart();
+                if (!charts.rfmBar) charts.rfmBar = initRFMBarChart();
+                if (!charts.rfmBubble) charts.rfmBubble = initRFMBubbleChart();
+                if (!charts.rfmTrend) charts.rfmTrend = initRFMTrendChart();
+                if (!charts.behaviorRadar) charts.behaviorRadar = initBehaviorRadarChart();
+                if (!charts.categoryComparison) charts.categoryComparison = initCategoryComparisonChart();
+                if (!charts.pathComparisonSankey) charts.pathComparisonSankey = initPathComparisonSankey();
+            }
+            
+            // 调整图表大小
+            Object.values(charts).forEach(chart => {
+                if (chart && chart.resize) chart.resize();
+            });
+        }, 100);
+    }
+
+    // 初始化默认标签页的图表
+    initTabCharts('path');
+
+    // ============ 漏斗筛选器联动 ============
+    const categoryFilter = document.getElementById('categoryFilter');
+    const userSegmentFilter = document.getElementById('userSegmentFilter');
+    const benchmarkFilter = document.getElementById('benchmarkFilter');
+    
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', function() {
+            console.log('品类筛选:', this.value);
+            // 更新所有漏斗相关图表
+            updateFunnelCharts();
+        });
+    }
+    
+    if (userSegmentFilter) {
+        userSegmentFilter.addEventListener('change', function() {
+            console.log('用户分层筛选:', this.value);
+            updateFunnelCharts();
+        });
+    }
+    
+    if (benchmarkFilter) {
+        benchmarkFilter.addEventListener('change', function() {
+            console.log('基准筛选:', this.value);
+            // 更新漏斗图的行业基准数据
+            if (charts.funnel) {
+                charts.funnel.dispose();
+                initFunnelChart();
+            }
+        });
+    }
+    
+    // 时间范围选择器联动
+    const timeRangeBtns = document.querySelectorAll('.trend-comparison-section .time-btn');
+    timeRangeBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            timeRangeBtns.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            const range = this.dataset.range;
+            console.log('时间范围切换:', range);
+            // 重新加载趋势对比图数据
+            if (charts.trendComparison) {
+                charts.trendComparison.dispose();
+                charts.trendComparison = initTrendComparisonChart();
+            }
+        });
+    });
+    
+    // 更新所有漏斗图表
+    function updateFunnelCharts() {
+        const category = categoryFilter ? categoryFilter.value : 'all';
+        const segment = userSegmentFilter ? userSegmentFilter.value : 'all';
+        
+        console.log('更新漏斗数据:', { category, segment });
+        
+        // 重新初始化所有图表
+        ['funnel', 'pathSankey', 'trendComparison', 'segmentComparison'].forEach(chartKey => {
+            if (charts[chartKey]) {
+                charts[chartKey].dispose();
+            }
+        });
+        
+        charts.funnel = initFunnelChart();
+        charts.pathSankey = initPathSankeyChart();
+        charts.trendComparison = initTrendComparisonChart();
+        charts.segmentComparison = initSegmentComparisonChart();
+    }
+
+    // ============ 全局时间筛选器联动 ============
+    window.addEventListener('timeRangeChanged', function(e) {
+        console.log('时间范围变更为:', e.detail.timeRange);
+        // 重新加载所有图表数据
+        Object.keys(charts).forEach(key => {
+            if (charts[key]) {
+                // 这里应该调用后端API获取新数据
+                console.log('更新图表:', key);
+            }
+        });
+    });
+
+    // ============ 下钻功能 ============
+    window.drillDownStage = function(stage) {
+        console.log('下钻到阶段:', stage);
+        alert('查看 "' + stage + '" 阶段的详细用户列表和行为数据\n（此功能需要后端数据支持）');
+    };
+
+    // ============ 控制按钮事件 ============
+    const refreshPath = document.getElementById('refreshPath');
+    if (refreshPath) {
+        refreshPath.addEventListener('click', function() {
+            if (charts.sankey) {
+                charts.sankey.showLoading();
+                setTimeout(() => {
+                    charts.sankey.hideLoading();
+                    alert('桑基图数据已刷新');
+                }, 1000);
+            }
+        });
+    }
+
+    const drillDownBtn = document.getElementById('drillDown');
+    if (drillDownBtn) {
+        drillDownBtn.addEventListener('click', function() {
+            const category = document.getElementById('categoryFilter').value;
+            alert('下钻分析 "' + category + '" 分类的转化数据');
+        });
+    }
+
+    // ============ RFM规则说明切换 ============
+    window.toggleRules = function() {
+        const content = document.getElementById('rfmRulesContent');
+        const btn = event.target.closest('.toggle-rules');
+        
+        if (content.style.display === 'none') {
+            content.style.display = 'grid';
+            btn.innerHTML = '<i class="fas fa-chevron-up"></i> 收起';
+        } else {
+            content.style.display = 'none';
+            btn.innerHTML = '<i class="fas fa-chevron-down"></i> 展开';
+        }
+    };
+
+    // ============ 分群详情弹窗 ============
+    window.showSegmentDetail = function(segmentType) {
+        const modal = document.getElementById('segmentDetailModal');
+        const segmentData = {
+            vip: {
+                title: '高价值用户',
+                count: '6,237',
+                percent: '8%',
+                avgSpend: '¥8,650',
+                activity: '92%',
+                characteristics: `
+                    <ul>
+                        <li><strong>R值：</strong>平均3天内消费</li>
+                        <li><strong>F值：</strong>月均消费12次</li>
+                        <li><strong>M值：</strong>月均消费8,650元</li>
+                        <li><strong>品类偏好：</strong>奢侈品40%、3C数码35%</li>
+                    </ul>
+                `,
+                behaviorPath: '主要路径：浏览→加购→购买（占比70%）<br>转化率：2.3%<br>平均购买时段：20:00-22:00',
+                strategies: `
+                    <ul>
+                        <li><i class="fas fa-gift"></i> 推送满5000减800专属优惠券</li>
+                        <li><i class="fas fa-star"></i> 邀请参与高端新品内测</li>
+                        <li><i class="fas fa-headset"></i> 提供VIP专属客服通道</li>
+                    </ul>
+                `
+            },
+            potential: {
+                title: '潜力用户',
+                count: '15,594',
+                percent: '20%',
+                avgSpend: '¥3,200',
+                activity: '68%',
+                characteristics: `
+                    <ul>
+                        <li><strong>R值：</strong>平均10天内消费</li>
+                        <li><strong>F值：</strong>月均消费6次</li>
+                        <li><strong>M值：</strong>月均消费3,200元</li>
+                        <li><strong>品类偏好：</strong>3C数码45%、服装30%</li>
+                    </ul>
+                `,
+                behaviorPath: '主要路径：浏览→收藏→购买（占比55%）<br>转化率：1.8%<br>平均购买时段：19:00-21:00',
+                strategies: `
+                    <ul>
+                        <li><i class="fas fa-ticket-alt"></i> 推送满减券+爆款推荐</li>
+                        <li><i class="fas fa-shopping-cart"></i> 引导完成首次加购</li>
+                        <li><i class="fas fa-bell"></i> 推送限时促销活动</li>
+                    </ul>
+                `
+            },
+            normal: {
+                title: '一般用户',
+                count: '52,239',
+                percent: '67%',
+                avgSpend: '¥850',
+                activity: '45%',
+                characteristics: `
+                    <ul>
+                        <li><strong>R值：</strong>平均20天内消费</li>
+                        <li><strong>F值：</strong>月均消费3次</li>
+                        <li><strong>M值：</strong>月均消费850元</li>
+                        <li><strong>品类偏好：</strong>日用品50%、服装25%</li>
+                    </ul>
+                `,
+                behaviorPath: '主要路径：浏览→加购→购买（占比45%）<br>转化率：1.2%<br>平均购买时段：12:00-14:00',
+                strategies: `
+                    <ul>
+                        <li><i class="fas fa-tag"></i> 推送日常促销活动</li>
+                        <li><i class="fas fa-envelope"></i> 定期发送产品资讯</li>
+                        <li><i class="fas fa-gift"></i> 节假日专属优惠</li>
+                    </ul>
+                `
+            },
+            churn: {
+                title: '流失风险用户',
+                count: '3,898',
+                percent: '5%',
+                avgSpend: '¥120',
+                activity: '12%',
+                characteristics: `
+                    <ul>
+                        <li><strong>R值：</strong>平均45天未消费</li>
+                        <li><strong>F值：</strong>月均消费2次</li>
+                        <li><strong>M值：</strong>月均消费120元</li>
+                        <li><strong>品类偏好：</strong>日用品60%、食品30%</li>
+                    </ul>
+                `,
+                behaviorPath: '主要路径：浏览→收藏→放弃（占比50%）<br>转化率：0.5%<br>平均购买时段：02:00-04:00',
+                strategies: `
+                    <ul>
+                        <li><i class="fas fa-envelope"></i> 发送召回邮件（限时折扣+专属福利）</li>
+                        <li><i class="fas fa-bell"></i> 触发"商品降价20%"提醒</li>
+                        <li><i class="fas fa-tag"></i> 推送高性价比日用品专场</li>
+                    </ul>
+                `
+            }
+        };
+
+        const data = segmentData[segmentType];
+        document.getElementById('segmentModalTitle').textContent = data.title;
+        document.getElementById('detailCount').textContent = data.count;
+        document.getElementById('detailPercent').textContent = data.percent;
+        document.getElementById('detailAvgSpend').textContent = data.avgSpend;
+        document.getElementById('detailActivity').textContent = data.activity;
+        document.getElementById('detailCharacteristics').innerHTML = data.characteristics;
+        document.getElementById('detailBehaviorPath').innerHTML = data.behaviorPath;
+        document.getElementById('detailStrategies').innerHTML = data.strategies;
+
+        modal.style.display = 'flex';
+    };
+
+    window.closeSegmentModal = function() {
+        document.getElementById('segmentDetailModal').style.display = 'none';
+    };
+
+    // ============ RFM筛选器联动 ============
+    const rfmSegmentFilter = document.getElementById('rfmSegmentFilter');
+    const rfmTimeRange = document.getElementById('rfmTimeRange');
+    const rfmCategoryFilter = document.getElementById('rfmCategoryFilter');
+
+    if (rfmSegmentFilter) {
+        rfmSegmentFilter.addEventListener('change', function() {
+            console.log('RFM分群筛选:', this.value);
+            updateRFMCharts();
+        });
+    }
+
+    if (rfmTimeRange) {
+        rfmTimeRange.addEventListener('change', function() {
+            console.log('RFM时间范围:', this.value);
+            updateRFMCharts();
+        });
+    }
+
+    if (rfmCategoryFilter) {
+        rfmCategoryFilter.addEventListener('change', function() {
+            console.log('RFM品类筛选:', this.value);
+            updateRFMCharts();
+        });
+    }
+
+    // 更新RFM所有图表
+    function updateRFMCharts() {
+        const segment = rfmSegmentFilter ? rfmSegmentFilter.value : 'all';
+        const timeRange = rfmTimeRange ? rfmTimeRange.value : '30d';
+        const category = rfmCategoryFilter ? rfmCategoryFilter.value : 'all';
+        
+        console.log('更新RFM数据:', { segment, timeRange, category });
+        
+        // 重新初始化所有图表
+        ['rfmPie', 'rfmBar', 'rfmBubble', 'rfmTrend', 'behaviorRadar', 
+         'categoryComparison', 'pathComparisonSankey'].forEach(chartKey => {
+            if (charts[chartKey]) {
+                charts[chartKey].showLoading();
+                setTimeout(() => {
+                    charts[chartKey].hideLoading();
+                }, 500);
+            }
+        });
+    }
+
+    // ============ 时间模式分析交互函数 ============
+    
+    // 切换时间设置面板
+    window.toggleTimeSettings = function() {
+        const content = document.getElementById('timeSettingsContent');
+        const btn = event.target.closest('.toggle-btn');
+        
+        if (content.style.display === 'none') {
+            content.style.display = 'block';
+            btn.innerHTML = '<i class="fas fa-chevron-up"></i>';
+        } else {
+            content.style.display = 'none';
+            btn.innerHTML = '<i class="fas fa-chevron-down"></i>';
+        }
+    };
+
+    // 应用时间设置
+    window.applyTimeSettings = function() {
+        const behaviorType = document.getElementById('timeBehaviorType').value;
+        const granularity = document.getElementById('timeGranularity').value;
+        const period = document.getElementById('timeComparisonPeriod').value;
+        const segment = document.getElementById('timeUserSegment').value;
+
+        console.log('应用时间设置:', { behaviorType, granularity, period, segment });
+
+        // 重新加载时间图表
+        ['hourlySegment', 'weekdayPattern', 'weekdayBenchmark', 'trendForecast'].forEach(chartKey => {
+            if (charts[chartKey]) {
+                charts[chartKey].showLoading();
+                setTimeout(() => {
+                    charts[chartKey].hideLoading();
+                    alert('设置已应用，图表已更新');
+                }, 800);
+            }
+        });
+    };
+
+    // 重置时间设置
+    window.resetTimeSettings = function() {
+        document.getElementById('timeBehaviorType').value = 'all';
+        document.getElementById('timeGranularity').value = 'hour';
+        document.getElementById('timeComparisonPeriod').value = '7d';
+        document.getElementById('timeUserSegment').value = 'all';
+        
+        console.log('设置已重置');
+    };
+
+    // 切换预测曲线显示
+    window.toggleForecast = function() {
+        const checkbox = document.getElementById('showForecast');
+        const chart = charts.trendForecast;
+        
+        if (chart) {
+            const option = chart.getOption();
+            // 切换预测系列的显示状态
+            console.log('预测曲线显示:', checkbox.checked ? '开启' : '关闭');
+            
+            if (!checkbox.checked) {
+                // 隐藏预测系列
+                option.series[1].lineStyle.opacity = 0;
+                option.series[2].lineStyle.opacity = 0;
+                option.series[3].areaStyle.opacity = 0;
+            } else {
+                // 显示预测系列
+                option.series[1].lineStyle.opacity = 1;
+                option.series[2].lineStyle.opacity = 0;
+                option.series[3].areaStyle.opacity = 0.2;
+            }
+            
+            chart.setOption(option);
+        }
+    };
+
+    // 钻取到用户画像
+    window.drillDownToUserProfile = function(timeKey) {
+        const profileData = {
+            'peak_hour': {
+                title: '黄金时段用户画像（21:00-22:00）',
+                stats: {
+                    total: '12,350',
+                    age: '25-35岁占68%',
+                    gender: '女性占62%',
+                    region: '一线城市占55%',
+                    preference: '服装、美妆、3C数码'
+                }
+            },
+            'weekend': {
+                title: '周六用户特征画像',
+                stats: {
+                    total: '19,600',
+                    age: '18-40岁占75%',
+                    gender: '女性占58%',
+                    region: '二三线城市占48%',
+                    preference: '日用品、食品、家居'
+                }
+            }
+        };
+
+        const data = profileData[timeKey] || {
+            title: '时段用户画像',
+            stats: {
+                total: '加载中...',
+                age: '分析中...',
+                gender: '分析中...',
+                region: '分析中...',
+                preference: '分析中...'
+            }
+        };
+
+        const message = `
+========= ${data.title} =========
+
+用户总数: ${data.stats.total}
+年龄分布: ${data.stats.age}
+性别分布: ${data.stats.gender}
+地域分布: ${data.stats.region}
+消费偏好: ${data.stats.preference}
+
+提示：完整用户画像需要跳转到"用户价值分析"模块查看
+========================================
+        `;
+
+        alert(message);
+        
+        // 可以在这里添加实际的页面跳转逻辑
+        // window.location.href = '/user_value_analysis?time=' + timeKey;
+    };
+
+    // 时间设置筛选器联动
+    const timeBehaviorType = document.getElementById('timeBehaviorType');
+    const timeGranularity = document.getElementById('timeGranularity');
+    const timeComparisonPeriod = document.getElementById('timeComparisonPeriod');
+    const timeUserSegment = document.getElementById('timeUserSegment');
+
+    if (timeBehaviorType) {
+        timeBehaviorType.addEventListener('change', function() {
+            console.log('行为类型变更:', this.value);
+        });
+    }
+
+    if (timeGranularity) {
+        timeGranularity.addEventListener('change', function() {
+            console.log('时间粒度变更:', this.value);
+        });
+    }
+
+    if (timeComparisonPeriod) {
+        timeComparisonPeriod.addEventListener('change', function() {
+            console.log('对比周期变更:', this.value);
+        });
+    }
+
+    if (timeUserSegment) {
+        timeUserSegment.addEventListener('change', function() {
+            console.log('用户分群变更:', this.value);
+        });
+    }
+
+    // 窗口resize时重绘图表
+    window.addEventListener('resize', function() {
+        Object.values(charts).forEach(chart => {
+            if (chart && chart.resize) chart.resize();
+        });
+    });
+});
+</script>
+{% endblock %}

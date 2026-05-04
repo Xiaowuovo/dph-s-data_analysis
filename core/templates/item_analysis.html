@@ -1,0 +1,753 @@
+{% extends 'base.html' %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/item_analysis.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="item-analysis-container">
+    <!-- 页面头部 -->
+    <div class="analysis-header">
+        <h1><i class="fas fa-shopping-bag"></i> 商品分析</h1>
+        <p class="subtitle">深入分析商品表现，发现畅销商品和优化机会</p>
+    </div>
+
+    <!-- 筛选条件 -->
+    <div class="filter-section">
+        <div class="filter-card">
+            <h3><i class="fas fa-filter"></i> 分析筛选</h3>
+            <form id="itemFilterForm">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="timeRange"><i class="fas fa-calendar-alt"></i> 时间范围</label>
+                        <select id="timeRange" class="form-select">
+                            <option value="7">最近7天</option>
+                            <option value="15">最近15天</option>
+                            <option value="30" selected>最近30天</option>
+                            <option value="90">最近90天</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="categoryFilter"><i class="fas fa-tags"></i> 商品类目</label>
+                        <select id="categoryFilter" class="form-select">
+                            <option value="all">全部类目</option>
+                            <option value="electronics">电子产品</option>
+                            <option value="clothing">服装</option>
+                            <option value="home">家居用品</option>
+                            <option value="beauty">美妆护肤</option>
+                            <option value="food">食品饮料</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="sortBy"><i class="fas fa-sort-amount-down"></i> 排序方式</label>
+                        <select id="sortBy" class="form-select">
+                            <option value="views">浏览量</option>
+                            <option value="purchases" selected>购买量</option>
+                            <option value="conversion">转化率</option>
+                            <option value="carts">加购量</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-actions">
+                    <button type="button" id="applyFilters" class="btn btn-primary">
+                        <i class="fas fa-chart-line"></i> 应用筛选
+                    </button>
+                    <button type="button" id="exportAnalysis" class="btn btn-outline-secondary">
+                        <i class="fas fa-download"></i> 导出分析
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 商品概览卡片 -->
+    <div class="overview-cards">
+        <div class="overview-card">
+            <div class="card-icon">
+                <i class="fas fa-eye"></i>
+            </div>
+            <div class="card-content">
+                <h4>总商品数</h4>
+                <p class="card-value">{{ overview_stats.total_items|default(0)|format_number }}</p>
+                <p class="card-change">环比 {{ overview_stats.item_growth|default(0) }}%</p>
+            </div>
+        </div>
+
+        <div class="overview-card">
+            <div class="card-icon">
+                <i class="fas fa-fire"></i>
+            </div>
+            <div class="card-content">
+                <h4>活跃商品数</h4>
+                <p class="card-value">{{ overview_stats.active_items|default(0)|format_number }}</p>
+                <p class="card-description">有用户行为的商品</p>
+            </div>
+        </div>
+
+        <div class="overview-card">
+            <div class="card-icon">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="card-content">
+                <h4>平均浏览量</h4>
+                <p class="card-value">{{ overview_stats.avg_views|default(0)|format_number }}</p>
+                <p class="card-change">每商品</p>
+            </div>
+        </div>
+
+        <div class="overview-card">
+            <div class="card-icon">
+                <i class="fas fa-percentage"></i>
+            </div>
+            <div class="card-content">
+                <h4>平均转化率</h4>
+                <p class="card-value">{{ overview_stats.avg_conversion|default(0) }}%</p>
+                <p class="card-change">浏览→购买</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 热门商品排行榜 -->
+    <div class="result-row">
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-crown"></i> 热门商品TOP 20</h3>
+                <div class="card-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="exportTopItems">
+                        <i class="fas fa-download"></i> 导出列表
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>排名</th>
+                                <th>商品ID</th>
+                                <th>类目</th>
+                                <th>浏览量</th>
+                                <th>加购量</th>
+                                <th>收藏量</th>
+                                <th>购买量</th>
+                                <th>转化率</th>
+                                <th>行为热度</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in top_items %}
+                            <tr>
+                                <td>
+                                    <span class="rank-badge rank-{{ loop.index }}">
+                                        {{ loop.index }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <strong>{{ item.item_id }}</strong>
+                                </td>
+                                <td>
+                                    <span class="category-badge" data-category="{{ item.category_id }}">
+                                        {{ item.category_id }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="metric-cell">
+                                        <span class="metric-value">{{ item.view_count|format_number }}</span>
+                                        {% if item.view_change > 0 %}
+                                        <span class="change-badge up">+{{ item.view_change }}%</span>
+                                        {% elif item.view_change < 0 %}
+                                        <span class="change-badge down">{{ item.view_change }}%</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>{{ item.cart_count|format_number }}</td>
+                                <td>{{ item.fav_count|format_number }}</td>
+                                <td>
+                                    <div class="metric-cell">
+                                        <span class="metric-value highlight">{{ item.purchase_count|format_number }}</span>
+                                        {% if item.purchase_change > 0 %}
+                                        <span class="change-badge up">+{{ item.purchase_change }}%</span>
+                                        {% elif item.purchase_change < 0 %}
+                                        <span class="change-badge down">{{ item.purchase_change }}%</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-value">{{ item.conversion_rate }}%</span>
+                                        <div class="conversion-bar">
+                                            <div class="conversion-fill" style="width: {{ [item.conversion_rate|float, 100]|min }}%"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="heat-cell">
+                                        <div class="heat-level heat-{{ item.heat_level|default(0) }}">
+                                            {{ item.heat_level|default(0) }}/10
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图表分析区域 -->
+    <div class="chart-section">
+        <div class="result-row">
+            <div class="result-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-chart-line"></i> 商品趋势分析</h3>
+                </div>
+                <div class="card-body">
+                    <div id="itemTrendChart" style="width: 100%; height: 400px;"></div>
+                </div>
+            </div>
+
+            <div class="result-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-chart-pie"></i> 类目分布</h3>
+                </div>
+                <div class="card-body">
+                    <div id="categoryDistributionChart" style="width: 100%; height: 400px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="result-row">
+            <div class="result-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-chart-bar"></i> 转化率分析</h3>
+                </div>
+                <div class="card-body">
+                    <div id="conversionAnalysisChart" style="width: 100%; height: 350px;"></div>
+                </div>
+            </div>
+
+            <div class="result-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-chart-area"></i> 行为漏斗</h3>
+                </div>
+                <div class="card-body">
+                    <div id="behaviorFunnelChart" style="width: 100%; height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 商品详情分析 -->
+    <div class="detail-section">
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-search"></i> 商品详情分析</h3>
+                <div class="search-box">
+                    <input type="text" id="itemSearch" placeholder="输入商品ID搜索..." class="form-control">
+                    <button class="btn btn-sm btn-primary" id="searchItem">
+                        <i class="fas fa-search"></i> 搜索
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if selected_item %}
+                <div class="item-detail">
+                    <div class="detail-header">
+                        <h4>商品 {{ selected_item.item_id }} 分析报告</h4>
+                        <span class="item-category">{{ selected_item.category_name }}</span>
+                    </div>
+
+                    <div class="detail-grid">
+                        <div class="detail-card">
+                            <h5>行为统计</h5>
+                            <div class="behavior-stats">
+                                <div class="behavior-item">
+                                    <i class="fas fa-eye"></i>
+                                    <div>
+                                        <span class="behavior-label">浏览量</span>
+                                        <span class="behavior-value">{{ selected_item.view_count|format_number }}</span>
+                                    </div>
+                                </div>
+                                <div class="behavior-item">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    <div>
+                                        <span class="behavior-label">加购量</span>
+                                        <span class="behavior-value">{{ selected_item.cart_count|format_number }}</span>
+                                    </div>
+                                </div>
+                                <div class="behavior-item">
+                                    <i class="fas fa-heart"></i>
+                                    <div>
+                                        <span class="behavior-label">收藏量</span>
+                                        <span class="behavior-value">{{ selected_item.fav_count|format_number }}</span>
+                                    </div>
+                                </div>
+                                <div class="behavior-item">
+                                    <i class="fas fa-shopping-bag"></i>
+                                    <div>
+                                        <span class="behavior-label">购买量</span>
+                                        <span class="behavior-value">{{ selected_item.purchase_count|format_number }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="detail-card">
+                            <h5>转化分析</h5>
+                            <div class="conversion-metrics">
+                                <div class="metric-item">
+                                    <span class="metric-label">总转化率</span>
+                                    <span class="metric-value">{{ selected_item.conversion_rate }}%</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">加购转化率</span>
+                                    <span class="metric-value">{{ selected_item.cart_conversion }}%</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">收藏转化率</span>
+                                    <span class="metric-value">{{ selected_item.fav_conversion }}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="no-selection">
+                    <i class="fas fa-info-circle"></i>
+                    <p>请搜索商品ID查看详细分析</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 优化建议 -->
+    <div class="recommendation-section">
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-lightbulb"></i> 优化建议</h3>
+            </div>
+            <div class="card-body">
+                <div class="recommendation-grid">
+                    <div class="recommendation-item">
+                        <div class="recommendation-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="recommendation-content">
+                            <h5>流量提升建议</h5>
+                            <p>高转化率商品可适当增加推广预算，提升曝光机会</p>
+                        </div>
+                    </div>
+
+                    <div class="recommendation-item">
+                        <div class="recommendation-icon">
+                            <i class="fas fa-shopping-cart"></i>
+                        </div>
+                        <div class="recommendation-content">
+                            <h5>加购优化</h5>
+                            <p>对加购后未购买的用户进行个性化提醒和优惠推送</p>
+                        </div>
+                    </div>
+
+                    <div class="recommendation-item">
+                        <div class="recommendation-icon">
+                            <i class="fas fa-tags"></i>
+                        </div>
+                        <div class="recommendation-content">
+                            <h5>类目优化</h5>
+                            <p>识别高转化类目，调整商品布局和推荐策略</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化图表
+    const trendChart = echarts.init(document.getElementById('itemTrendChart'));
+    const categoryChart = echarts.init(document.getElementById('categoryDistributionChart'));
+    const conversionChart = echarts.init(document.getElementById('conversionAnalysisChart'));
+    const funnelChart = echarts.init(document.getElementById('behaviorFunnelChart'));
+
+    // 商品趋势图
+    const trendOption = {
+        title: {
+            text: '热门商品趋势对比',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'axis',
+            formatter: function(params) {
+                let result = params[0].axisValue + '<br/>';
+                params.forEach(function(item) {
+                    result += item.marker + item.seriesName + ': ' + item.value + ' 次<br/>';
+                });
+                return result;
+            }
+        },
+        legend: {
+            data: ['商品A', '商品B', '商品C', '商品D', '商品E'],
+            bottom: 10
+        },
+        xAxis: {
+            type: 'category',
+            data: ['12-01', '12-02', '12-03', '12-04', '12-05', '12-06', '12-07']
+        },
+        yAxis: {
+            type: 'value',
+            name: '浏览量'
+        },
+        series: [
+            {
+                name: '商品A',
+                type: 'line',
+                data: [320, 332, 301, 334, 390, 330, 320],
+                smooth: true
+            },
+            {
+                name: '商品B',
+                type: 'line',
+                data: [220, 182, 191, 234, 290, 330, 310],
+                smooth: true
+            },
+            {
+                name: '商品C',
+                type: 'line',
+                data: [150, 232, 201, 154, 190, 330, 410],
+                smooth: true
+            },
+            {
+                name: '商品D',
+                type: 'line',
+                data: [98, 77, 101, 99, 40, 62, 69],
+                smooth: true
+            },
+            {
+                name: '商品E',
+                type: 'line',
+                data: [56, 76, 35, 48, 29, 33, 45],
+                smooth: true
+            }
+        ],
+        dataZoom: [{
+            type: 'inside',
+            start: 0,
+            end: 100
+        }]
+    };
+
+    // 类目分布图
+    const categoryOption = {
+        title: {
+            text: '类目商品分布',
+            subtext: '各商品类目数量占比',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'item',
+            formatter: '{a} <br/>{b}: {c} ({d}%)'
+        },
+        legend: {
+            orient: 'vertical',
+            left: 'left',
+            data: ['电子产品', '服装', '家居用品', '美妆护肤', '食品饮料', '其他']
+        },
+        series: [
+            {
+                name: '商品类目',
+                type: 'pie',
+                radius: '50%',
+                data: [
+                    {value: 335, name: '电子产品', itemStyle: {color: '#5470C6'}},
+                    {value: 310, name: '服装', itemStyle: {color: '#91CC75'}},
+                    {value: 234, name: '家居用品', itemStyle: {color: '#FAC858'}},
+                    {value: 135, name: '美妆护肤', itemStyle: {color: '#EE6666'}},
+                    {value: 154, name: '食品饮料', itemStyle: {color: '#73C0DE'}},
+                    {value: 68, name: '其他', itemStyle: {color: '#3BA272'}}
+                ],
+                emphasis: {
+                    itemStyle: {
+                        shadowBlur: 10,
+                        shadowOffsetX: 0,
+                        shadowColor: 'rgba(0, 0, 0, 0.5)'
+                    }
+                }
+            }
+        ]
+    };
+
+    // 转化率分析图
+    const conversionOption = {
+        title: {
+            text: '各商品类目转化率对比',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'shadow'
+            },
+            formatter: function(params) {
+                return params[0].name + ': ' + params[0].value + '%';
+            }
+        },
+        xAxis: {
+            type: 'category',
+            data: ['电子产品', '服装', '家居用品', '美妆护肤', '食品饮料'],
+            axisLabel: {
+                rotate: 45
+            }
+        },
+        yAxis: {
+            type: 'value',
+            axisLabel: {
+                formatter: '{value}%'
+            }
+        },
+        series: [
+            {
+                name: '转化率',
+                type: 'bar',
+                data: [8.5, 6.2, 7.8, 9.1, 5.4],
+                itemStyle: {
+                    color: function(params) {
+                        const value = params.value;
+                        if (value >= 8) return '#91CC75';
+                        if (value >= 6) return '#FAC858';
+                        return '#EE6666';
+                    }
+                },
+                label: {
+                    show: true,
+                    position: 'top',
+                    formatter: '{c}%'
+                }
+            }
+        ]
+    };
+
+    // 行为漏斗图
+    const funnelOption = {
+        title: {
+            text: '商品行为转化漏斗',
+            subtext: '从浏览到购买的转化过程',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'item',
+            formatter: '{a} <br/>{b} : {c}'
+        },
+        series: [
+            {
+                name: '转化漏斗',
+                type: 'funnel',
+                left: '10%',
+                top: 60,
+                bottom: 60,
+                width: '80%',
+                min: 0,
+                max: 100,
+                minSize: '0%',
+                maxSize: '100%',
+                sort: 'descending',
+                gap: 2,
+                label: {
+                    show: true,
+                    position: 'inside'
+                },
+                labelLine: {
+                    length: 10,
+                    lineStyle: {
+                        width: 1,
+                        type: 'solid'
+                    }
+                },
+                itemStyle: {
+                    borderColor: '#fff',
+                    borderWidth: 1
+                },
+                data: [
+                    {value: 100, name: '浏览'},
+                    {value: 25, name: '加购'},
+                    {value: 15, name: '收藏'},
+                    {value: 8, name: '购买'}
+                ]
+            }
+        ]
+    };
+
+    // 渲染图表
+    trendChart.setOption(trendOption);
+    categoryChart.setOption(categoryOption);
+    conversionChart.setOption(conversionOption);
+    funnelChart.setOption(funnelOption);
+
+    // 窗口大小变化时重绘
+    window.addEventListener('resize', function() {
+        trendChart.resize();
+        categoryChart.resize();
+        conversionChart.resize();
+        funnelChart.resize();
+    });
+
+    // 应用筛选
+    document.getElementById('applyFilters').addEventListener('click', async function() {
+        const timeRange = document.getElementById('timeRange').value;
+        const category  = document.getElementById('categoryFilter').value;
+        const sortBy    = document.getElementById('sortBy').value;
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 加载中...';
+        try {
+            const resp = await fetch('/api/item/filter', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({days: parseInt(timeRange), category: category, sort_by: sortBy})
+            });
+            const result = await resp.json();
+            if (result.success) {
+                updateTopItemsTable(result.data);
+            } else {
+                alert('筛选失败: ' + (result.error || '未知错误'));
+            }
+        } catch(e) {
+            alert('请求失败: ' + e.message);
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-chart-line"></i> 应用筛选';
+    });
+
+    // 商品搜索
+    document.getElementById('searchItem').addEventListener('click', async function() {
+        const itemId = document.getElementById('itemSearch').value.trim();
+        if (!itemId) { alert('请输入商品ID'); return; }
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        try {
+            const resp = await fetch(`/api/item/${itemId}/analysis`);
+            const result = await resp.json();
+            if (result.success) {
+                renderItemDetail(result.data);
+            } else {
+                alert('未找到商品 ' + itemId + ' 的数据');
+            }
+        } catch(e) {
+            alert('请求失败: ' + e.message);
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-search"></i> 搜索';
+    });
+
+    // 导出功能
+    document.getElementById('exportAnalysis').addEventListener('click', function() {
+        exportChart(trendChart, '商品趋势分析.png');
+    });
+
+    document.getElementById('exportTopItems').addEventListener('click', function() {
+        const rows = document.querySelectorAll('.table tbody tr');
+        if (!rows.length) { alert('暂无数据可导出'); return; }
+        let csv = '排名,商品ID,类目ID,浏览量,购买量,转化率\n';
+        rows.forEach((row, i) => {
+            const cells = row.querySelectorAll('td');
+            csv += `${i+1},${cells[1].innerText.trim()},${cells[2].innerText.trim()},${cells[3].innerText.trim()},${cells[6].innerText.trim()},${cells[7].innerText.trim()}\n`;
+        });
+        const blob = new Blob([csv], {type: 'text/csv'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `top_items_${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+    });
+
+    function exportChart(chart, filename) {
+        const url = chart.getDataURL({
+            type: 'png',
+            pixelRatio: 2,
+            backgroundColor: '#fff'
+        });
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // 表格行点击效果
+    const tableRows = document.querySelectorAll('.table tbody tr');
+    tableRows.forEach(row => {
+        row.addEventListener('click', function() {
+            const itemId = this.cells[1].querySelector('strong').textContent;
+            document.getElementById('itemSearch').value = itemId;
+            document.getElementById('searchItem').click();
+        });
+
+        row.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = 'rgba(111, 6, 141, 0.05)';
+        });
+
+        row.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = '';
+        });
+    });
+});
+
+function updateTopItemsTable(items) {
+    const tbody = document.querySelector('.table tbody');
+    if (!tbody) return;
+    tbody.innerHTML = items.map((item, idx) => `
+        <tr>
+            <td><span class="rank-badge rank-${idx+1}">${idx+1}</span></td>
+            <td><strong>${item.item_id}</strong></td>
+            <td><span class="category-badge">${item.category_id}</span></td>
+            <td>${(item.view_count||0).toLocaleString()}</td>
+            <td>${(item.cart_count||0).toLocaleString()}</td>
+            <td>${(item.fav_count||0).toLocaleString()}</td>
+            <td><strong>${(item.purchase_count||0).toLocaleString()}</strong></td>
+            <td>${item.conversion_rate}%</td>
+            <td>${item.heat_level||0}/10</td>
+        </tr>`).join('');
+}
+
+function renderItemDetail(data) {
+    const container = document.querySelector('.detail-section .card-body');
+    if (!container) return;
+    container.innerHTML = `
+        <div class="item-detail">
+            <div class="detail-header">
+                <h4>商品 ${data.item_id} 分析报告</h4>
+                <span class="item-category">${data.category_name}</span>
+            </div>
+            <div class="detail-grid">
+                <div class="detail-card">
+                    <h5>行为统计</h5>
+                    <div class="behavior-stats">
+                        <div class="behavior-item"><i class="fas fa-eye"></i><div><span class="behavior-label">浏览量</span><span class="behavior-value">${(data.view_count||0).toLocaleString()}</span></div></div>
+                        <div class="behavior-item"><i class="fas fa-shopping-cart"></i><div><span class="behavior-label">加购量</span><span class="behavior-value">${(data.cart_count||0).toLocaleString()}</span></div></div>
+                        <div class="behavior-item"><i class="fas fa-heart"></i><div><span class="behavior-label">收藏量</span><span class="behavior-value">${(data.fav_count||0).toLocaleString()}</span></div></div>
+                        <div class="behavior-item"><i class="fas fa-shopping-bag"></i><div><span class="behavior-label">购买量</span><span class="behavior-value">${(data.purchase_count||0).toLocaleString()}</span></div></div>
+                    </div>
+                </div>
+                <div class="detail-card">
+                    <h5>转化分析</h5>
+                    <div class="conversion-metrics">
+                        <div class="metric-item"><span class="metric-label">总转化率</span><span class="metric-value">${data.conversion_rate}%</span></div>
+                        <div class="metric-item"><span class="metric-label">加购转化率</span><span class="metric-value">${data.cart_conversion}%</span></div>
+                        <div class="metric-item"><span class="metric-label">收藏转化率</span><span class="metric-value">${data.fav_conversion}%</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+}
+</script>
+{% endblock %}

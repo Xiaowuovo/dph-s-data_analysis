@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电商消费者购物行为可视化系统 - 登录</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- 背景装饰 -->
+    <div class="bg-decoration">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+
+    <!-- 系统标题 -->
+    <div class="system-title">
+        <h1><i class="fas fa-chart-line"></i> 电商消费者购物行为可视化系统</h1>
+        <p class="subtitle">深度洞察用户行为，智能驱动业务增长</p>
+    </div>
+
+    <!-- 登录容器 -->
+    <div class="login-container">
+        <!-- 登录头部 -->
+        <div class="login-header">
+            <h2><i class="fas fa-sign-in-alt"></i> 系统登录</h2>
+            <p>请使用您的账号登录系统</p>
+        </div>
+
+        <!-- 登录表单 -->
+        <form action="{{ url_for('login') }}" method="POST" class="login-form">
+            <!-- 消息提示 -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="message-container">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                <i class="fas fa-info-circle"></i> {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- 用户名输入 -->
+            <div class="form-group">
+                <label for="username" class="form-label">
+                    <i class="fas fa-user"></i> 用户名
+                </label>
+                <div class="input-with-icon">
+                    <i class="fas fa-user input-icon"></i>
+                    <input type="text"
+                           id="username"
+                           name="username"
+                           class="form-input"
+                           placeholder="请输入用户名"
+                           required
+                           autocomplete="username"
+                           autofocus>
+                </div>
+            </div>
+
+            <!-- 密码输入 -->
+            <div class="form-group">
+                <label for="password" class="form-label">
+                    <i class="fas fa-lock"></i> 密码
+                </label>
+                <div class="input-with-icon">
+                    <i class="fas fa-lock input-icon"></i>
+                    <input type="password"
+                           id="password"
+                           name="password"
+                           class="form-input"
+                           placeholder="请输入密码"
+                           required
+                           autocomplete="current-password">
+                </div>
+            </div>
+
+            <!-- 表单选项 -->
+            <div class="form-options">
+                <label class="remember-me">
+                    <input type="checkbox" name="remember" id="remember">
+                    <span>记住我</span>
+                </label>
+                <a href="#" class="forgot-password">忘记密码？</a>
+            </div>
+
+            <!-- 登录按钮 -->
+            <button type="submit" class="login-button">
+                <i class="fas fa-sign-in-alt"></i> 登录系统
+            </button>
+
+            <!-- 注册链接 -->
+            <div class="register-link">
+                还没有账号？
+                <a href="{{ url_for('register') }}">立即注册</a>
+            </div>
+        </form>
+
+        <!-- 系统特性 -->
+        <div class="system-features">
+            <div class="feature">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-pie"></i>
+                </div>
+                <h4>智能分析</h4>
+                <p>深度洞察用户行为模式</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h4>实时可视化</h4>
+                <p>多维度图表展示分析结果</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <h4>智能推荐</h4>
+                <p>个性化商品推荐系统</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 表单验证
+            const form = document.querySelector('.login-form');
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+
+            form.addEventListener('submit', function(e) {
+                let isValid = true;
+
+                // 清除之前的错误提示
+                clearErrors();
+
+                // 验证用户名
+                if (!usernameInput.value.trim()) {
+                    showError(usernameInput, '请输入用户名');
+                    isValid = false;
+                } else if (usernameInput.value.trim().length < 3) {
+                    showError(usernameInput, '用户名至少3个字符');
+                    isValid = false;
+                }
+
+                // 验证密码
+                if (!passwordInput.value) {
+                    showError(passwordInput, '请输入密码');
+                    isValid = false;
+                } else if (passwordInput.value.length < 6) {
+                    showError(passwordInput, '密码至少6个字符');
+                    isValid = false;
+                }
+
+                if (!isValid) {
+                    e.preventDefault();
+                } else {
+                    // 显示加载状态
+                    const submitBtn = form.querySelector('.login-button');
+                    const originalText = submitBtn.innerHTML;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 登录中...';
+                    submitBtn.disabled = true;
+
+                    // 3秒后恢复
+                    setTimeout(() => {
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                    }, 3000);
+                }
+            });
+
+            function showError(input, message) {
+                const formGroup = input.closest('.form-group');
+                const errorElement = document.createElement('div');
+                errorElement.className = 'error-message';
+                errorElement.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+
+                formGroup.appendChild(errorElement);
+                input.style.borderColor = '#dc3545';
+                input.style.boxShadow = '0 0 0 3px rgba(220, 53, 69, 0.1)';
+
+                input.addEventListener('input', function() {
+                    clearError(input);
+                }, { once: true });
+            }
+
+            function clearError(input) {
+                const formGroup = input.closest('.form-group');
+                const errorElement = formGroup.querySelector('.error-message');
+                if (errorElement) {
+                    errorElement.remove();
+                }
+                input.style.borderColor = '';
+                input.style.boxShadow = '';
+            }
+
+            function clearErrors() {
+                const errorMessages = document.querySelectorAll('.error-message');
+                errorMessages.forEach(msg => msg.remove());
+
+                const inputs = document.querySelectorAll('.form-input');
+                inputs.forEach(input => {
+                    input.style.borderColor = '';
+                    input.style.boxShadow = '';
+                });
+            }
+
+            // 密码显示/隐藏切换
+            const passwordToggle = document.createElement('span');
+            passwordToggle.innerHTML = '<i class="fas fa-eye"></i>';
+            passwordToggle.style.position = 'absolute';
+            passwordToggle.style.right = '15px';
+            passwordToggle.style.top = '50%';
+            passwordToggle.style.transform = 'translateY(-50%)';
+            passwordToggle.style.cursor = 'pointer';
+            passwordToggle.style.color = '#666';
+
+            const passwordContainer = passwordInput.closest('.input-with-icon');
+            passwordContainer.appendChild(passwordToggle);
+
+            passwordToggle.addEventListener('click', function() {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+            });
+
+            // 记住我功能
+            const rememberCheckbox = document.getElementById('remember');
+            const savedUsername = localStorage.getItem('rememberedUsername');
+
+            if (savedUsername) {
+                usernameInput.value = savedUsername;
+                rememberCheckbox.checked = true;
+            }
+
+            rememberCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    localStorage.setItem('rememberedUsername', usernameInput.value);
+                } else {
+                    localStorage.removeItem('rememberedUsername');
+                }
+            });
+
+            usernameInput.addEventListener('input', function() {
+                if (rememberCheckbox.checked) {
+                    localStorage.setItem('rememberedUsername', this.value);
+                }
+            });
+
+            // 输入框焦点效果
+            const inputs = document.querySelectorAll('.form-input');
+            inputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    this.parentElement.style.transform = 'translateY(-2px)';
+                });
+
+                input.addEventListener('blur', function() {
+                    this.parentElement.style.transform = 'translateY(0)';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

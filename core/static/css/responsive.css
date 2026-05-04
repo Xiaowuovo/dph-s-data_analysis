@@ -1,0 +1,96 @@
+/* responsive.css - 响应式设计 */
+
+@media (max-width: 768px) {
+    .header-container {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+
+    .main-container {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: static;
+        border-right: none;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .content-area {
+        margin-left: 0;
+        margin-top: 20px;
+    }
+
+    .footer-container {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+}
+
+/* 侧边栏折叠功能 */
+.sidebar-toggle {
+    display: none;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #6f068bad;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 1000;
+    font-size: 1.2rem;
+}
+
+.sidebar.collapsed {
+    width: 70px;
+}
+
+.sidebar.collapsed .section-title span,
+.sidebar.collapsed .nav-link span:not(.notification-badge):not(.data-count) {
+    display: none;
+}
+
+.sidebar.collapsed .nav-link {
+    justify-content: center;
+    padding: 10px;
+}
+
+.content-area.expanded {
+    margin-left: 0;
+}
+
+@media (max-width: 992px) {
+    .sidebar-toggle {
+        display: block;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 80px;
+        left: 0;
+        z-index: 100;
+        transform: translateX(-100%);
+        transition: transform 0.3s;
+    }
+
+    .sidebar.collapsed {
+        transform: translateX(0);
+        width: 250px;
+    }
+
+    .sidebar.collapsed .section-title span,
+    .sidebar.collapsed .nav-link span:not(.notification-badge):not(.data-count) {
+        display: inline;
+    }
+
+    .sidebar.collapsed .nav-link {
+        justify-content: flex-start;
+        padding: 10px 15px;
+    }
+}

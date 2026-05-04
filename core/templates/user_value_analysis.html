@@ -1,0 +1,1154 @@
+{% extends 'base.html' %}
+
+{% block page_css %}
+<style>
+    .value-analysis-container {
+        padding: 20px;
+    }
+
+    .page-header {
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .page-header h1 {
+        font-size: 28px;
+        color: #333;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .page-header .subtitle {
+        color: #666;
+        font-size: 14px;
+    }
+
+    /* Tab导航 */
+    .tab-navigation {
+        display: flex;
+        border-bottom: 2px solid #f0f0f0;
+        margin-bottom: 30px;
+        background: #fff;
+        padding: 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .tab-button {
+        padding: 15px 30px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        color: #666;
+        transition: all 0.3s ease;
+        position: relative;
+        border-bottom: 3px solid transparent;
+    }
+
+    .tab-button:hover {
+        background: #f8f9fa;
+        color: #6f068bad;
+    }
+
+    .tab-button.active {
+        color: #6f068bad;
+        font-weight: 600;
+        border-bottom-color: #6f068bad;
+    }
+
+    .tab-button i {
+        margin-right: 8px;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+        animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* 分析区块 */
+    .analysis-section {
+        background: #fff;
+        border-radius: 12px;
+        padding: 30px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .section-header {
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .section-header h2 {
+        font-size: 22px;
+        color: #333;
+        margin: 0 0 8px 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .section-desc {
+        color: #666;
+        font-size: 14px;
+        margin: 0;
+    }
+
+    /* RFM指标卡片 */
+    .rfm-metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .metric-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 10px;
+        padding: 20px;
+        border-left: 4px solid #6f068bad;
+    }
+
+    .metric-label {
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .metric-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 5px;
+    }
+
+    .metric-desc {
+        font-size: 13px;
+        color: #666;
+    }
+
+    /* 分群表格 */
+    .segment-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+
+    .segment-table th {
+        background: #f8f9fa;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        color: #555;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .segment-table td {
+        padding: 12px;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .segment-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .segment-badge.champions {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .segment-badge.loyal {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+
+    .segment-badge.potential {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .segment-badge.at-risk {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .segment-badge.lost {
+        background: #e2e3e5;
+        color: #383d41;
+    }
+
+    /* 运营策略卡片 */
+    .strategy-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
+
+    .strategy-card {
+        background: #fff;
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        padding: 25px;
+        transition: all 0.3s ease;
+    }
+
+    .strategy-card:hover {
+        border-color: #6f068bad;
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(111, 6, 139, 0.15);
+    }
+
+    .strategy-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 15px;
+    }
+
+    .strategy-icon {
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(135deg, #6f068bad 0%, #4a0578 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 24px;
+    }
+
+    .strategy-title {
+        flex: 1;
+    }
+
+    .strategy-title h3 {
+        margin: 0;
+        font-size: 18px;
+        color: #333;
+    }
+
+    .strategy-title .user-count {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .strategy-content {
+        margin-top: 15px;
+    }
+
+    .strategy-label {
+        font-size: 14px;
+        font-weight: 600;
+        color: #555;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .strategy-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .strategy-list li {
+        padding: 8px 0 8px 24px;
+        color: #666;
+        font-size: 14px;
+        position: relative;
+        line-height: 1.6;
+    }
+
+    .strategy-list li:before {
+        content: "✓";
+        position: absolute;
+        left: 0;
+        color: #6f068bad;
+        font-weight: bold;
+    }
+
+    /* 图表容器 */
+    .chart-container {
+        margin-top: 20px;
+    }
+
+    .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 25px;
+    }
+
+    .chart-box {
+        background: #fff;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 20px;
+    }
+
+    .chart-box h3 {
+        font-size: 16px;
+        color: #333;
+        margin: 0 0 15px 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    @media (max-width: 768px) {
+        .charts-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .strategy-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="value-analysis-container">
+    <div class="page-header">
+        <h1><i class="fas fa-gem"></i> 用户价值分析</h1>
+        <p class="subtitle">基于RFM模型的用户价值分群与精准运营策略</p>
+    </div>
+
+    <div class="tab-navigation">
+        <button class="tab-button active" data-tab="overview">
+            <i class="fas fa-chart-pie"></i> RFM概览
+        </button>
+        <button class="tab-button" data-tab="segments">
+            <i class="fas fa-users-cog"></i> 用户分群
+        </button>
+        <button class="tab-button" data-tab="strategy">
+            <i class="fas fa-lightbulb"></i> 运营策略
+        </button>
+        <button class="tab-button" data-tab="comparison">
+            <i class="fas fa-chart-radar"></i> 群组对比
+        </button>
+    </div>
+
+    <!-- Tab 1: RFM概览 -->
+    <div id="overviewTab" class="tab-content active">
+        <div class="analysis-section">
+            <div class="section-header">
+                <h2><i class="fas fa-database"></i> RFM核心指标</h2>
+                <p class="section-desc">最近一次消费(Recency)、消费频率(Frequency)、消费金额(Monetary)</p>
+            </div>
+
+            <div class="rfm-metrics">
+                <div class="metric-card">
+                    <div class="metric-label">平均最近消费(R)</div>
+                    <div class="metric-value">15.3 <span style="font-size: 16px;">天</span></div>
+                    <div class="metric-desc">距离上次购买平均天数</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">平均消费频率(F)</div>
+                    <div class="metric-value">4.2 <span style="font-size: 16px;">次</span></div>
+                    <div class="metric-desc">统计周期内平均购买次数</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">平均消费金额(M)</div>
+                    <div class="metric-value">¥1,250</div>
+                    <div class="metric-desc">统计周期内平均消费金额</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">用户总数</div>
+                    <div class="metric-value">10,000</div>
+                    <div class="metric-desc">分析的用户总数</div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-box">
+                    <h3>RFM分布矩阵气泡图</h3>
+                    <div id="rfmBubbleChart" style="width: 100%; height: 500px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 2: 用户分群 -->
+    <div id="segmentsTab" class="tab-content">
+        <div class="analysis-section">
+            <div class="section-header">
+                <h2><i class="fas fa-sitemap"></i> 用户分群结果</h2>
+                <p class="section-desc">基于K-means聚类算法的用户价值分层</p>
+            </div>
+
+            <table class="segment-table">
+                <thead>
+                    <tr>
+                        <th>分群名称</th>
+                        <th>用户数量</th>
+                        <th>占比</th>
+                        <th>R值</th>
+                        <th>F值</th>
+                        <th>M值</th>
+                        <th>特征</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="segment-badge champions">重要价值客户</span></td>
+                        <td>1,200</td>
+                        <td>12%</td>
+                        <td>5天</td>
+                        <td>8.5次</td>
+                        <td>¥3,500</td>
+                        <td>高频高消费，最近活跃</td>
+                    </tr>
+                    <tr>
+                        <td><span class="segment-badge loyal">重要保持客户</span></td>
+                        <td>1,800</td>
+                        <td>18%</td>
+                        <td>12天</td>
+                        <td>6.2次</td>
+                        <td>¥2,800</td>
+                        <td>高消费，较活跃</td>
+                    </tr>
+                    <tr>
+                        <td><span class="segment-badge potential">重要发展客户</span></td>
+                        <td>2,500</td>
+                        <td>25%</td>
+                        <td>8天</td>
+                        <td>3.5次</td>
+                        <td>¥1,500</td>
+                        <td>近期活跃，待提升</td>
+                    </tr>
+                    <tr>
+                        <td><span class="segment-badge at-risk">重要挽留客户</span></td>
+                        <td>2,200</td>
+                        <td>22%</td>
+                        <td>35天</td>
+                        <td>5.8次</td>
+                        <td>¥2,200</td>
+                        <td>曾高价值，流失风险</td>
+                    </tr>
+                    <tr>
+                        <td><span class="segment-badge lost">一般维持客户</span></td>
+                        <td>2,300</td>
+                        <td>23%</td>
+                        <td>60天</td>
+                        <td>1.5次</td>
+                        <td>¥800</td>
+                        <td>低频低消费，沉睡</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="charts-grid" style="margin-top: 30px;">
+                <div class="chart-box">
+                    <h3>用户分群饼图</h3>
+                    <div id="segmentPieChart" style="width: 100%; height: 350px;"></div>
+                </div>
+                <div class="chart-box">
+                    <h3>各分群价值贡献</h3>
+                    <div id="valueContributionChart" style="width: 100%; height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 3: 运营策略 -->
+    <div id="strategyTab" class="tab-content">
+        <div class="analysis-section">
+            <div class="section-header">
+                <h2><i class="fas fa-bullseye"></i> 分群运营策略</h2>
+                <p class="section-desc">针对不同价值分群的精准营销和运营建议</p>
+            </div>
+
+            <div class="strategy-grid">
+                <!-- 重要价值客户 -->
+                <div class="strategy-card">
+                    <div class="strategy-header">
+                        <div class="strategy-icon">
+                            <i class="fas fa-crown"></i>
+                        </div>
+                        <div class="strategy-title">
+                            <h3>重要价值客户</h3>
+                            <span class="user-count">1,200人 (12%)</span>
+                        </div>
+                    </div>
+                    <div class="strategy-content">
+                        <div class="strategy-label">
+                            <i class="fas fa-bullhorn"></i> 运营目标
+                        </div>
+                        <p style="color: #666; font-size: 14px; margin: 8px 0 15px 0;">
+                            维护忠诚度，提升客单价，促进口碑传播
+                        </p>
+                        
+                        <div class="strategy-label">
+                            <i class="fas fa-tasks"></i> 具体策略
+                        </div>
+                        <ul class="strategy-list">
+                            <li>提供VIP专属优惠和提前购特权</li>
+                            <li>安排客户经理一对一服务</li>
+                            <li>邀请参与新品内测和体验活动</li>
+                            <li>建立会员积分兑换体系</li>
+                            <li>推送高端新品和限量款商品</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 重要保持客户 -->
+                <div class="strategy-card">
+                    <div class="strategy-header">
+                        <div class="strategy-icon">
+                            <i class="fas fa-heart"></i>
+                        </div>
+                        <div class="strategy-title">
+                            <h3>重要保持客户</h3>
+                            <span class="user-count">1,800人 (18%)</span>
+                        </div>
+                    </div>
+                    <div class="strategy-content">
+                        <div class="strategy-label">
+                            <i class="fas fa-bullhorn"></i> 运营目标
+                        </div>
+                        <p style="color: #666; font-size: 14px; margin: 8px 0 15px 0;">
+                            保持活跃度，提升消费频次，防止流失
+                        </p>
+                        
+                        <div class="strategy-label">
+                            <i class="fas fa-tasks"></i> 具体策略
+                        </div>
+                        <ul class="strategy-list">
+                            <li>定期发送个性化推荐和优惠</li>
+                            <li>设置消费满减和阶梯优惠</li>
+                            <li>建立购物提醒和复购激励机制</li>
+                            <li>开展会员日专属活动</li>
+                            <li>收集反馈，优化购物体验</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 重要发展客户 -->
+                <div class="strategy-card">
+                    <div class="strategy-header">
+                        <div class="strategy-icon">
+                            <i class="fas fa-seedling"></i>
+                        </div>
+                        <div class="strategy-title">
+                            <h3>重要发展客户</h3>
+                            <span class="user-count">2,500人 (25%)</span>
+                        </div>
+                    </div>
+                    <div class="strategy-content">
+                        <div class="strategy-label">
+                            <i class="fas fa-bullhorn"></i> 运营目标
+                        </div>
+                        <p style="color: #666; font-size: 14px; margin: 8px 0 15px 0;">
+                            提升消费金额，增加购买频次，培养忠诚度
+                        </p>
+                        
+                        <div class="strategy-label">
+                            <i class="fas fa-tasks"></i> 具体策略
+                        </div>
+                        <ul class="strategy-list">
+                            <li>推送高性价比爆款商品</li>
+                            <li>提供首单/次单优惠券</li>
+                            <li>引导关注品牌和加入会员</li>
+                            <li>推荐相关品类进行交叉销售</li>
+                            <li>建立购物习惯养成计划</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 重要挽留客户 -->
+                <div class="strategy-card">
+                    <div class="strategy-header">
+                        <div class="strategy-icon">
+                            <i class="fas fa-user-shield"></i>
+                        </div>
+                        <div class="strategy-title">
+                            <h3>重要挽留客户</h3>
+                            <span class="user-count">2,200人 (22%)</span>
+                        </div>
+                    </div>
+                    <div class="strategy-content">
+                        <div class="strategy-label">
+                            <i class="fas fa-bullhorn"></i> 运营目标
+                        </div>
+                        <p style="color: #666; font-size: 14px; margin: 8px 0 15px 0;">
+                            激活流失用户，挽回购买行为，恢复活跃度
+                        </p>
+                        
+                        <div class="strategy-label">
+                            <i class="fas fa-tasks"></i> 具体策略
+                        </div>
+                        <ul class="strategy-list">
+                            <li>发送召回短信和邮件营销</li>
+                            <li>提供限时专属折扣和补贴</li>
+                            <li>推送用户历史偏好商品</li>
+                            <li>开展满意度调研了解流失原因</li>
+                            <li>设置阶梯性回归奖励</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 一般维持客户 -->
+                <div class="strategy-card">
+                    <div class="strategy-header">
+                        <div class="strategy-icon">
+                            <i class="fas fa-user-clock"></i>
+                        </div>
+                        <div class="strategy-title">
+                            <h3>一般维持客户</h3>
+                            <span class="user-count">2,300人 (23%)</span>
+                        </div>
+                    </div>
+                    <div class="strategy-content">
+                        <div class="strategy-label">
+                            <i class="fas fa-bullhorn"></i> 运营目标
+                        </div>
+                        <p style="color: #666; font-size: 14px; margin: 8px 0 15px 0;">
+                            低成本维护，筛选潜在价值用户进行培养
+                        </p>
+                        
+                        <div class="strategy-label">
+                            <i class="fas fa-tasks"></i> 具体策略
+                        </div>
+                        <ul class="strategy-list">
+                            <li>通过EDM定期触达保持认知</li>
+                            <li>推送大促活动和超值爆款</li>
+                            <li>设置低门槛优惠券引导首购</li>
+                            <li>筛选出有潜力用户重点关注</li>
+                            <li>控制营销成本，避免过度投入</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 4: 群组对比 -->
+    <div id="comparisonTab" class="tab-content">
+        <div class="analysis-section">
+            <div class="section-header">
+                <h2><i class="fas fa-balance-scale"></i> 群组特征对比</h2>
+                <p class="section-desc">多维度对比不同用户分群的行为特征</p>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-box" style="grid-column: 1 / -1;">
+                    <h3>群组行为特征雷达图</h3>
+                    <div id="radarChart" style="width: 100%; height: 500px;"></div>
+                </div>
+            </div>
+
+            <div class="charts-grid" style="margin-top: 25px;">
+                <div class="chart-box">
+                    <h3>RFM三维散点图</h3>
+                    <div id="scatter3DChart" style="width: 100%; height: 400px;"></div>
+                </div>
+                <div class="chart-box">
+                    <h3>各分群留存率</h3>
+                    <div id="retentionChart" style="width: 100%; height: 400px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab切换逻辑
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const tabName = this.getAttribute('data-tab');
+
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+
+            this.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            
+            // 初始化对应标签页的图表
+            initTabCharts(tabName);
+        });
+    });
+
+    // 存储所有图表实例
+    const charts = {};
+
+    // ============ RFM矩阵气泡图 ============
+    function initBubbleChart() {
+        const bubbleChart = echarts.init(document.getElementById('rfmBubbleChart'));
+        charts.bubble = bubbleChart;
+
+        // 模拟RFM数据 (R, F, M, 用户数, 分群名称)
+        const data = [
+            [5, 8.5, 3500, 1200, '重要价值客户'],
+            [12, 6.2, 2800, 1800, '重要保持客户'],
+            [8, 3.5, 1500, 2500, '重要发展客户'],
+            [35, 5.8, 2200, 2200, '重要挽留客户'],
+            [60, 1.5, 800, 2300, '一般维持客户']
+        ];
+
+        const option = {
+            title: {
+                text: 'RFM用户价值分群矩阵',
+                left: 'center'
+            },
+            tooltip: {
+                trigger: 'item',
+                formatter: function(params) {
+                    const data = params.data;
+                    return `${data[4]}<br/>
+                            最近消费: ${data[0]}天<br/>
+                            消费频率: ${data[1]}次<br/>
+                            消费金额: ¥${data[2]}<br/>
+                            用户数: ${data[3]}人`;
+                }
+            },
+            grid: {
+                left: '3%',
+                right: '7%',
+                bottom: '7%',
+                containLabel: true
+            },
+            xAxis: {
+                name: '最近消费(R) 天数',
+                nameLocation: 'middle',
+                nameGap: 30,
+                min: 0,
+                max: 70,
+                splitLine: {
+                    show: true,
+                    lineStyle: {
+                        type: 'dashed'
+                    }
+                }
+            },
+            yAxis: {
+                name: '消费频率(F) 次数',
+                nameLocation: 'middle',
+                nameGap: 40,
+                min: 0,
+                max: 10,
+                splitLine: {
+                    show: true,
+                    lineStyle: {
+                        type: 'dashed'
+                    }
+                }
+            },
+            visualMap: {
+                min: 500,
+                max: 4000,
+                dimension: 2,
+                orient: 'vertical',
+                right: 10,
+                top: 'center',
+                text: ['高消费', '低消费'],
+                calculable: true,
+                inRange: {
+                    color: ['#e0f7fa', '#006064']
+                }
+            },
+            series: [
+                {
+                    name: 'RFM分群',
+                    type: 'scatter',
+                    symbolSize: function(data) {
+                        return Math.sqrt(data[3]) / 2; // 气泡大小代表用户数
+                    },
+                    data: data,
+                    label: {
+                        show: true,
+                        formatter: function(params) {
+                            return params.data[4];
+                        },
+                        fontSize: 11,
+                        fontWeight: 'bold'
+                    },
+                    emphasis: {
+                        focus: 'self',
+                        label: {
+                            fontSize: 14
+                        }
+                    }
+                }
+            ]
+        };
+
+        bubbleChart.setOption(option);
+        return bubbleChart;
+    }
+
+    // ============ 用户分群饼图 ============
+    function initSegmentPieChart() {
+        const pieChart = echarts.init(document.getElementById('segmentPieChart'));
+        charts.segmentPie = pieChart;
+
+        const option = {
+            tooltip: {
+                trigger: 'item',
+                formatter: '{b}: {c}人 ({d}%)'
+            },
+            legend: {
+                orient: 'vertical',
+                left: 'left',
+                top: 'middle'
+            },
+            series: [
+                {
+                    name: '用户分群',
+                    type: 'pie',
+                    radius: ['40%', '70%'],
+                    center: ['60%', '50%'],
+                    avoidLabelOverlap: false,
+                    itemStyle: {
+                        borderRadius: 10,
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    },
+                    label: {
+                        show: true,
+                        formatter: '{b}\n{d}%'
+                    },
+                    emphasis: {
+                        label: {
+                            show: true,
+                            fontSize: 16,
+                            fontWeight: 'bold'
+                        }
+                    },
+                    data: [
+                        { value: 1200, name: '重要价值客户', itemStyle: { color: '#5470C6' } },
+                        { value: 1800, name: '重要保持客户', itemStyle: { color: '#91CC75' } },
+                        { value: 2500, name: '重要发展客户', itemStyle: { color: '#FAC858' } },
+                        { value: 2200, name: '重要挽留客户', itemStyle: { color: '#EE6666' } },
+                        { value: 2300, name: '一般维持客户', itemStyle: { color: '#73C0DE' } }
+                    ]
+                }
+            ]
+        };
+
+        pieChart.setOption(option);
+        return pieChart;
+    }
+
+    // ============ 价值贡献柱状图 ============
+    function initValueContributionChart() {
+        const barChart = echarts.init(document.getElementById('valueContributionChart'));
+        charts.valueContribution = barChart;
+
+        const option = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'shadow'
+                }
+            },
+            legend: {
+                data: ['GMV贡献', '订单贡献']
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'value',
+                name: '占比(%)'
+            },
+            yAxis: {
+                type: 'category',
+                data: ['重要价值', '重要保持', '重要发展', '重要挽留', '一般维持']
+            },
+            series: [
+                {
+                    name: 'GMV贡献',
+                    type: 'bar',
+                    data: [42, 30, 18, 7, 3],
+                    itemStyle: { color: '#6f068bad' }
+                },
+                {
+                    name: '订单贡献',
+                    type: 'bar',
+                    data: [35, 28, 20, 12, 5],
+                    itemStyle: { color: '#91CC75' }
+                }
+            ]
+        };
+
+        barChart.setOption(option);
+        return barChart;
+    }
+
+    // ============ 雷达图 ============
+    function initRadarChart() {
+        const radarChart = echarts.init(document.getElementById('radarChart'));
+        charts.radar = radarChart;
+
+        const option = {
+            title: {
+                text: '各分群行为特征对比',
+                left: 'center'
+            },
+            tooltip: {
+                trigger: 'item'
+            },
+            legend: {
+                bottom: 10,
+                data: ['重要价值客户', '重要保持客户', '重要发展客户', '重要挽留客户', '一般维持客户']
+            },
+            radar: {
+                indicator: [
+                    { name: '活跃度', max: 100 },
+                    { name: '消费频次', max: 100 },
+                    { name: '客单价', max: 100 },
+                    { name: '品类丰富度', max: 100 },
+                    { name: '复购率', max: 100 },
+                    { name: '留存率', max: 100 }
+                ],
+                center: ['50%', '55%'],
+                radius: 120
+            },
+            series: [
+                {
+                    name: '群组特征',
+                    type: 'radar',
+                    data: [
+                        {
+                            value: [95, 90, 98, 85, 92, 95],
+                            name: '重要价值客户',
+                            areaStyle: { color: 'rgba(84, 112, 198, 0.3)' }
+                        },
+                        {
+                            value: [75, 80, 85, 70, 78, 80],
+                            name: '重要保持客户',
+                            areaStyle: { color: 'rgba(145, 204, 117, 0.3)' }
+                        },
+                        {
+                            value: [85, 55, 50, 60, 40, 65],
+                            name: '重要发展客户',
+                            areaStyle: { color: 'rgba(250, 200, 88, 0.3)' }
+                        },
+                        {
+                            value: [40, 70, 75, 65, 60, 45],
+                            name: '重要挽留客户',
+                            areaStyle: { color: 'rgba(238, 102, 102, 0.3)' }
+                        },
+                        {
+                            value: [20, 25, 30, 35, 15, 25],
+                            name: '一般维持客户',
+                            areaStyle: { color: 'rgba(115, 192, 222, 0.3)' }
+                        }
+                    ]
+                }
+            ]
+        };
+
+        radarChart.setOption(option);
+        return radarChart;
+    }
+
+    // ============ 3D散点图 ============
+    function initScatter3DChart() {
+        const scatterChart = echarts.init(document.getElementById('scatter3DChart'));
+        charts.scatter3d = scatterChart;
+
+        // 生成模拟RFM数据
+        function generateRFMData(segment, count, rRange, fRange, mRange) {
+            const data = [];
+            for (let i = 0; i < count; i++) {
+                data.push([
+                    Math.random() * (rRange[1] - rRange[0]) + rRange[0],
+                    Math.random() * (fRange[1] - fRange[0]) + fRange[0],
+                    Math.random() * (mRange[1] - mRange[0]) + mRange[0]
+                ]);
+            }
+            return data;
+        }
+
+        const option = {
+            tooltip: {},
+            xAxis3D: { name: 'Recency', type: 'value' },
+            yAxis3D: { name: 'Frequency', type: 'value' },
+            zAxis3D: { name: 'Monetary', type: 'value' },
+            grid3D: {
+                boxWidth: 100,
+                boxDepth: 80,
+                boxHeight: 100,
+                viewControl: {
+                    projection: 'orthographic'
+                }
+            },
+            series: [
+                {
+                    name: '重要价值',
+                    type: 'scatter3D',
+                    symbolSize: 4,
+                    data: generateRFMData('champions', 50, [1, 10], [6, 10], [2500, 5000]),
+                    itemStyle: { color: '#5470C6' }
+                },
+                {
+                    name: '重要保持',
+                    type: 'scatter3D',
+                    symbolSize: 4,
+                    data: generateRFMData('loyal', 50, [10, 20], [4, 8], [2000, 3500]),
+                    itemStyle: { color: '#91CC75' }
+                },
+                {
+                    name: '重要发展',
+                    type: 'scatter3D',
+                    symbolSize: 4,
+                    data: generateRFMData('potential', 50, [5, 15], [2, 5], [1000, 2000]),
+                    itemStyle: { color: '#FAC858' }
+                }
+            ]
+        };
+
+        scatterChart.setOption(option);
+        return scatterChart;
+    }
+
+    // ============ 留存率图 ============
+    function initRetentionChart() {
+        const retentionChart = echarts.init(document.getElementById('retentionChart'));
+        charts.retention = retentionChart;
+
+        const option = {
+            tooltip: {
+                trigger: 'axis'
+            },
+            legend: {
+                data: ['重要价值', '重要保持', '重要发展', '重要挽留', '一般维持']
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                data: ['1月', '2月', '3月', '4月', '5月', '6月']
+            },
+            yAxis: {
+                type: 'value',
+                name: '留存率(%)',
+                max: 100
+            },
+            series: [
+                {
+                    name: '重要价值',
+                    type: 'line',
+                    data: [95, 94, 93, 94, 95, 96],
+                    itemStyle: { color: '#5470C6' },
+                    smooth: true
+                },
+                {
+                    name: '重要保持',
+                    type: 'line',
+                    data: [80, 79, 78, 80, 82, 83],
+                    itemStyle: { color: '#91CC75' },
+                    smooth: true
+                },
+                {
+                    name: '重要发展',
+                    type: 'line',
+                    data: [65, 63, 60, 62, 65, 68],
+                    itemStyle: { color: '#FAC858' },
+                    smooth: true
+                },
+                {
+                    name: '重要挽留',
+                    type: 'line',
+                    data: [45, 42, 38, 40, 43, 45],
+                    itemStyle: { color: '#EE6666' },
+                    smooth: true
+                },
+                {
+                    name: '一般维持',
+                    type: 'line',
+                    data: [25, 22, 20, 18, 20, 22],
+                    itemStyle: { color: '#73C0DE' },
+                    smooth: true
+                }
+            ]
+        };
+
+        retentionChart.setOption(option);
+        return retentionChart;
+    }
+
+    // ============ 初始化对应标签页的图表 ============
+    function initTabCharts(tabName) {
+        setTimeout(() => {
+            if (tabName === 'overview' && !charts.bubble) {
+                initBubbleChart();
+            } else if (tabName === 'segments') {
+                if (!charts.segmentPie) initSegmentPieChart();
+                if (!charts.valueContribution) initValueContributionChart();
+            } else if (tabName === 'comparison') {
+                if (!charts.radar) initRadarChart();
+                if (!charts.scatter3d) initScatter3DChart();
+                if (!charts.retention) initRetentionChart();
+            }
+            
+            // 调整图表大小
+            Object.values(charts).forEach(chart => {
+                if (chart && chart.resize) chart.resize();
+            });
+        }, 100);
+    }
+
+    // 初始化默认标签页的图表
+    initTabCharts('overview');
+
+    // 全局时间筛选器联动
+    window.addEventListener('timeRangeChanged', function(e) {
+        console.log('时间范围变更为:', e.detail.timeRange);
+        // 重新加载所有图表数据
+        Object.keys(charts).forEach(key => {
+            if (charts[key]) {
+                console.log('更新图表:', key);
+            }
+        });
+    });
+
+    // 窗口resize时重绘图表
+    window.addEventListener('resize', function() {
+        Object.values(charts).forEach(chart => {
+            if (chart && chart.resize) chart.resize();
+        });
+    });
+});
+</script>
+{% endblock %}

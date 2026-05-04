@@ -1,0 +1,289 @@
+/* base.css - 基础布局样式 */
+
+/* 全局样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+}
+
+body {
+    background-color: #f8f9fa;
+    color: #333;
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 头部样式 */
+.base-header {
+    background: linear-gradient(135deg, #6f068bad 0%, #4a0578 100%);
+    color: white;
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.header-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo-section {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.logo-icon {
+    font-size: 2rem;
+}
+
+.system-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+}
+
+.global-time-filter {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 8px 15px;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.global-time-filter i {
+    font-size: 1rem;
+}
+
+.time-filter-select {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    outline: none;
+    font-size: 0.9rem;
+    transition: all 0.3s;
+}
+
+.time-filter-select:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.time-filter-select option {
+    background: #6f068bad;
+    color: white;
+}
+
+.user-section {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.user-icon {
+    font-size: 1.2rem;
+}
+
+.username {
+    font-weight: 500;
+}
+
+.logout-form {
+    margin: 0;
+}
+
+.logout-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 8px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.logout-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+/* 主要内容区域样式 */
+.main-container {
+    display: flex;
+    flex: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 0 20px;
+}
+
+/* 侧边栏样式 */
+.sidebar {
+    width: 250px;
+    background: white;
+    border-right: 1px solid #e9ecef;
+    padding: 20px 0;
+    height: calc(100vh - 80px);
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
+    transition: width 0.3s;
+}
+
+.sidebar-nav {
+    padding: 0 15px;
+}
+
+.nav-section {
+    margin-bottom: 25px;
+}
+
+.section-title {
+    color: #6f068bad;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.nav-list {
+    list-style: none;
+}
+
+.nav-item {
+    margin-bottom: 5px;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 15px;
+    color: #555;
+    text-decoration: none;
+    border-radius: 5px;
+    transition: all 0.3s;
+    position: relative;
+}
+
+.nav-link:hover {
+    background: rgba(111, 6, 141, 0.1);
+    color: #6f068bad;
+}
+
+.nav-link.active {
+    background: #6f068bad;
+    color: white;
+}
+
+/* 内容区域样式 */
+.content-area {
+    flex: 1;
+    padding: 20px;
+    min-height: calc(100vh - 80px);
+    background: white;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    border-radius: 0 0 8px 8px;
+    margin-left: 20px;
+}
+
+/* 消息提示容器 */
+.message-container {
+    margin-bottom: 20px;
+}
+
+.alert {
+    padding: 15px 20px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    border-left: 4px solid;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    border-left-color: #28a745;
+    color: #155724;
+}
+
+.alert-error {
+    background-color: #f8d7da;
+    border-left-color: #dc3545;
+    color: #721c24;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    border-left-color: #17a2b8;
+    color: #0c5460;
+}
+
+/* 页脚样式 */
+.footer {
+    background: #333;
+    color: white;
+    padding: 20px 0;
+    margin-top: 40px;
+}
+
+.footer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.footer-info {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.footer-links {
+    display: flex;
+    gap: 20px;
+}
+
+.footer-links a {
+    color: white;
+    text-decoration: none;
+    opacity: 0.8;
+    transition: opacity 0.3s;
+}
+
+.footer-links a:hover {
+    opacity: 1;
+    text-decoration: underline;
+}

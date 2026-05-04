@@ -1,0 +1,577 @@
+{% extends 'base.html' %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/recommendation.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="recommendation-container">
+    <!-- 页面头部 -->
+    <div class="recommendation-header">
+        <h1><i class="fas fa-robot"></i> 个性化商品推荐</h1>
+        <p class="subtitle">基于用户行为分析的智能商品推荐</p>
+
+        <!-- 用户搜索 -->
+        <div class="user-search">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text"
+                       id="userIdInput"
+                       placeholder="输入用户ID获取个性化推荐..."
+                       value="{{ user_id if user_id else '' }}">
+                <button class="btn btn-primary" id="searchUserBtn">
+                    <i class="fas fa-play"></i> 开始推荐
+                </button>
+            </div>
+            <div class="search-actions">
+                <button class="btn btn-outline-secondary" id="currentUserBtn">
+                    <i class="fas fa-user"></i> 当前用户
+                </button>
+                <button class="btn btn-outline-secondary" id="randomUserBtn">
+                    <i class="fas fa-random"></i> 随机用户
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 用户信息卡片 -->
+    {% if user_info %}
+    <div class="user-info-section">
+        <div class="user-info-card">
+            <div class="user-header">
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="user-details">
+                    <h3>用户 {{ user_info.user_id }}</h3>
+                    <div class="user-stats">
+                        <span class="stat-item">
+                            <i class="fas fa-chart-line"></i>
+                            <span>活跃度: <strong>{{ user_info.activity_level|default('高') }}</strong></span>
+                        </span>
+                        <span class="stat-item">
+                            <i class="fas fa-history"></i>
+                            <span>上次活跃: <strong>{{ user_info.last_active|default('3天前') }}</strong></span>
+                        </span>
+                        <span class="stat-item">
+                            <i class="fas fa-shopping-bag"></i>
+                            <span>购买次数: <strong>{{ user_info.purchase_count|default(0) }}</strong></span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="user-behavior">
+                <h4><i class="fas fa-chart-pie"></i> 用户行为统计</h4>
+                <div class="behavior-stats">
+                    <div class="behavior-item">
+                        <div class="behavior-icon browse">
+                            <i class="fas fa-eye"></i>
+                        </div>
+                        <div>
+                            <span class="behavior-label">浏览</span>
+                            <span class="behavior-value">{{ user_info.pv_count|default(0)|format_number }}</span>
+                        </div>
+                    </div>
+                    <div class="behavior-item">
+                        <div class="behavior-icon cart">
+                            <i class="fas fa-shopping-cart"></i>
+                        </div>
+                        <div>
+                            <span class="behavior-label">加购</span>
+                            <span class="behavior-value">{{ user_info.cart_count|default(0)|format_number }}</span>
+                        </div>
+                    </div>
+                    <div class="behavior-item">
+                        <div class="behavior-icon favorite">
+                            <i class="fas fa-heart"></i>
+                        </div>
+                        <div>
+                            <span class="behavior-label">收藏</span>
+                            <span class="behavior-value">{{ user_info.fav_count|default(0)|format_number }}</span>
+                        </div>
+                    </div>
+                    <div class="behavior-item">
+                        <div class="behavior-icon purchase">
+                            <i class="fas fa-shopping-bag"></i>
+                        </div>
+                        <div>
+                            <span class="behavior-label">购买</span>
+                            <span class="behavior-value">{{ user_info.buy_count|default(0)|format_number }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 推荐算法选择 -->
+    <div class="algorithm-section">
+        <div class="algorithm-card">
+            <h3><i class="fas fa-cogs"></i> 推荐算法配置</h3>
+            <div class="algorithm-config">
+                <div class="algorithm-tabs">
+                    <button class="algo-tab active" data-algorithm="cf_item">
+                        <i class="fas fa-boxes"></i>
+                        <span>基于物品协同过滤</span>
+                    </button>
+                    <button class="algo-tab" data-algorithm="cf_user">
+                        <i class="fas fa-users"></i>
+                        <span>基于用户协同过滤</span>
+                    </button>
+                    <button class="algo-tab" data-algorithm="content">
+                        <i class="fas fa-tags"></i>
+                        <span>基于内容推荐</span>
+                    </button>
+                    <button class="algo-tab" data-algorithm="hybrid">
+                        <i class="fas fa-random"></i>
+                        <span>混合推荐</span>
+                    </button>
+                </div>
+
+                <div class="algorithm-params">
+                    <div class="param-group">
+                        <label for="recommendCount"><i class="fas fa-list-ol"></i> 推荐数量</label>
+                        <input type="range" id="recommendCount" min="5" max="50" value="10" class="slider">
+                        <span id="countValue">10</span>
+                    </div>
+
+                    <div class="param-group">
+                        <label for="similarityThreshold"><i class="fas fa-balance-scale"></i> 相似度阈值</label>
+                        <input type="range" id="similarityThreshold" min="0.1" max="1.0" step="0.1" value="0.5" class="slider">
+                        <span id="thresholdValue">0.5</span>
+                    </div>
+
+                    <div class="param-actions">
+                        <button class="btn btn-primary" id="generateRecommendations">
+                            <i class="fas fa-bolt"></i> 生成推荐
+                        </button>
+                        <button class="btn btn-outline-secondary" id="resetParams">
+                            <i class="fas fa-redo"></i> 重置参数
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 推荐结果 -->
+    <div class="recommendation-results">
+        {% if recommendations %}
+        <div class="results-header">
+            <h3><i class="fas fa-star"></i> 推荐结果</h3>
+            <div class="results-stats">
+                <span class="stat-badge">
+                    <i class="fas fa-clock"></i>
+                    生成时间: {{ generation_time|default('2.3s') }}
+                </span>
+                <span class="stat-badge">
+                    <i class="fas fa-percentage"></i>
+                    模型置信度: {{ confidence|default(85) }}%
+                </span>
+                <span class="stat-badge">
+                    <i class="fas fa-sync-alt"></i>
+                    实时更新: 每30分钟
+                </span>
+            </div>
+        </div>
+
+        <div class="recommendation-grid">
+            {% for item in recommendations %}
+            <div class="recommendation-card">
+                <div class="card-header">
+                    <span class="card-rank">#{{ loop.index }}</span>
+                    <span class="card-score">
+                        <i class="fas fa-fire"></i>
+                        得分: {{ item.score|default(0.85) }}
+                    </span>
+                </div>
+
+                <div class="card-body">
+                    <div class="item-info">
+                        <div class="item-avatar">
+                            <i class="fas fa-box"></i>
+                        </div>
+                        <div class="item-details">
+                            <h4>商品 {{ item.item_id }}</h4>
+                            <p class="item-category">
+                                <i class="fas fa-tag"></i>
+                                类目: {{ item.category_id|default('N/A') }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="item-metrics">
+                        <div class="metric-item">
+                            <i class="fas fa-eye"></i>
+                            <div>
+                                <span class="metric-label">浏览量</span>
+                                <span class="metric-value">{{ item.view_count|default(0)|format_number }}</span>
+                            </div>
+                        </div>
+                        <div class="metric-item">
+                            <i class="fas fa-shopping-bag"></i>
+                            <div>
+                                <span class="metric-label">购买量</span>
+                                <span class="metric-value">{{ item.purchase_count|default(0)|format_number }}</span>
+                            </div>
+                        </div>
+                        <div class="metric-item">
+                            <i class="fas fa-percentage"></i>
+                            <div>
+                                <span class="metric-label">转化率</span>
+                                <span class="metric-value">{{ item.conversion_rate|default(0) }}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-footer">
+                    <button class="btn btn-sm btn-outline-primary view-detail-btn" data-item="{{ item.item_id }}">
+                        <i class="fas fa-search"></i> 查看详情
+                    </button>
+                    <button class="btn btn-sm btn-success add-cart-btn" data-item="{{ item.item_id }}">
+                        <i class="fas fa-cart-plus"></i> 加入购物车
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- 推荐分析 -->
+        <div class="recommendation-analysis">
+            <div class="analysis-card">
+                <h4><i class="fas fa-chart-line"></i> 推荐分析</h4>
+                <div class="analysis-content">
+                    <div class="analysis-chart" id="recommendationChart" style="width: 100%; height: 200px;"></div>
+                    <div class="analysis-insights">
+                        <div class="insight-item">
+                            <i class="fas fa-lightbulb"></i>
+                            <div>
+                                <h5>推荐依据</h5>
+                                <p>基于您近期浏览的{{ similar_items|default(3) }}个相似商品</p>
+                            </div>
+                        </div>
+                        <div class="insight-item">
+                            <i class="fas fa-users"></i>
+                            <div>
+                                <h5>用户群体</h5>
+                                <p>{{ similar_users|default(15) }}位与您相似的用户也喜欢这些商品</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="no-recommendations">
+            <div class="empty-state">
+                <i class="fas fa-search"></i>
+                <h4>暂无推荐</h4>
+                <p>输入用户ID并选择算法来生成个性化推荐</p>
+                <button class="btn btn-primary" onclick="document.getElementById('userIdInput').focus()">
+                    <i class="fas fa-search"></i> 开始搜索用户
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 相似用户 -->
+    {% if similar_users_list %}
+    <div class="similar-users-section">
+        <div class="similar-users-card">
+            <h3><i class="fas fa-user-friends"></i> 相似用户</h3>
+            <p class="section-description">与您兴趣相似的用户也喜欢以下商品</p>
+
+            <div class="similar-users-grid">
+                {% for similar_user in similar_users_list %}
+                <div class="similar-user-card">
+                    <div class="user-header">
+                        <i class="fas fa-user"></i>
+                        <span class="user-id">用户 {{ similar_user.user_id }}</span>
+                    </div>
+                    <div class="user-similarity">
+                        <span class="similarity-badge">
+                            相似度: {{ similar_user.similarity|default(0.75) }}
+                        </span>
+                    </div>
+                    <div class="user-preferences">
+                        <span class="preference-item">电子产品</span>
+                        <span class="preference-item">家居用品</span>
+                        <span class="preference-item">运动户外</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 历史推荐 -->
+    <div class="history-section">
+        <div class="history-card">
+            <div class="card-header">
+                <h3><i class="fas fa-history"></i> 推荐历史</h3>
+                <div class="card-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="refreshHistory">
+                        <i class="fas fa-sync-alt"></i> 刷新
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>商品ID</th>
+                                <th>算法</th>
+                                <th>推荐得分</th>
+                                <th>用户反馈</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>2024-01-15 10:30</td>
+                                <td>item_1001</td>
+                                <td><span class="badge algo-cf">协同过滤</span></td>
+                                <td><span class="score-badge">0.92</span></td>
+                                <td><span class="feedback positive">点击</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary">重新推荐</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>2024-01-14 15:20</td>
+                                <td>item_2045</td>
+                                <td><span class="badge algo-content">内容推荐</span></td>
+                                <td><span class="score-badge">0.85</span></td>
+                                <td><span class="feedback neutral">未交互</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary">重新推荐</button>
+                                </td>
+                            </tr>
+                            <!-- 更多历史记录行 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化图表
+    const recommendationChart = echarts.init(document.getElementById('recommendationChart'));
+
+    // 推荐分析图表
+    const chartOption = {
+        tooltip: {
+            trigger: 'axis',
+            formatter: function(params) {
+                return `${params[0].name}: ${params[0].value}分`;
+            }
+        },
+        xAxis: {
+            type: 'category',
+            data: ['商品A', '商品B', '商品C', '商品D', '商品E', '商品F', '商品G', '商品H']
+        },
+        yAxis: {
+            type: 'value',
+            name: '推荐得分',
+            max: 1
+        },
+        series: [{
+            data: [0.92, 0.85, 0.78, 0.75, 0.72, 0.68, 0.65, 0.62],
+            type: 'line',
+            smooth: true,
+            lineStyle: {
+                width: 3,
+                color: '#6f068bad'
+            },
+            areaStyle: {
+                color: 'rgba(111, 6, 141, 0.1)'
+            },
+            markPoint: {
+                data: [
+                    {type: 'max', name: '最高分'},
+                    {type: 'min', name: '最低分'}
+                ]
+            }
+        }],
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            top: '10%',
+            containLabel: true
+        }
+    };
+
+    recommendationChart.setOption(chartOption);
+
+    // 滑块数值显示
+    const recommendCountSlider = document.getElementById('recommendCount');
+    const countValue = document.getElementById('countValue');
+    const similarityThresholdSlider = document.getElementById('similarityThreshold');
+    const thresholdValue = document.getElementById('thresholdValue');
+
+    recommendCountSlider.addEventListener('input', function() {
+        countValue.textContent = this.value;
+    });
+
+    similarityThresholdSlider.addEventListener('input', function() {
+        thresholdValue.textContent = parseFloat(this.value).toFixed(1);
+    });
+
+    // 算法标签切换
+    const algorithmTabs = document.querySelectorAll('.algo-tab');
+    algorithmTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            algorithmTabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+
+            const algorithm = this.getAttribute('data-algorithm');
+            updateAlgorithmParams(algorithm);
+        });
+    });
+
+    // 生成推荐
+    document.getElementById('generateRecommendations').addEventListener('click', function() {
+        const userId = document.getElementById('userIdInput').value.trim();
+        if (!userId) {
+            alert('请输入用户ID');
+            return;
+        }
+
+        const algorithm = document.querySelector('.algo-tab.active').getAttribute('data-algorithm');
+        const count = recommendCountSlider.value;
+        const threshold = similarityThresholdSlider.value;
+
+        // 显示加载状态
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
+
+        // 模拟生成过程
+        setTimeout(() => {
+            loadRecommendations(userId, algorithm, count, threshold);
+
+            // 恢复按钮状态
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-bolt"></i> 生成推荐';
+        }, 2000);
+    });
+
+    // 用户搜索
+    document.getElementById('searchUserBtn').addEventListener('click', function() {
+        const userId = document.getElementById('userIdInput').value.trim();
+        if (!userId) {
+            alert('请输入用户ID');
+            return;
+        }
+
+        loadUserInfo(userId);
+    });
+
+    // 随机用户
+    document.getElementById('randomUserBtn').addEventListener('click', function() {
+        // 模拟获取随机用户
+        const randomUserId = Math.floor(Math.random() * 10000) + 1000;
+        document.getElementById('userIdInput').value = randomUserId;
+        loadUserInfo(randomUserId);
+    });
+
+    // 商品详情查看
+    const detailButtons = document.querySelectorAll('.view-detail-btn');
+    detailButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const itemId = this.getAttribute('data-item');
+            showItemDetail(itemId);
+        });
+    });
+
+    // 加入购物车
+    const cartButtons = document.querySelectorAll('.add-cart-btn');
+    cartButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const itemId = this.getAttribute('data-item');
+            addToCart(itemId);
+        });
+    });
+
+    // 工具函数
+    function updateAlgorithmParams(algorithm) {
+        // 根据选择的算法更新参数
+        switch(algorithm) {
+            case 'cf_item':
+                similarityThresholdSlider.value = 0.5;
+                thresholdValue.textContent = '0.5';
+                break;
+            case 'cf_user':
+                similarityThresholdSlider.value = 0.6;
+                thresholdValue.textContent = '0.6';
+                break;
+            case 'content':
+                similarityThresholdSlider.value = 0.7;
+                thresholdValue.textContent = '0.7';
+                break;
+            case 'hybrid':
+                similarityThresholdSlider.value = 0.4;
+                thresholdValue.textContent = '0.4';
+                break;
+        }
+    }
+
+    function loadRecommendations(userId, algorithm, count, threshold) {
+        console.log('加载推荐:', {userId, algorithm, count, threshold});
+        // 这里应该发送AJAX请求获取推荐结果
+        // 然后更新页面显示
+    }
+
+    function loadUserInfo(userId) {
+        console.log('加载用户信息:', userId);
+        // 这里应该发送AJAX请求获取用户信息
+        // 然后更新用户信息卡片
+    }
+
+    function showItemDetail(itemId) {
+        console.log('查看商品详情:', itemId);
+        alert(`查看商品 ${itemId} 的详细信息`);
+    }
+
+    function addToCart(itemId) {
+        console.log('加入购物车:', itemId);
+
+        const button = event.target.closest('.add-cart-btn');
+        const originalText = button.innerHTML;
+
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 添加中...';
+
+        setTimeout(() => {
+            button.innerHTML = '<i class="fas fa-check"></i> 已添加';
+            button.classList.remove('btn-success');
+            button.classList.add('btn-outline-success');
+
+            setTimeout(() => {
+                button.disabled = false;
+                button.innerHTML = originalText;
+                button.classList.remove('btn-outline-success');
+                button.classList.add('btn-success');
+            }, 2000);
+        }, 1000);
+    }
+
+    // 窗口大小变化时重绘图表
+    window.addEventListener('resize', function() {
+        recommendationChart.resize();
+    });
+});
+</script>
+{% endblock %}

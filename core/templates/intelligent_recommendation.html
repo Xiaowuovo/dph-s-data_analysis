@@ -1,0 +1,1205 @@
+{% extends 'base.html' %}
+
+{% block page_css %}
+<style>
+    .recommendation-container {
+        padding: 20px;
+    }
+
+    .page-header {
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .page-header h1 {
+        font-size: 28px;
+        color: #333;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .page-header .subtitle {
+        color: #666;
+        font-size: 14px;
+    }
+
+    /* 运营决策简报 */
+    .executive-brief {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        padding: 30px;
+        margin-bottom: 30px;
+        color: white;
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .brief-header {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .brief-icon {
+        width: 60px;
+        height: 60px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 30px;
+    }
+
+    .brief-title h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 700;
+    }
+
+    .brief-time {
+        font-size: 13px;
+        opacity: 0.9;
+    }
+
+    .brief-content {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        padding: 20px;
+        line-height: 1.8;
+        font-size: 15px;
+        backdrop-filter: blur(10px);
+    }
+
+    .brief-content p {
+        margin: 0 0 12px 0;
+    }
+
+    .brief-content p:last-child {
+        margin-bottom: 0;
+    }
+
+    .highlight {
+        background: rgba(255, 255, 255, 0.3);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-weight: 600;
+    }
+
+    /* Tab导航 */
+    .tab-navigation {
+        display: flex;
+        border-bottom: 2px solid #f0f0f0;
+        margin-bottom: 30px;
+        background: #fff;
+        padding: 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border-radius: 8px 8px 0 0;
+    }
+
+    .tab-button {
+        flex: 1;
+        padding: 15px 20px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        color: #666;
+        transition: all 0.3s ease;
+        position: relative;
+        border-bottom: 3px solid transparent;
+    }
+
+    .tab-button:hover {
+        background: #f8f9fa;
+        color: #6f068bad;
+    }
+
+    .tab-button.active {
+        color: #6f068bad;
+        font-weight: 600;
+        border-bottom-color: #6f068bad;
+        background: #f8f9fa;
+    }
+
+    .tab-button i {
+        margin-right: 8px;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+        animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* 推荐卡片网格 */
+    .recommendation-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .recommendation-card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+
+    .recommendation-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        border-color: #6f068bad;
+    }
+
+    .card-header {
+        display: flex;
+        align-items: flex-start;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .card-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        color: white;
+        flex-shrink: 0;
+    }
+
+    .card-icon.warning {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .card-icon.success {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .card-icon.info {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    }
+
+    .card-icon.primary {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    }
+
+    .card-title {
+        flex: 1;
+    }
+
+    .card-title h3 {
+        margin: 0 0 5px 0;
+        font-size: 18px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .card-subtitle {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .card-body {
+        margin-bottom: 15px;
+    }
+
+    .metric-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .metric-row:last-child {
+        border-bottom: none;
+    }
+
+    .metric-label {
+        color: #666;
+        font-size: 14px;
+    }
+
+    .metric-value {
+        font-weight: 600;
+        color: #333;
+        font-size: 14px;
+    }
+
+    .metric-value.danger {
+        color: #f5576c;
+    }
+
+    .metric-value.success {
+        color: #43e97b;
+    }
+
+    .card-footer {
+        padding-top: 15px;
+        border-top: 1px solid #f0f0f0;
+    }
+
+    .recommendation-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #6f068bad;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .recommendation-text {
+        background: #f8f9fa;
+        padding: 12px 15px;
+        border-radius: 8px;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #333;
+        border-left: 3px solid #6f068bad;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+    }
+
+    .btn-action {
+        flex: 1;
+        padding: 8px 15px;
+        border: none;
+        border-radius: 6px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .btn-primary {
+        background: #6f068bad;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #4a0578;
+        transform: scale(1.02);
+    }
+
+    .btn-outline {
+        background: white;
+        color: #6f068bad;
+        border: 1px solid #6f068bad;
+    }
+
+    .btn-outline:hover {
+        background: #6f068bad;
+        color: white;
+    }
+
+    /* 统计概览 */
+    .stats-overview {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        text-align: center;
+    }
+
+    .stat-number {
+        font-size: 32px;
+        font-weight: 700;
+        color: #6f068bad;
+        margin-bottom: 5px;
+    }
+
+    .stat-label {
+        font-size: 14px;
+        color: #666;
+    }
+
+    /* 优先级标签 */
+    .priority-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .priority-high {
+        background: #fee;
+        color: #c33;
+    }
+
+    .priority-medium {
+        background: #ffeaa7;
+        color: #d63031;
+    }
+
+    .priority-low {
+        background: #dfe6e9;
+        color: #636e72;
+    }
+
+    /* 响应式 */
+    @media (max-width: 768px) {
+        .recommendation-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .tab-button {
+            font-size: 14px;
+            padding: 12px 10px;
+        }
+
+        .tab-button i {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="recommendation-container">
+    <div class="page-header">
+        <h1><i class="fas fa-brain"></i> 智能推荐系统</h1>
+        <p class="subtitle">基于规则引擎的智能运营推荐与决策支持</p>
+    </div>
+
+    <!-- 运营决策简报 -->
+    <div class="executive-brief">
+        <div class="brief-header">
+            <div class="brief-icon">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="brief-title">
+                <h2>运营决策简报</h2>
+                <p class="brief-time"><i class="fas fa-clock"></i> 更新时间：2026年4月16日 18:30</p>
+            </div>
+        </div>
+        <div class="brief-content">
+            <p><strong>📊 用户行为洞察：</strong>当前平台用户在<span class="highlight">晚间20:00-22:00</span>活跃度最高，占全天流量的<span class="highlight">28.5%</span>，建议在该时段开展直播与秒杀活动，预计可提升转化率<span class="highlight">35%</span>。</p>
+            
+            <p><strong>🛍️ 商品运营建议：</strong>美妆类商品浏览量高但转化率偏低（仅<span class="highlight">8.2%</span>），建议优化商品描述、增加用户评价展示、提供虚拟试妆功能。同时，电子产品类目复购率达<span class="highlight">42%</span>，建议加大库存并推出以旧换新活动。</p>
+            
+            <p><strong>⚠️ 用户流失预警：</strong>检测到<span class="highlight">30%</span>（约2,200人）高价值RFM用户超过<span class="highlight">35天</span>未购买，存在严重流失风险。建议立即启动精准召回计划，发放<span class="highlight">满200减50</span>专属优惠券，预计可挽回<span class="highlight">40%</span>用户。</p>
+            
+            <p><strong>🎯 营销策略优化：</strong>数据显示周末（周六、周日）订单量占比<span class="highlight">35.2%</span>，但营销投放集中在工作日。建议调整预算分配，周末增加<span class="highlight">50%</span>广告投放，并开展"周末狂欢"主题活动。</p>
+            
+            <p><strong>💡 区域差异化：</strong>华东地区用户偏好时尚类商品，客单价比全国平均高<span class="highlight">25%</span>；华南地区用户对价格敏感度高，建议推出区域专属满减活动以提升转化。</p>
+        </div>
+    </div>
+
+    <!-- Tab导航 -->
+    <div class="tab-navigation">
+        <button class="tab-button active" data-tab="product">
+            <i class="fas fa-box"></i> 商品运营推荐
+        </button>
+        <button class="tab-button" data-tab="user">
+            <i class="fas fa-users"></i> 用户运营推荐
+        </button>
+        <button class="tab-button" data-tab="marketing">
+            <i class="fas fa-bullhorn"></i> 营销活动推荐
+        </button>
+    </div>
+
+    <!-- Tab 1: 商品运营推荐 -->
+    <div id="productTab" class="tab-content active">
+        <div class="stats-overview">
+            <div class="stat-card">
+                <div class="stat-number">8</div>
+                <div class="stat-label">待优化商品</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">12</div>
+                <div class="stat-label">高潜力商品</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">5</div>
+                <div class="stat-label">滞销商品</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">15</div>
+                <div class="stat-label">推广机会</div>
+            </div>
+        </div>
+
+        <div class="recommendation-grid">
+            <!-- 高浏览低转化商品 -->
+            <div class="recommendation-card">
+                <div class="card-header">
+                    <div class="card-icon warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="card-title">
+                        <h3>高浏览低转化商品</h3>
+                        <p class="card-subtitle">商品ID: 10234 | 美妆护肤类</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="metric-row">
+                        <span class="metric-label">近7天浏览量</span>
+                        <span class="metric-value success">2,340次</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">加购率</span>
+                        <span class="metric-value">12.5%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">转化率</span>
+                        <span class="metric-value danger">3.2%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">问题诊断</span>
+                        <span class="metric-value">价格偏高、详情页不足</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="recommendation-label">
+                        <i class="fas fa-lightbulb"></i> 优化建议
+                    </div>
+                    <div class="recommendation-text">
+                        1. 优化商品详情页，增加使用场景图和用户评价<br>
+                        2. 调整价格策略，设置满减优惠（原价¥198 → 满100减20）<br>
+                        3. 增加"买家秀"展示，提升信任度
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-primary">
+                            <i class="fas fa-edit"></i> 立即优化
+                        </button>
+                        <button class="btn-action btn-outline">
+                            <i class="fas fa-chart-bar"></i> 查看详情
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 高销量高复购商品 -->
+            <div class="recommendation-card">
+                <div class="card-header">
+                    <div class="card-icon success">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="card-title">
+                        <h3>高销量高复购商品</h3>
+                        <p class="card-subtitle">商品ID: 10567 | 电子产品类</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="metric-row">
+                        <span class="metric-label">近30天销量</span>
+                        <span class="metric-value success">1,856件</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">复购率</span>
+                        <span class="metric-value success">42.3%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">库存状态</span>
+                        <span class="metric-value danger">仅剩320件</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">预计售罄</span>
+                        <span class="metric-value">5天内</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="recommendation-label">
+                        <i class="fas fa-rocket"></i> 运营建议
+                    </div>
+                    <div class="recommendation-text">
+                        1. 紧急补货，建议增加库存至1,500件<br>
+                        2. 加大推广力度，设置为首页推荐位商品<br>
+                        3. 推出"复购有礼"活动，赠送配件或优惠券
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-primary">
+                            <i class="fas fa-truck"></i> 申请补货
+                        </button>
+                        <button class="btn-action btn-outline">
+                            <i class="fas fa-bullhorn"></i> 设置推广
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 长期滞销商品 -->
+            <div class="recommendation-card">
+                <div class="card-header">
+                    <div class="card-icon warning">
+                        <i class="fas fa-box-open"></i>
+                    </div>
+                    <div class="card-title">
+                        <h3>长期滞销商品</h3>
+                        <p class="card-subtitle">商品ID: 10892 | 家居用品类</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="metric-row">
+                        <span class="metric-label">滞销天数</span>
+                        <span class="metric-value danger">62天</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">库存积压</span>
+                        <span class="metric-value danger">580件</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">近30天销量</span>
+                        <span class="metric-value">仅8件</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">资金占用</span>
+                        <span class="metric-value">¥34,800</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="recommendation-label">
+                        <i class="fas fa-fire-alt"></i> 清仓建议
+                    </div>
+                    <div class="recommendation-text">
+                        1. 设置限时清仓价（原价¥98 → 清仓价¥49）<br>
+                        2. 与热销商品捆绑销售（买A送B）<br>
+                        3. 参加平台"清仓特卖"专场活动
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-primary">
+                            <i class="fas fa-percentage"></i> 启动清仓
+                        </button>
+                        <button class="btn-action btn-outline">
+                            <i class="fas fa-link"></i> 捆绑销售
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 高潜力新品 -->
+            <div class="recommendation-card">
+                <div class="card-header">
+                    <div class="card-icon primary">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <div class="card-title">
+                        <h3>高潜力新品</h3>
+                        <p class="card-subtitle">商品ID: 11234 | 时尚服饰类</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="metric-row">
+                        <span class="metric-label">上架天数</span>
+                        <span class="metric-value">7天</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">浏览量增长</span>
+                        <span class="metric-value success">+285%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">加购率</span>
+                        <span class="metric-value success">18.7%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">用户评分</span>
+                        <span class="metric-value success">4.8分</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="recommendation-label">
+                        <i class="fas fa-trending-up"></i> 扶持建议
+                    </div>
+                    <div class="recommendation-text">
+                        1. 申请"新品推荐"首页Banner位置<br>
+                        2. 设置"尝鲜价"限时优惠，吸引首批用户<br>
+                        3. 邀请KOL/网红试穿并发布种草笔记
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-primary">
+                            <i class="fas fa-rocket"></i> 重点推广
+                        </button>
+                        <button class="btn-action btn-outline">
+                            <i class="fas fa-users"></i> KOL合作
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 2: 用户运营推荐 -->
+    <div id="userTab" class="tab-content">
+        <div class="stats-overview">
+            <div class="stat-card">
+                <div class="stat-number">2,200</div>
+                <div class="stat-label">流失风险用户</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">1,580</div>
+                <div class="stat-label">待激活新用户</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">1,200</div>
+                <div class="stat-label">高价值用户</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">850</div>
+                <div class="stat-label">高频复购用户</div>
+            </div>
+        </div>
+
+        <div class="recommendation-grid">
+            <!-- 高价值用户流失风险 -->
+            <div class="recommendation-card">
+                <div class="card-header">
+                    <div class="card-icon warning">
+                        <i class="fas fa-user-slash"></i>
+                    </div>
+                    <div class="card-title">
+                        <h3>高价值用户未购买</h3>
+                        <p class="card-subtitle">RFM重要挽留客户群</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="metric-row">
+                        <span class="metric-label">用户数量</span>
+                        <span class="metric-value danger">2,200人</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">平均未购天数</span>
+                        <span class="metric-value danger">35天</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">历史客单价</span>
+                        <span class="metric-value">¥2,200</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">流失风险</span>
+                        <span class="metric-value danger">高风险</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="recommendation-label">
+                        <i class="fas fa-undo"></i> 召回策略
+                    </div>
+                    <div class="recommendation-text">
+                        1. 发送专属召回短信/邮件："好久不见，专属福利等你领取"<br>
+                        2. 发放高额优惠券（满200减50，7天有效期）<br>
+                        3. 推送用户历史偏好商品新品上架信息
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-primary">
+                            <i class="fas fa-paper-plane"></i> 启动召回
+                        </button>
+                        <button class="btn-action btn-outline">
+                            <i class="fas fa-list"></i> 用户列表
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 新用户转化率低 -->
+            <div class="recommendation-card">
+                <div class="card-header">
+                    <div class="card-icon info">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <div class="card-title">
+                        <h3>新用户转化率低</h3>
+                        <p class="card-subtitle">近30天新注册用户</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="metric-row">
+                        <span class="metric-label">新用户数量</span>
+                        <span class="metric-value">1,580人</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">首单转化率</span>
+                        <span class="metric-value danger">仅8.5%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">平均浏览时长</span>
+                        <span class="metric-value">2分15秒</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">流失率</span>
+                        <span class="metric-value danger">68%</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="recommendation-label">
+                        <i class="fas fa-gift"></i> 福利优化
+                    </div>
+                    <div class="recommendation-text">
+                        1. 提升新人礼包价值（3张优惠券 → 5张+新人专享价）<br>
+                        2. 设置新人专区，展示高性价比爆款商品<br>
+                        3. 注册后24小时内推送"首单立减20"弹窗提醒
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-primary">
+                            <i class="fas fa-edit"></i> 优化福利
+                        </button>
+                        <button class="btn-action btn-outline">
+                            <i class="fas fa-chart-line"></i> 分析数据
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 大量流失风险用户 -->
+            <div class="recommendation-card">
+                <div class="card-header">
+                    <div class="card-icon warning">
+                        <i class="fas fa-exclamation-circle"></i>
+                    </div>
+                    <div class="card-title">
+                        <h3>大量流失风险用户</h3>
+                        <p class="card-subtitle">一般维持客户群</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="metric-row">
+                        <span class="metric-label">风险用户数</span>
+                        <span class="metric-value danger">2,300人</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">平均沉睡天数</span>
+                        <span class="metric-value danger">60天</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">历史购买频次</span>
+                        <span class="metric-value">1.5次</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">挽回成本</span>
+                        <span class="metric-value">需控制</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="recommendation-label">
+                        <i class="fas fa-ticket-alt"></i> 激活策略
+                    </div>
+                    <div class="recommendation-text">
+                        1. 批量发送低成本EDM（邮件）触达，控制成本<br>
+                        2. 推送大促活动信息（618、双11等）<br>
+                        3. 发放低门槛优惠券（满50减5），降低决策门槛
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-primary">
+                            <i class="fas fa-envelope"></i> 批量触达
+                        </button>
+                        <button class="btn-action btn-outline">
+                            <i class="fas fa-filter"></i> 筛选用户
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 高频复购用户 -->
+            <div class="recommendation-card">
+                <div class="card-header">
+                    <div class="card-icon success">
+                        <i class="fas fa-medal"></i>
+                    </div>
+                    <div class="card-title">
+                        <h3>高频复购用户</h3>
+                        <p class="card-subtitle">RFM重要价值客户</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="metric-row">
+                        <span class="metric-label">用户数量</span>
+                        <span class="metric-value success">850人</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">平均购买频次</span>
+                        <span class="metric-value success">8.5次/月</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">客单价</span>
+                        <span class="metric-value success">¥3,500</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">GMV贡献</span>
+                        <span class="metric-value success">42%</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="recommendation-label">
+                        <i class="fas fa-crown"></i> 会员维护
+                    </div>
+                    <div class="recommendation-text">
+                        1. 升级为VIP会员，提供专属客服和优先权益<br>
+                        2. 邀请参与新品内测，收集高质量反馈<br>
+                        3. 建立积分体系，消费积分可兑换礼品或抵扣
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-primary">
+                            <i class="fas fa-star"></i> VIP升级
+                        </button>
+                        <button class="btn-action btn-outline">
+                            <i class="fas fa-gift"></i> 专属礼遇
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 3: 营销活动推荐 -->
+    <div id="marketingTab" class="tab-content">
+        <div class="stats-overview">
+            <div class="stat-card">
+                <div class="stat-number">6</div>
+                <div class="stat-label">活动机会</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">15</div>
+                <div class="stat-label">关联组合</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">8</div>
+                <div class="stat-label">区域策略</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">12</div>
+                <div class="stat-label">时段优化</div>
+            </div>
+        </div>
+
+        <div class="recommendation-grid">
+            <!-- 用户活跃高峰时段 -->
+            <div class="recommendation-card">
+                <div class="card-header">
+                    <div class="card-icon primary">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="card-title">
+                        <h3>用户活跃高峰时段</h3>
+                        <p class="card-subtitle">时段营销策略</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="metric-row">
+                        <span class="metric-label">最高峰时段</span>
+                        <span class="metric-value success">20:00-22:00</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">流量占比</span>
+                        <span class="metric-value success">28.5%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">转化率</span>
+                        <span class="metric-value">比平均高35%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">次高峰</span>
+                        <span class="metric-value">12:00-13:00</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="recommendation-label">
+                        <i class="fas fa-calendar-alt"></i> 活动建议
+                    </div>
+                    <div class="recommendation-text">
+                        1. 晚8点开启"黄金2小时"直播秒杀活动<br>
+                        2. 设置限时闪购（每晚8-10点特价商品）<br>
+                        3. 午间12点推出"午休特惠"快速下单优惠
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-primary">
+                            <i class="fas fa-video"></i> 策划直播
+                        </button>
+                        <button class="btn-action btn-outline">
+                            <i class="fas fa-bolt"></i> 设置闪购
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 热门关联商品 -->
+            <div class="recommendation-card">
+                <div class="card-header">
+                    <div class="card-icon info">
+                        <i class="fas fa-link"></i>
+                    </div>
+                    <div class="card-title">
+                        <h3>热门关联商品组合</h3>
+                        <p class="card-subtitle">智能搭配销售</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="metric-row">
+                        <span class="metric-label">关联组合A</span>
+                        <span class="metric-value">手机+耳机+保护壳</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">同时购买率</span>
+                        <span class="metric-value success">68%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">关联组合B</span>
+                        <span class="metric-value">口红+粉底+卸妆水</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">同时购买率</span>
+                        <span class="metric-value success">52%</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="recommendation-label">
+                        <i class="fas fa-shopping-basket"></i> 组合策略
+                    </div>
+                    <div class="recommendation-text">
+                        1. 推出"数码三件套"组合套餐，优惠15%<br>
+                        2. 设置"买手机送耳机"活动，提升客单价<br>
+                        3. 美妆类推出"全妆套装"，一站式购物体验
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-primary">
+                            <i class="fas fa-plus-circle"></i> 创建套餐
+                        </button>
+                        <button class="btn-action btn-outline">
+                            <i class="fas fa-chart-bar"></i> 关联分析
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 地区消费偏好 -->
+            <div class="recommendation-card">
+                <div class="card-header">
+                    <div class="card-icon success">
+                        <i class="fas fa-map-marked-alt"></i>
+                    </div>
+                    <div class="card-title">
+                        <h3>地区消费偏好差异</h3>
+                        <p class="card-subtitle">区域化营销策略</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="metric-row">
+                        <span class="metric-label">华东地区</span>
+                        <span class="metric-value">偏好时尚，客单价+25%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">华南地区</span>
+                        <span class="metric-value">价格敏感，优惠响应高</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">华北地区</span>
+                        <span class="metric-value">偏好电子产品</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">西南地区</span>
+                        <span class="metric-value">本地特色商品受欢迎</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="recommendation-label">
+                        <i class="fas fa-globe-asia"></i> 区域策略
+                    </div>
+                    <div class="recommendation-text">
+                        1. 华东推广高端时尚品牌，主打品质和设计<br>
+                        2. 华南开展"满减活动"，如满200减30<br>
+                        3. 西南地区推出地方特色商品专场促销
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-primary">
+                            <i class="fas fa-bullseye"></i> 区域投放
+                        </button>
+                        <button class="btn-action btn-outline">
+                            <i class="fas fa-map"></i> 查看地图
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 周末营销机会 -->
+            <div class="recommendation-card">
+                <div class="card-header">
+                    <div class="card-icon primary">
+                        <i class="fas fa-calendar-week"></i>
+                    </div>
+                    <div class="card-title">
+                        <h3>周末营销黄金期</h3>
+                        <p class="card-subtitle">周六日流量高峰</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="metric-row">
+                        <span class="metric-label">周末订单占比</span>
+                        <span class="metric-value success">35.2%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">当前营销投放</span>
+                        <span class="metric-value danger">集中在工作日</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">优化潜力</span>
+                        <span class="metric-value success">预计提升40%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">建议调整</span>
+                        <span class="metric-value">周末增投50%</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="recommendation-label">
+                        <i class="fas fa-chart-line"></i> 预算优化
+                    </div>
+                    <div class="recommendation-text">
+                        1. 周末增加50%广告投放预算<br>
+                        2. 开展"周末狂欢"主题促销活动<br>
+                        3. 设置周六日专属优惠（满300减50）
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-primary">
+                            <i class="fas fa-dollar-sign"></i> 调整预算
+                        </button>
+                        <button class="btn-action btn-outline">
+                            <i class="fas fa-calendar-check"></i> 策划活动
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 数据同步面板 ===== -->
+<div style="padding:0 20px 30px;">
+    <div style="background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08);overflow:hidden;">
+        <div style="padding:16px 20px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+            <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px;">
+                <i class="fas fa-sync-alt" style="color:#6f068bad;"></i> 实时数据同步建议
+            </h3>
+            <div style="display:flex;align-items:center;gap:12px;">
+                <span id="syncTime" style="font-size:12px;color:#999;">未同步</span>
+                <button id="syncBtn" onclick="syncRecommendations()" style="padding:7px 18px;background:#6f068bad;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;">
+                    <i class="fas fa-sync-alt"></i> 同步数据更新
+                </button>
+            </div>
+        </div>
+
+        <!-- 实时指标行 -->
+        <div id="syncStats" style="display:none;padding:16px 20px;background:#f8f9fa;border-bottom:1px solid #f0f0f0;">
+            <div style="display:flex;gap:16px;flex-wrap:wrap;" id="syncStatsRow"></div>
+        </div>
+
+        <!-- 动态建议列表 -->
+        <div id="syncSuggestions" style="padding:16px 20px;">
+            <p style="color:#aaa;text-align:center;padding:20px 0;">点击「同步数据更新」获取基于当前数据库的最新运营建议</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const tabName = this.getAttribute('data-tab');
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.add('active');
+        });
+    });
+});
+
+async function syncRecommendations() {
+    const btn = document.getElementById('syncBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 同步中...';
+
+    try {
+        const resp = await fetch('/api/recommendation/sync');
+        const result = await resp.json();
+        if (!result.success) throw new Error(result.error);
+
+        const s = result.stats;
+        // 指标行
+        document.getElementById('syncStats').style.display = 'block';
+        const statColors = ['#6f068bad','#28a745','#17a2b8','#fd7e14','#dc3545','#20c997'];
+        const statItems = [
+            {l:'总行为数', v: s.total_behaviors.toLocaleString()},
+            {l:'总用户数', v: s.total_users.toLocaleString()},
+            {l:'近30天活跃', v: s.active_users.toLocaleString()},
+            {l:'转化率', v: s.conversion_rate + '%'},
+            {l:'加购率', v: s.cart_rate + '%'},
+            {l:'购买数', v: s.buy.toLocaleString()},
+        ];
+        document.getElementById('syncStatsRow').innerHTML = statItems.map((it, i) =>
+            `<div style="background:${statColors[i]};color:#fff;padding:10px 16px;border-radius:8px;min-width:110px;text-align:center;flex:1;">
+                <div style="font-size:20px;font-weight:700;">${it.v}</div>
+                <div style="font-size:11px;opacity:.85;">${it.l}</div>
+            </div>`
+        ).join('');
+
+        // 建议卡片
+        const typeMap = {
+            warning: {bg:'#fff3cd',border:'#ffc107',icon:'fas fa-exclamation-triangle',color:'#856404'},
+            success: {bg:'#d4edda',border:'#28a745',icon:'fas fa-check-circle',color:'#155724'},
+            info:    {bg:'#d1ecf1',border:'#17a2b8',icon:'fas fa-info-circle',color:'#0c5460'},
+            primary: {bg:'#cce5ff',border:'#6f068bad',icon:'fas fa-lightbulb',color:'#004085'},
+        };
+        document.getElementById('syncSuggestions').innerHTML =
+            '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;">'
+            + result.suggestions.map(sg => {
+                const t = typeMap[sg.type] || typeMap.info;
+                return `<div style="background:${t.bg};border-left:4px solid ${t.border};padding:14px 16px;border-radius:6px;">
+                    <div style="font-weight:600;color:${t.color};margin-bottom:6px;"><i class="${t.icon}"></i> ${sg.title}</div>
+                    <div style="font-size:13px;color:#444;">${sg.detail}</div>
+                </div>`;
+            }).join('')
+            + (result.top_items.length ? `<div style="background:#f8f9fa;border-left:4px solid #6c757d;padding:14px 16px;border-radius:6px;">
+                <div style="font-weight:600;color:#495057;margin-bottom:6px;"><i class="fas fa-crown"></i> 热销TOP商品</div>
+                <div style="font-size:13px;color:#444;">` + result.top_items.map(it => `商品 ${it.item_id}（${it.buy_count}次购买）`).join(' &nbsp;|&nbsp; ') + `</div>
+            </div>` : '')
+            + '</div>';
+
+        document.getElementById('syncTime').textContent = '最后同步：' + result.synced_at;
+    } catch(e) {
+        document.getElementById('syncSuggestions').innerHTML = `<p style="color:#dc3545;text-align:center;">同步失败: ${e.message}</p>`;
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-sync-alt"></i> 同步数据更新';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,452 @@
+{% extends 'base.html' %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="index-container">
+    <!-- 欢迎横幅 -->
+    <div class="welcome-banner">
+        <div class="banner-content">
+            <h1><i class="fas fa-chart-line"></i> 电商消费者购物行为可视化系统</h1>
+            <p class="banner-subtitle">深度洞察用户行为，驱动业务智能决策</p>
+
+            <div class="system-stats">
+                <div class="stat-item">
+                    <i class="fas fa-database"></i>
+                    <div class="stat-info">
+                        <span class="stat-number">{{ system_stats.total_records|default(0)|format_number }}</span>
+                        <span class="stat-label">数据记录</span>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-users"></i>
+                    <div class="stat-info">
+                        <span class="stat-number">{{ system_stats.total_users|default(0)|format_number }}</span>
+                        <span class="stat-label">分析用户</span>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-shopping-bag"></i>
+                    <div class="stat-info">
+                        <span class="stat-number">{{ system_stats.total_items|default(0)|format_number }}</span>
+                        <span class="stat-label">商品品类</span>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-chart-bar"></i>
+                    <div class="stat-info">
+                        <span class="stat-number">{{ system_stats.conversion_rate|default(0) }}%</span>
+                        <span class="stat-label">平均转化率</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="banner-actions">
+                <a href="{{ url_for('query') }}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-upload"></i> 开始数据上传
+                </a>
+                <a href="{{ url_for('visualization') }}" class="btn btn-outline-primary btn-lg">
+                    <i class="fas fa-chart-line"></i> 查看可视化分析
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 系统核心功能 -->
+    <div class="core-features">
+        <h2><i class="fas fa-star"></i> 系统核心功能</h2>
+        <p class="section-description">一站式电商用户行为分析平台，满足多种业务分析需求</p>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-upload"></i>
+                </div>
+                <h3>智能数据管理</h3>
+                <ul class="feature-list">
+                    <li>支持多种数据格式导入</li>
+                    <li>自动数据清洗和验证</li>
+                    <li>智能数据预处理</li>
+                    <li>实时数据同步</li>
+                </ul>
+                <a href="{{ url_for('query') }}" class="feature-link">开始使用 <i class="fas fa-arrow-right"></i></a>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-pie"></i>
+                </div>
+                <h3>多维可视化分析</h3>
+                <ul class="feature-list">
+                    <li>交互式图表展示</li>
+                    <li>实时数据可视化</li>
+                    <li>自定义分析维度</li>
+                    <li>多图表联动分析</li>
+                </ul>
+                <a href="{{ url_for('visualization') }}" class="feature-link">探索分析 <i class="fas fa-arrow-right"></i></a>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-filter"></i>
+                </div>
+                <h3>深度转化分析</h3>
+                <ul class="feature-list">
+                    <li>用户转化漏斗分析</li>
+                    <li>行为路径追踪</li>
+                    <li>流失用户分析</li>
+                    <li>转化率优化建议</li>
+                </ul>
+                <a href="{{ url_for('conversion_analysis') }}" class="feature-link">查看漏斗 <i class="fas fa-arrow-right"></i></a>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h3>用户价值分群</h3>
+                <ul class="feature-list">
+                    <li>RFM用户分群模型</li>
+                    <li>行为模式聚类</li>
+                    <li>用户画像分析</li>
+                    <li>个性化策略推荐</li>
+                </ul>
+                <a href="{{ url_for('rfm_analysis') }}" class="feature-link">用户分群 <i class="fas fa-arrow-right"></i></a>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <h3>智能推荐引擎</h3>
+                <ul class="feature-list">
+                    <li>协同过滤推荐算法</li>
+                    <li>基于内容推荐</li>
+                    <li>混合推荐策略</li>
+                    <li>实时个性化推荐</li>
+                </ul>
+                <a href="{{ url_for('recommendation') }}" class="feature-link">体验推荐 <i class="fas fa-arrow-right"></i></a>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-tachometer-alt"></i>
+                </div>
+                <h3>实时数据看板</h3>
+                <ul class="feature-list">
+                    <li>关键指标监控</li>
+                    <li>趋势预警机制</li>
+                    <li>多维度数据聚合</li>
+                    <li>自定义监控面板</li>
+                </ul>
+                <a href="{{ url_for('dashboard') }}" class="feature-link">查看看板 <i class="fas fa-arrow-right"></i></a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 快速开始 -->
+    <div class="quick-start">
+        <h2><i class="fas fa-rocket"></i> 快速开始指南</h2>
+
+        <div class="steps-grid">
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h3>上传数据</h3>
+                    <p>上传淘宝用户行为CSV数据文件，系统将自动处理和分析</p>
+                    <a href="{{ url_for('query') }}" class="step-link">上传数据 <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h3>分析数据</h3>
+                    <p>使用可视化工具分析用户行为模式、转化路径和用户价值</p>
+                    <a href="{{ url_for('visualization') }}" class="step-link">开始分析 <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h3>获取洞察</h3>
+                    <p>查看分析报告，发现业务机会，制定优化策略</p>
+                    <a href="{{ url_for('dashboard') }}" class="step-link">查看洞察 <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h3>应用结果</h3>
+                    <p>基于分析结果优化产品、提升转化、制定营销策略</p>
+                    <a href="{{ url_for('recommendation') }}" class="step-link">智能推荐 <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 数据展示区 -->
+    <div class="data-showcase">
+        <h2><i class="fas fa-eye"></i> 数据洞察示例</h2>
+
+        <div class="showcase-grid">
+            <div class="showcase-card">
+                <div class="showcase-chart" id="trendShowcase" style="width: 100%; height: 200px;"></div>
+                <div class="showcase-content">
+                    <h4>行为趋势分析</h4>
+                    <p>实时监控用户行为变化趋势，识别异常模式</p>
+                </div>
+            </div>
+
+            <div class="showcase-card">
+                <div class="showcase-chart" id="funnelShowcase" style="width: 100%; height: 200px;"></div>
+                <div class="showcase-content">
+                    <h4>转化漏斗分析</h4>
+                    <p>从浏览到购买的全链路转化率分析</p>
+                </div>
+            </div>
+
+            <div class="showcase-card">
+                <div class="showcase-chart" id="userSegmentShowcase" style="width: 100%; height: 200px;"></div>
+                <div class="showcase-content">
+                    <h4>用户分群分析</h4>
+                    <p>基于RFM模型的高价值用户识别</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 系统优势 -->
+    <div class="advantages">
+        <h2><i class="fas fa-award"></i> 系统优势</h2>
+
+        <div class="advantages-grid">
+            <div class="advantage-card">
+                <i class="fas fa-bolt"></i>
+                <h3>实时分析</h3>
+                <p>支持实时数据处理和分析，快速响应业务变化</p>
+            </div>
+
+            <div class="advantage-card">
+                <i class="fas fa-shield-alt"></i>
+                <h3>安全可靠</h3>
+                <p>企业级数据安全保障，多重备份和恢复机制</p>
+            </div>
+
+            <div class="advantage-card">
+                <i class="fas fa-expand-alt"></i>
+                <h3>扩展性强</h3>
+                <p>支持海量数据处理，轻松应对业务增长</p>
+            </div>
+
+            <div class="advantage-card">
+                <i class="fas fa-user-friends"></i>
+                <h3>易于使用</h3>
+                <p>直观的操作界面，无需专业数据分析技能</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 用户案例 -->
+    <div class="case-studies">
+        <h2><i class="fas fa-users"></i> 典型应用场景</h2>
+
+        <div class="cases-grid">
+            <div class="case-card">
+                <div class="case-header">
+                    <i class="fas fa-shopping-cart"></i>
+                    <h3>电商运营优化</h3>
+                </div>
+                <div class="case-content">
+                    <p>通过用户行为分析优化商品推荐策略，提升转化率和客单价</p>
+                    <ul>
+                        <li>识别高转化商品品类</li>
+                        <li>优化商品展示策略</li>
+                        <li>提升用户购买体验</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="case-card">
+                <div class="case-header">
+                    <i class="fas fa-chart-line"></i>
+                    <h3>市场营销分析</h3>
+                </div>
+                <div class="case-content">
+                    <p>分析营销活动效果，优化广告投放策略和营销预算分配</p>
+                    <ul>
+                        <li>追踪营销活动转化路径</li>
+                        <li>分析用户行为变化</li>
+                        <li>优化营销渠道组合</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="case-card">
+                <div class="case-header">
+                    <i class="fas fa-user-tie"></i>
+                    <h3>产品决策支持</h3>
+                </div>
+                <div class="case-content">
+                    <p>基于用户行为数据优化产品功能和用户体验设计</p>
+                    <ul>
+                        <li>分析用户使用习惯</li>
+                        <li>识别功能优化机会</li>
+                        <li>提升用户满意度</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 联系支持 -->
+    <div class="support-section">
+        <div class="support-content">
+            <h2><i class="fas fa-question-circle"></i> 需要帮助？</h2>
+            <p>如果您在使用过程中遇到任何问题，我们的支持团队随时为您服务</p>
+            <div class="support-actions">
+                <a href="{{ url_for('help') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-book"></i> 查看使用文档
+                </a>
+                <a href="{{ url_for('contact') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-envelope"></i> 联系技术支持
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化展示图表
+    const trendChart = echarts.init(document.getElementById('trendShowcase'));
+    const funnelChart = echarts.init(document.getElementById('funnelShowcase'));
+    const userSegmentChart = echarts.init(document.getElementById('userSegmentShowcase'));
+
+    // 趋势展示图
+    const trendOption = {
+        tooltip: {
+            trigger: 'axis'
+        },
+        xAxis: {
+            type: 'category',
+            data: ['12-01', '12-02', '12-03', '12-04', '12-05'],
+            show: false
+        },
+        yAxis: {
+            type: 'value',
+            show: false
+        },
+        series: [{
+            data: [120, 200, 150, 80, 70],
+            type: 'line',
+            smooth: true,
+            lineStyle: {
+                width: 3,
+                color: '#6f068bad'
+            },
+            areaStyle: {
+                color: 'rgba(111, 6, 141, 0.1)'
+            }
+        }],
+        grid: {
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0
+        }
+    };
+
+    // 漏斗展示图
+    const funnelOption = {
+        tooltip: {
+            trigger: 'item',
+            formatter: '{a} <br/>{b} : {c}%'
+        },
+        series: [{
+            name: '漏斗',
+            type: 'funnel',
+            data: [
+                {value: 100, name: '浏览'},
+                {value: 60, name: '加购'},
+                {value: 30, name: '购买'}
+            ],
+            label: {
+                show: false
+            },
+            itemStyle: {
+                color: '#6f068bad'
+            }
+        }],
+        grid: {
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0
+        }
+    };
+
+    // 用户分群展示图
+    const userSegmentOption = {
+        tooltip: {
+            trigger: 'item',
+            formatter: '{b}: {c} ({d}%)'
+        },
+        series: [{
+            type: 'pie',
+            radius: ['40%', '70%'],
+            data: [
+                {value: 335, name: '高价值'},
+                {value: 310, name: '中价值'},
+                {value: 234, name: '低价值'}
+            ],
+            label: {
+                show: false
+            },
+            itemStyle: {
+                color: function(params) {
+                    const colorList = ['#6f068bad', '#91CC75', '#FAC858'];
+                    return colorList[params.dataIndex] || '#5470C6';
+                }
+            }
+        }],
+        grid: {
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0
+        }
+    };
+
+    // 渲染图表
+    trendChart.setOption(trendOption);
+    funnelChart.setOption(funnelOption);
+    userSegmentChart.setOption(userSegmentOption);
+
+    // 响应式调整图表
+    window.addEventListener('resize', function() {
+        trendChart.resize();
+        funnelChart.resize();
+        userSegmentChart.resize();
+    });
+
+    // 卡片悬停效果
+    const featureCards = document.querySelectorAll('.feature-card');
+    featureCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-10px)';
+        });
+
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+});
+</script>
+{% endblock %}

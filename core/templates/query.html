@@ -1,0 +1,371 @@
+{% extends 'base.html' %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/query.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="upload-container">
+    <!-- 页面头部 -->
+    <div class="upload-header">
+        <h1><i class="fas fa-upload"></i> 淘宝用户行为数据上传</h1>
+        <p class="subtitle">上传和分析淘宝用户行为数据，开始您的数据分析之旅</p>
+    </div>
+
+    <!-- 上传指南 -->
+    <div class="upload-guide">
+        <div class="guide-card">
+            <h3><i class="fas fa-info-circle"></i> 上传说明</h3>
+            <div class="guide-content">
+                <div class="guide-item">
+                    <i class="fas fa-file-csv"></i>
+                    <div>
+                        <h4>文件格式</h4>
+                        <p>支持CSV格式的淘宝用户行为数据文件</p>
+                    </div>
+                </div>
+                <div class="guide-item">
+                    <i class="fas fa-table"></i>
+                    <div>
+                        <h4>数据结构</h4>
+                        <p>数据应包含：user_id, item_id, category_id, behavior_type, timestamp</p>
+                    </div>
+                </div>
+                <div class="guide-item">
+                    <i class="fas fa-check-circle"></i>
+                    <div>
+                        <h4>数据要求</h4>
+                        <p>无表头，数据需完整，时间戳为Unix格式（秒）</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sample-card">
+            <h3><i class="fas fa-file-code"></i> 数据格式示例</h3>
+            <div class="code-sample">
+                <pre><code>user_id,item_id,category_id,behavior_type,timestamp
+1001,2001,3001,pv,1641024000
+1001,2001,3001,cart,1641024060
+1001,2002,3002,pv,1641024120
+1002,2001,3001,buy,1641024180
+1002,2003,3003,fav,1641024240</code></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- 文件上传表单 -->
+    <div class="upload-section">
+        <div class="upload-card">
+            <h3><i class="fas fa-cloud-upload-alt"></i> 数据上传</h3>
+
+            <form action="{{ url_for('query') }}" method="POST" enctype="multipart/form-data" id="uploadForm">
+                <div class="upload-area">
+                    <!-- 拖放区域 -->
+                    <div class="drop-zone" id="dropZone">
+                        <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                        <p class="drop-text">拖放文件到此处，或点击选择文件</p>
+                        <p class="drop-subtext">支持CSV格式，最大文件大小：100MB</p>
+
+                        <!-- 文件选择 -->
+                        <div class="file-input-wrapper">
+                            <input type="file"
+                                   id="query-input-uploaded_file"
+                                   class="file-input-hidden"
+                                   accept=".csv"
+                                   name="query-input-uploaded_file"
+                                   required
+                                   onchange="handleFileSelect(this)">
+                            <label for="query-input-uploaded_file" class="file-input-label">
+                                <i class="fas fa-folder-open"></i> 选择文件
+                            </label>
+                        </div>
+
+                        <!-- 文件信息显示 -->
+                        <div id="fileInfo" class="file-info">
+                            <div id="fileName" class="file-name">未选择文件</div>
+                            <div id="fileSize" class="file-size"></div>
+                        </div>
+                    </div>
+
+                    <!-- 操作选择 -->
+                    <div class="action-selection">
+                        <h4><i class="fas fa-cogs"></i> 选择操作</h4>
+                        <div class="action-buttons">
+                            <button type="button"
+                                    class="btn-action preview-btn"
+                                    onclick="submitForm('display')"
+                                    id="previewBtn">
+                                <i class="fas fa-eye"></i> 预览数据
+                            </button>
+                            <button type="button"
+                                    class="btn-action save-btn"
+                                    onclick="submitForm('save')"
+                                    id="saveBtn">
+                                <i class="fas fa-save"></i> 保存到数据库
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 隐藏的action字段 -->
+                    <input type="hidden" id="actionField" name="action" value="">
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 数据统计展示 -->
+    {% if behavior_stats %}
+    <div class="stats-section">
+        <div class="stats-card">
+            <h3><i class="fas fa-chart-bar"></i> 数据统计</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h4>总记录数</h4>
+                        <p class="stat-value">{{ behavior_stats.total_records|default(0)|format_number }}</p>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h4>用户数</h4>
+                        <p class="stat-value">{{ behavior_stats.total_users|default(0)|format_number }}</p>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">
+                        <i class="fas fa-shopping-bag"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h4>商品数</h4>
+                        <p class="stat-value">{{ behavior_stats.total_items|default(0)|format_number }}</p>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h4>日期范围</h4>
+                        <p class="stat-value">{{ behavior_stats.date_range|default('N/A') }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 结果消息 -->
+    {% if result_message %}
+    <div class="result-section">
+        <div class="result-card {% if '成功' in result_message %}result-success{% else %}result-error{% endif %}">
+            <div class="result-header">
+                <i class="fas {% if '成功' in result_message %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
+                <h4>处理结果</h4>
+            </div>
+            <div class="result-content">
+                {{ result_message|safe }}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 数据预览 -->
+    {% if html_table_display %}
+    <div class="preview-section">
+        <div class="preview-card">
+            <div class="preview-header">
+                <h3><i class="fas fa-table"></i> 数据预览</h3>
+                <div class="preview-actions">
+                    <button class="btn-close" onclick="closePreview()">
+                        <i class="fas fa-times"></i> 关闭
+                    </button>
+                </div>
+            </div>
+            <div class="preview-content">
+                <div class="table-responsive">
+                    {{ html_table_display|safe }}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('query-input-uploaded_file');
+
+    // 拖放功能
+    dropZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.style.borderColor = '#6f068bad';
+        this.style.backgroundColor = 'rgba(111, 6, 141, 0.05)';
+    });
+
+    dropZone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.style.borderColor = '#ddd';
+        this.style.backgroundColor = '';
+    });
+
+    dropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.style.borderColor = '#ddd';
+        this.style.backgroundColor = '';
+
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            handleFileSelect(fileInput);
+        }
+    });
+
+    // 点击拖放区域触发文件选择
+    dropZone.addEventListener('click', function(e) {
+        if (e.target !== fileInput && e.target !== fileInput.nextElementSibling) {
+            fileInput.click();
+        }
+    });
+});
+
+// 处理文件选择
+function handleFileSelect(input) {
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+
+    if (input.files.length > 0) {
+        const file = input.files[0];
+
+        // 验证文件格式
+        if (!validateFileFormat(file)) {
+            fileInput.value = '';
+            showError('请选择CSV格式的文件');
+            fileInfo.style.display = 'none';
+            return;
+        }
+
+        // 验证文件大小（100MB限制）
+        if (file.size > 100 * 1024 * 1024) {
+            fileInput.value = '';
+            showError('文件大小不能超过100MB');
+            fileInfo.style.display = 'none';
+            return;
+        }
+
+        // 显示文件信息
+        fileName.textContent = file.name;
+        fileSize.textContent = formatFileSize(file.size);
+        fileInfo.style.display = 'flex';
+
+        // 启用操作按钮
+        document.getElementById('previewBtn').disabled = false;
+        document.getElementById('saveBtn').disabled = false;
+    } else {
+        fileInfo.style.display = 'none';
+    }
+}
+
+// 验证文件格式
+function validateFileFormat(file) {
+    const fileName = file.name.toLowerCase();
+    return fileName.endsWith('.csv');
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// 显示错误信息
+function showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-message';
+    errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+
+    const uploadArea = document.querySelector('.upload-area');
+    const existingError = uploadArea.querySelector('.error-message');
+    if (existingError) {
+        existingError.remove();
+    }
+
+    uploadArea.insertBefore(errorDiv, uploadArea.firstChild);
+
+    // 3秒后自动移除错误信息
+    setTimeout(() => {
+        if (errorDiv.parentNode) {
+            errorDiv.remove();
+        }
+    }, 3000);
+}
+
+// 表单提交
+function submitForm(actionType) {
+    const form = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('query-input-uploaded_file');
+    const actionField = document.getElementById('actionField');
+    const previewBtn = document.getElementById('previewBtn');
+    const saveBtn = document.getElementById('saveBtn');
+
+    if (!fileInput.files.length) {
+        showError('请先选择要上传的文件！');
+        return;
+    }
+
+    // 验证文件格式
+    const file = fileInput.files[0];
+    if (!validateFileFormat(file)) {
+        showError('请选择CSV格式的淘宝用户行为数据文件');
+        return;
+    }
+
+    // 验证文件大小
+    if (file.size > 100 * 1024 * 1024) {
+        showError('文件大小不能超过100MB');
+        return;
+    }
+
+    // 设置操作类型
+    actionField.value = actionType;
+
+    // 显示加载状态
+    previewBtn.disabled = true;
+    saveBtn.disabled = true;
+
+    if (actionType === 'display') {
+        previewBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 加载中...';
+    } else {
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+    }
+
+    // 提交表单
+    form.submit();
+}
+
+// 关闭预览
+function closePreview() {
+    const previewSection = document.querySelector('.preview-section');
+    if (previewSection) {
+        previewSection.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

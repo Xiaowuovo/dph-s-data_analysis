@@ -1,0 +1,840 @@
+{% extends 'base.html' %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/time_pattern.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="time-pattern-container">
+    <!-- 页面头部 -->
+    <div class="analysis-header">
+        <h1><i class="fas fa-clock"></i> 用户行为时间模式分析</h1>
+        <p class="subtitle">洞察用户活跃时段、日期规律和周期性行为特征</p>
+    </div>
+
+    <!-- 时间筛选控制面板 -->
+    <div class="control-panel">
+        <div class="filter-card">
+            <h3><i class="fas fa-sliders-h"></i> 分析设置</h3>
+            <form id="timeFilterForm">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="timeRange"><i class="fas fa-calendar-alt"></i> 时间范围</label>
+                        <select id="timeRange" class="form-select">
+                            <option value="7">最近7天</option>
+                            <option value="14">最近14天</option>
+                            <option value="30" selected>最近30天</option>
+                            <option value="90">最近90天</option>
+                            <option value="custom">自定义范围</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group" id="customDateRange" style="display:none;">
+                        <label><i class="fas fa-calendar-day"></i> 自定义日期</label>
+                        <div class="date-inputs">
+                            <input type="date" id="startDate" class="form-control">
+                            <span>至</span>
+                            <input type="date" id="endDate" class="form-control">
+                        </div>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="behaviorType"><i class="fas fa-mouse-pointer"></i> 行为类型</label>
+                        <select id="behaviorType" class="form-select">
+                            <option value="all" selected>全部行为</option>
+                            <option value="pv">浏览(PV)</option>
+                            <option value="cart">加购(Cart)</option>
+                            <option value="fav">收藏(Fav)</option>
+                            <option value="buy">购买(Buy)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label><i class="fas fa-filter"></i> 高级筛选</label>
+                        <div class="checkbox-group">
+                            <label>
+                                <input type="checkbox" id="weekendFilter" checked> 包含周末
+                            </label>
+                            <label>
+                                <input type="checkbox" id="holidayFilter" checked> 包含节假日
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="userSegment"><i class="fas fa-users"></i> 用户分群</label>
+                        <select id="userSegment" class="form-select">
+                            <option value="all" selected>全部用户</option>
+                            <option value="new">新用户</option>
+                            <option value="active">活跃用户</option>
+                            <option value="dormant">沉睡用户</option>
+                            <option value="high_value">高价值用户</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="filter-actions">
+                    <button type="button" id="applyFilters" class="btn btn-primary">
+                        <i class="fas fa-chart-line"></i> 应用分析
+                    </button>
+                    <button type="button" id="resetFilters" class="btn btn-outline-secondary">
+                        <i class="fas fa-redo"></i> 重置条件
+                    </button>
+                    <button type="button" id="exportAnalysis" class="btn btn-outline-secondary">
+                        <i class="fas fa-download"></i> 导出图表
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 关键指标概览 -->
+    <div class="metrics-overview">
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-icon">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <div class="metric-content">
+                    <h4>日均活跃度</h4>
+                    <p class="metric-value">{{ time_stats.daily_activity|default(0)|format_number }}</p>
+                    <p class="metric-change">
+                        <span class="change-badge up">+{{ time_stats.daily_change|default(0) }}%</span>
+                        <span>环比变化</span>
+                    </p>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="metric-content">
+                    <h4>高峰时段</h4>
+                    <p class="metric-value">{{ time_stats.peak_hours|default('20:00-22:00') }}</p>
+                    <p class="metric-label">占全天 {{ time_stats.peak_percent|default(35) }}% 流量</p>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon">
+                    <i class="fas fa-calendar-week"></i>
+                </div>
+                <div class="metric-content">
+                    <h4>周高峰日</h4>
+                    <p class="metric-value">{{ time_stats.peak_day|default('周六') }}</p>
+                    <p class="metric-label">比平日高 {{ time_stats.peak_day_increase|default(25) }}%</p>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon">
+                    <i class="fas fa-shopping-bag"></i>
+                </div>
+                <div class="metric-content">
+                    <h4>最佳转化时段</h4>
+                    <p class="metric-value">{{ time_stats.best_conversion_hour|default('21:00') }}</p>
+                    <p class="metric-label">转化率 {{ time_stats.best_conversion_rate|default(8.5) }}%</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 时间模式分析图表 -->
+    <div class="time-analysis-section">
+        <!-- 24小时行为模式 -->
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-hourglass-half"></i> 24小时行为模式</h3>
+                <div class="card-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="exportHourlyChart">
+                        <i class="fas fa-download"></i> 导出图表
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="hourlyPatternChart" style="width: 100%; height: 350px;"></div>
+            </div>
+            <div class="card-footer">
+                <div class="insight">
+                    <i class="fas fa-lightbulb"></i>
+                    <p>高峰时段集中在 {{ time_stats.peak_hours|default('20:00-22:00') }}，占全天流量的 {{ time_stats.peak_percent|default(35) }}%</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 周行为模式 -->
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-calendar-week"></i> 周行为模式</h3>
+                <div class="card-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="exportWeeklyChart">
+                        <i class="fas fa-download"></i> 导出图表
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="weeklyPatternChart" style="width: 100%; height: 350px;"></div>
+            </div>
+            <div class="card-footer">
+                <div class="insight">
+                    <i class="fas fa-lightbulb"></i>
+                    <p>周末（{{ time_stats.peak_day|default('周六、周日') }}）的活跃度比平日高 {{ time_stats.weekend_increase|default(30) }}%</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 日期趋势分析 -->
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-chart-line"></i> 日期趋势分析</h3>
+                <div class="card-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="exportTrendChart">
+                        <i class="fas fa-download"></i> 导出图表
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="dateTrendChart" style="width: 100%; height: 350px;"></div>
+            </div>
+            <div class="card-footer">
+                <div class="insight">
+                    <i class="fas fa-lightbulb"></i>
+                    <p>促销活动期间流量平均提升 {{ time_stats.promo_increase|default(120) }}%，转化率提升 {{ time_stats.promo_conversion_increase|default(45) }}%</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 节假日对比 -->
+        <div class="result-card">
+            <div class="card-header">
+                <h3><i class="fas fa-gift"></i> 节假日对比</h3>
+                <div class="card-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="exportHolidayChart">
+                        <i class="fas fa-download"></i> 导出图表
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="holidayComparisonChart" style="width: 100%; height: 350px;"></div>
+            </div>
+            <div class="card-footer">
+                <div class="insight">
+                    <i class="fas fa-lightbulb"></i>
+                    <p>节假日期间平均订单量比平日高 {{ time_stats.holiday_increase|default(80) }}%，客单价提升 {{ time_stats.holiday_avg_price_increase|default(25) }}%</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 时间模式洞察 -->
+    <div class="time-insights">
+        <div class="insights-header">
+            <h3><i class="fas fa-lightbulb"></i> 时间模式洞察与建议</h3>
+        </div>
+        
+        <div class="insights-grid">
+            <!-- 高峰时段洞察 -->
+            <div class="insight-card">
+                <div class="insight-header">
+                    <div class="insight-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <h4>高峰时段运营建议</h4>
+                </div>
+                <div class="insight-content">
+                    <ul>
+                        <li>在 {{ time_stats.peak_hours|default('20:00-22:00') }} 高峰时段增加客服人员</li>
+                        <li>高峰前1小时推送促销信息（{{ time_stats.pre_peak_hours|default('19:00-20:00') }}）</li>
+                        <li>高峰时段服务器资源保障</li>
+                        <li>设置高峰专属优惠券</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- 周末策略 -->
+            <div class="insight-card">
+                <div class="insight-header">
+                    <div class="insight-icon">
+                        <i class="fas fa-calendar-weekend"></i>
+                    </div>
+                    <h4>周末营销策略</h4>
+                </div>
+                <div class="insight-content">
+                    <ul>
+                        <li>周五预热周末专属活动</li>
+                        <li>周六上午10点发送周末优惠</li>
+                        <li>设置周末限时折扣</li>
+                        <li>周末延长客服在线时间</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- 节假日策略 -->
+            <div class="insight-card">
+                <div class="insight-header">
+                    <div class="insight-icon">
+                        <i class="fas fa-gifts"></i>
+                    </div>
+                    <h4>节假日营销策略</h4>
+                </div>
+                <div class="insight-content">
+                    <ul>
+                        <li>提前3天开始节日预热</li>
+                        <li>设置节日专属商品组合</li>
+                        <li>节日当天限时秒杀活动</li>
+                        <li>节日后跟进未转化用户</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- 低峰优化 -->
+            <div class="insight-card">
+                <div class="insight-header">
+                    <div class="insight-icon">
+                        <i class="fas fa-chart-area"></i>
+                    </div>
+                    <h4>低峰时段优化</h4>
+                </div>
+                <div class="insight-content">
+                    <ul>
+                        <li>在 {{ time_stats.low_peak_hours|default('03:00-06:00') }} 时段进行系统维护</li>
+                        <li>低峰时段推送次日达商品</li>
+                        <li>设置早鸟优惠刺激晨间流量</li>
+                        <li>分析低峰时段用户特征</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化图表
+    const hourlyChart = echarts.init(document.getElementById('hourlyPatternChart'));
+    const weeklyChart = echarts.init(document.getElementById('weeklyPatternChart'));
+    const trendChart = echarts.init(document.getElementById('dateTrendChart'));
+    const holidayChart = echarts.init(document.getElementById('holidayComparisonChart'));
+    
+    // 24小时行为模式图表
+    const hourlyOption = {
+        title: {
+            text: '24小时用户行为分布',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'axis',
+            formatter: function(params) {
+                let result = params[0].axisValue + '时<br/>';
+                params.forEach(function(item) {
+                    result += item.marker + item.seriesName + ': ' + item.value + ' (' + (item.value * 100 / totalCount).toFixed(1) + '%)<br/>';
+                });
+                return result;
+            }
+        },
+        legend: {
+            data: ['浏览(PV)', '加购(Cart)', '收藏(Fav)', '购买(Buy)'],
+            bottom: 10
+        },
+        xAxis: {
+            type: 'category',
+            data: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23'],
+            name: '小时',
+            axisLabel: {
+                interval: 0
+            }
+        },
+        yAxis: {
+            type: 'value',
+            name: '行为数量'
+        },
+        series: [
+            {
+                name: '浏览(PV)',
+                type: 'line',
+                smooth: true,
+                data: [120, 90, 60, 50, 40, 60, 120, 240, 320, 400, 450, 500, 550, 580, 600, 620, 650, 700, 800, 950, 1050, 980, 750, 400],
+                lineStyle: {
+                    width: 3,
+                    color: '#5470C6'
+                },
+                areaStyle: {
+                    color: 'rgba(84, 112, 198, 0.1)'
+                }
+            },
+            {
+                name: '加购(Cart)',
+                type: 'line',
+                smooth: true,
+                data: [15, 10, 5, 3, 2, 5, 15, 30, 45, 60, 70, 80, 85, 90, 95, 100, 110, 120, 140, 160, 180, 170, 130, 80],
+                lineStyle: {
+                    width: 3,
+                    color: '#91CC75'
+                },
+                areaStyle: {
+                    color: 'rgba(145, 204, 117, 0.1)'
+                }
+            },
+            {
+                name: '收藏(Fav)',
+                type: 'line',
+                smooth: true,
+                data: [8, 5, 3, 2, 1, 3, 8, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 80, 90, 85, 70, 40],
+                lineStyle: {
+                    width: 3,
+                    color: '#FAC858'
+                },
+                areaStyle: {
+                    color: 'rgba(250, 200, 88, 0.1)'
+                }
+            },
+            {
+                name: '购买(Buy)',
+                type: 'line',
+                smooth: true,
+                data: [5, 3, 1, 0, 0, 1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 75, 85, 80, 60, 30],
+                lineStyle: {
+                    width: 3,
+                    color: '#EE6666'
+                },
+                areaStyle: {
+                    color: 'rgba(238, 102, 102, 0.1)'
+                }
+            }
+        ],
+        dataZoom: [{
+            type: 'inside',
+            start: 0,
+            end: 100
+        }]
+    };
+    
+    // 周行为模式图表
+    const weeklyOption = {
+        title: {
+            text: '一周用户行为分布',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'shadow'
+            }
+        },
+        legend: {
+            data: ['浏览(PV)', '加购(Cart)', '收藏(Fav)', '购买(Buy)'],
+            bottom: 10
+        },
+        xAxis: {
+            type: 'category',
+            data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+            name: '星期'
+        },
+        yAxis: {
+            type: 'value',
+            name: '行为数量'
+        },
+        series: [
+            {
+                name: '浏览(PV)',
+                type: 'bar',
+                barWidth: '20%',
+                data: [3200, 3400, 3300, 3500, 3800, 5200, 4800],
+                itemStyle: {
+                    color: '#5470C6'
+                }
+            },
+            {
+                name: '加购(Cart)',
+                type: 'bar',
+                barWidth: '20%',
+                data: [450, 480, 470, 490, 520, 780, 720],
+                itemStyle: {
+                    color: '#91CC75'
+                }
+            },
+            {
+                name: '收藏(Fav)',
+                type: 'bar',
+                barWidth: '20%',
+                data: [230, 250, 240, 260, 280, 420, 390],
+                itemStyle: {
+                    color: '#FAC858'
+                }
+            },
+            {
+                name: '购买(Buy)',
+                type: 'bar',
+                barWidth: '20%',
+                data: [150, 160, 155, 170, 190, 280, 260],
+                itemStyle: {
+                    color: '#EE6666'
+                }
+            }
+        ]
+    };
+    
+    // 日期趋势分析图表
+    const trendOption = {
+        title: {
+            text: '用户行为日期趋势',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'axis',
+            formatter: function(params) {
+                let result = params[0].axisValue + '<br/>';
+                params.forEach(function(item) {
+                    result += item.marker + item.seriesName + ': ' + item.value + '<br/>';
+                });
+                return result;
+            }
+        },
+        legend: {
+            data: ['浏览(PV)', '加购(Cart)', '收藏(Fav)', '购买(Buy)'],
+            bottom: 10
+        },
+        xAxis: {
+            type: 'category',
+            data: ['1日', '2日', '3日', '4日', '5日', '6日', '7日', '8日', '9日', '10日', 
+                   '11日', '12日', '13日', '14日', '15日', '16日', '17日', '18日', '19日', '20日',
+                   '21日', '22日', '23日', '24日', '25日', '26日', '27日', '28日', '29日', '30日'],
+            name: '日期',
+            axisLabel: {
+                rotate: 45
+            }
+        },
+        yAxis: {
+            type: 'value',
+            name: '行为数量'
+        },
+        series: [
+            {
+                name: '浏览(PV)',
+                type: 'line',
+                smooth: true,
+                data: generateDailyData(10000, 15000, [10, 15, 20, 25]),
+                lineStyle: {
+                    width: 3,
+                    color: '#5470C6'
+                },
+                areaStyle: {
+                    color: 'rgba(84, 112, 198, 0.1)'
+                }
+            },
+            {
+                name: '加购(Cart)',
+                type: 'line',
+                smooth: true,
+                data: generateDailyData(1500, 2500, [10, 15, 20, 25]),
+                lineStyle: {
+                    width: 3,
+                    color: '#91CC75'
+                },
+                areaStyle: {
+                    color: 'rgba(145, 204, 117, 0.1)'
+                }
+            },
+            {
+                name: '收藏(Fav)',
+                type: 'line',
+                smooth: true,
+                data: generateDailyData(800, 1500, [10, 15, 20, 25]),
+                lineStyle: {
+                    width: 3,
+                    color: '#FAC858'
+                },
+                areaStyle: {
+                    color: 'rgba(250, 200, 88, 0.1)'
+                }
+            },
+            {
+                name: '购买(Buy)',
+                type: 'line',
+                smooth: true,
+                data: generateDailyData(500, 1000, [10, 15, 20, 25]),
+                lineStyle: {
+                    width: 3,
+                    color: '#EE6666'
+                },
+                areaStyle: {
+                    color: 'rgba(238, 102, 102, 0.1)'
+                }
+            }
+        ],
+        dataZoom: [{
+            type: 'inside',
+            start: 0,
+            end: 100
+        }],
+        markLine: {
+            data: [
+                {
+                    name: '促销开始',
+                    xAxis: '5日',
+                    lineStyle: {
+                        color: '#EE6666'
+                    },
+                    label: {
+                        formatter: '促销开始',
+                        position: 'insideStartTop'
+                    }
+                },
+                {
+                    name: '促销结束',
+                    xAxis: '15日',
+                    lineStyle: {
+                        color: '#EE6666'
+                    },
+                    label: {
+                        formatter: '促销结束',
+                        position: 'insideStartTop'
+                    }
+                }
+            ]
+        }
+    };
+    
+    // 节假日对比图表
+    const holidayOption = {
+        title: {
+            text: '节假日行为对比',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'shadow'
+            }
+        },
+        legend: {
+            data: ['平日', '节假日'],
+            bottom: 10
+        },
+        xAxis: {
+            type: 'category',
+            data: ['浏览量', '加购量', '收藏量', '购买量', '客单价'],
+            name: '指标'
+        },
+        yAxis: {
+            type: 'value',
+            name: '数值'
+        },
+        series: [
+            {
+                name: '平日',
+                type: 'bar',
+                barWidth: '30%',
+                data: [10000, 1500, 800, 500, 150],
+                itemStyle: {
+                    color: '#91CC75'
+                },
+                label: {
+                    show: true,
+                    position: 'top'
+                }
+            },
+            {
+                name: '节假日',
+                type: 'bar',
+                barWidth: '30%',
+                data: [18000, 2700, 1400, 900, 190],
+                itemStyle: {
+                    color: '#EE6666'
+                },
+                label: {
+                    show: true,
+                    position: 'top'
+                }
+            }
+        ]
+    };
+    
+    // 渲染图表
+    hourlyChart.setOption(hourlyOption);
+    weeklyChart.setOption(weeklyOption);
+    trendChart.setOption(trendOption);
+    holidayChart.setOption(holidayOption);
+    
+    // 窗口大小变化时重绘
+    window.addEventListener('resize', function() {
+        hourlyChart.resize();
+        weeklyChart.resize();
+        trendChart.resize();
+        holidayChart.resize();
+    });
+    
+    // 时间范围选择切换
+    document.getElementById('timeRange').addEventListener('change', function() {
+        const customRange = document.getElementById('customDateRange');
+        if (this.value === 'custom') {
+            customRange.style.display = 'block';
+        } else {
+            customRange.style.display = 'none';
+        }
+    });
+    
+    // 应用筛选
+    document.getElementById('applyFilters').addEventListener('click', function() {
+        const timeRange = document.getElementById('timeRange').value;
+        const behaviorType = document.getElementById('behaviorType').value;
+        const includeWeekend = document.getElementById('weekendFilter').checked;
+        const includeHoliday = document.getElementById('holidayFilter').checked;
+        const userSegment = document.getElementById('userSegment').value;
+        
+        // 显示加载状态
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 分析中...';
+        
+        // 模拟数据加载
+        setTimeout(() => {
+            // 更新图表数据
+            updateCharts(timeRange, behaviorType, includeWeekend, includeHoliday, userSegment);
+            
+            // 恢复按钮状态
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-chart-line"></i> 应用分析';
+        }, 1500);
+    });
+    
+    // 重置筛选
+    document.getElementById('resetFilters').addEventListener('click', function() {
+        document.getElementById('timeRange').value = '30';
+        document.getElementById('behaviorType').value = 'all';
+        document.getElementById('weekendFilter').checked = true;
+        document.getElementById('holidayFilter').checked = true;
+        document.getElementById('userSegment').value = 'all';
+        document.getElementById('customDateRange').style.display = 'none';
+    });
+    
+    // 导出图表
+    document.getElementById('exportHourlyChart').addEventListener('click', function() {
+        exportChart(hourlyChart, '24小时行为模式.png');
+    });
+    
+    document.getElementById('exportWeeklyChart').addEventListener('click', function() {
+        exportChart(weeklyChart, '周行为模式.png');
+    });
+    
+    document.getElementById('exportTrendChart').addEventListener('click', function() {
+        exportChart(trendChart, '日期趋势分析.png');
+    });
+    
+    document.getElementById('exportHolidayChart').addEventListener('click', function() {
+        exportChart(holidayChart, '节假日对比.png');
+    });
+    
+    document.getElementById('exportAnalysis').addEventListener('click', function() {
+        alert('完整分析报告导出功能将在后端实现');
+    });
+    
+    // 工具函数
+    function generateDailyData(baseMin, baseMax, promoDays) {
+        const data = [];
+        for (let i = 1; i <= 30; i++) {
+            let value = Math.floor(Math.random() * (baseMax - baseMin + 1)) + baseMin;
+            
+            // 促销日增加
+            if (promoDays.includes(i)) {
+                value = Math.floor(value * (1.5 + Math.random() * 0.5));
+            }
+            
+            // 周末增加
+            if (i % 7 === 6 || i % 7 === 0) { // 周六或周日
+                value = Math.floor(value * (1.2 + Math.random() * 0.3));
+            }
+            
+            data.push(value);
+        }
+        return data;
+    }
+    
+    function updateCharts(timeRange, behaviorType, includeWeekend, includeHoliday, userSegment) {
+        console.log('更新图表:', {
+            timeRange, 
+            behaviorType, 
+            includeWeekend, 
+            includeHoliday, 
+            userSegment
+        });
+        
+        // 这里应该发送AJAX请求获取新的数据
+        // 然后更新所有图表
+        
+        // 模拟数据更新
+        hourlyChart.setOption({
+            series: [
+                {data: generateHourlyData(behaviorType)},
+                {data: generateHourlyData(behaviorType, 0.15)},
+                {data: generateHourlyData(behaviorType, 0.08)},
+                {data: generateHourlyData(behaviorType, 0.05)}
+            ]
+        });
+        
+        weeklyChart.setOption({
+            series: [
+                {data: generateWeeklyData(behaviorType)},
+                {data: generateWeeklyData(behaviorType, 0.15)},
+                {data: generateWeeklyData(behaviorType, 0.08)},
+                {data: generateWeeklyData(behaviorType, 0.05)}
+            ]
+        });
+    }
+    
+    function generateHourlyData(behaviorType, ratio = 1) {
+        const baseData = [120, 90, 60, 50, 40, 60, 120, 240, 320, 400, 450, 500, 
+                          550, 580, 600, 620, 650, 700, 800, 950, 1050, 980, 750, 400];
+        
+        if (behaviorType === 'all') {
+            return baseData.map(val => Math.floor(val * ratio));
+        }
+        
+        // 根据行为类型调整数据
+        let multiplier = 1;
+        if (behaviorType === 'pv') multiplier = 1.2;
+        else if (behaviorType === 'cart') multiplier = 0.9;
+        else if (behaviorType === 'fav') multiplier = 0.7;
+        else if (behaviorType === 'buy') multiplier = 0.5;
+        
+        return baseData.map(val => Math.floor(val * ratio * multiplier));
+    }
+    
+    function generateWeeklyData(behaviorType, ratio = 1) {
+        const baseData = [3200, 3400, 3300, 3500, 3800, 5200, 4800];
+        
+        if (behaviorType === 'all') {
+            return baseData.map(val => Math.floor(val * ratio));
+        }
+        
+        // 根据行为类型调整数据
+        let multiplier = 1;
+        if (behaviorType === 'pv') multiplier = 1.2;
+        else if (behaviorType === 'cart') multiplier = 0.9;
+        else if (behaviorType === 'fav') multiplier = 0.7;
+        else if (behaviorType === 'buy') multiplier = 0.5;
+        
+        return baseData.map(val => Math.floor(val * ratio * multiplier));
+    }
+    
+    function exportChart(chart, filename) {
+        const url = chart.getDataURL({
+            type: 'png',
+            pixelRatio: 2,
+            backgroundColor: '#fff'
+        });
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+});
+</script>
+{% endblock %}

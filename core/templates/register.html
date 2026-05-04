@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电商消费者购物行为可视化系统 - 注册</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/register.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="register-container">
+        <!-- 注册卡片 -->
+        <div class="register-card">
+            <!-- 头部 -->
+            <div class="register-header">
+                <h1><i class="fas fa-user-plus"></i> 用户注册</h1>
+                <p class="subtitle">加入电商消费者购物行为可视化系统</p>
+            </div>
+
+            <!-- 表单区域 -->
+            <form action="{{url_for('register')}}" method="POST" class="register-form">
+                <!-- 消息提示 -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <div class="message-container">
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <i class="fas fa-info-circle"></i> {{ message }}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                <!-- 用户名输入 -->
+                <div class="form-group">
+                    <label for="zusername" class="form-label">
+                        <i class="fas fa-user"></i> 用户名
+                    </label>
+                    <input type="text" id="zusername" name="zusername" class="form-input"
+                           placeholder="请输入用户名（3-20个字符）" required minlength="3" maxlength="20"
+                           autocomplete="username" autofocus>
+                </div>
+
+                <!-- 密码输入 -->
+                <div class="form-group">
+                    <label for="zpassword" class="form-label">
+                        <i class="fas fa-lock"></i> 密码
+                    </label>
+                    <div class="password-wrapper">
+                        <input type="password" id="zpassword" name="zpassword" class="form-input"
+                               placeholder="请输入密码（最少6个字符）" required minlength="6"
+                               autocomplete="new-password">
+                        <span class="password-toggle" id="passwordToggle">
+                            <i class="fas fa-eye"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- 确认密码 -->
+                <div class="form-group">
+                    <label for="confirmPassword" class="form-label">
+                        <i class="fas fa-lock"></i> 确认密码
+                    </label>
+                    <input type="password" id="confirmPassword" class="form-input"
+                           placeholder="请再次输入密码" required minlength="6">
+                </div>
+
+                <!-- 协议条款 - 修改这里 -->
+                <div class="agreement">
+                    <input type="checkbox" id="agreeTerms" name="agreeTerms" required>
+                    <label for="agreeTerms">
+                        我已阅读并同意服务条款和隐私政策
+                    </label>
+                </div>
+
+                <!-- 注册按钮 -->
+                <button type="submit" class="register-btn">
+                    <i class="fas fa-user-plus"></i> 立即注册
+                </button>
+
+                <!-- 登录链接 -->
+                <div class="login-link">
+                    已有账号？ <a href="{{ url_for('login') }}">去登录</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- 系统信息 -->
+        <div class="system-info">
+            <h3><i class="fas fa-chart-line"></i> 电商消费者购物行为可视化系统</h3>
+            <p>专业的电商数据分析平台，助您洞察用户行为，驱动业务增长</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 密码显示/隐藏切换
+            const passwordInput = document.getElementById('zpassword');
+            const confirmPasswordInput = document.getElementById('confirmPassword');
+            const passwordToggle = document.getElementById('passwordToggle');
+
+            if (passwordToggle) {
+                passwordToggle.addEventListener('click', function() {
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    confirmPasswordInput.setAttribute('type', type);
+
+                    const icon = this.querySelector('i');
+                    if (type === 'password') {
+                        icon.className = 'fas fa-eye';
+                    } else {
+                        icon.className = 'fas fa-eye-slash';
+                    }
+                });
+            }
+
+            // 表单验证
+            const form = document.querySelector('.register-form');
+            form.addEventListener('submit', function(e) {
+                const username = document.getElementById('zusername').value;
+                const password = document.getElementById('zpassword').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+                const agreeTerms = document.getElementById('agreeTerms').checked;
+
+                // 清除之前的错误信息
+                clearErrors();
+                let isValid = true;
+
+                // 用户名验证
+                if (!username || username.trim().length === 0) {
+                    showError('zusername', '用户名不能为空');
+                    isValid = false;
+                } else if (username.length < 3 || username.length > 20) {
+                    showError('zusername', '用户名必须是3-20个字符');
+                    isValid = false;
+                } else if (!/^[a-zA-Z0-9_\u4e00-\u9fa5]+$/.test(username)) {
+                    showError('zusername', '用户名只能包含中文、英文、数字和下划线');
+                    isValid = false;
+                }
+
+
+                // 密码验证
+                if (password.length < 6) {
+                    showError('zpassword', '密码至少需要6个字符');
+                    isValid = false;
+                }
+
+                // 确认密码验证
+                if (password !== confirmPassword) {
+                    showError('confirmPassword', '两次输入的密码不一致');
+                    isValid = false;
+                }
+
+                // 协议验证
+                if (!agreeTerms) {
+                    showError('agreeTerms', '请同意服务条款和隐私政策');
+                    isValid = false;
+                }
+
+                if (!isValid) {
+                    e.preventDefault();
+                } else {
+                    // 显示加载状态
+                    const submitBtn = form.querySelector('.register-btn');
+                    const originalText = submitBtn.innerHTML;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 注册中...';
+                    submitBtn.disabled = true;
+                }
+            });
+
+            function showError(fieldId, message) {
+                const field = document.getElementById(fieldId);
+                const formGroup = field.closest('.form-group') || field.closest('.agreement');
+                const errorElement = document.createElement('div');
+                errorElement.className = 'error-message';
+                errorElement.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+                formGroup.appendChild(errorElement);
+
+                if (field.tagName === 'INPUT') {
+                    field.classList.add('error');
+                }
+            }
+
+            function clearErrors() {
+                const errorMessages = document.querySelectorAll('.error-message');
+                errorMessages.forEach(msg => msg.remove());
+
+                const errorInputs = document.querySelectorAll('.error');
+                errorInputs.forEach(input => input.classList.remove('error'));
+            }
+
+            // 实时验证
+            const usernameInput = document.getElementById('zusername');
+            const confirmInput = document.getElementById('confirmPassword');
+
+            if (usernameInput) {
+                usernameInput.addEventListener('input', function() {
+                    if (this.value.length >= 3 && this.value.length <= 20) {
+                        this.classList.remove('error');
+                        clearFieldError(this.id);
+                    }
+                });
+            }
+
+            if (confirmInput) {
+                confirmInput.addEventListener('input', function() {
+                    const password = document.getElementById('zpassword').value;
+                    if (this.value === password) {
+                        this.classList.remove('error');
+                        clearFieldError(this.id);
+                    }
+                });
+            }
+
+            function clearFieldError(fieldId) {
+                const formGroup = document.getElementById(fieldId).closest('.form-group');
+                const error = formGroup.querySelector('.error-message');
+                if (error) {
+                    error.remove();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

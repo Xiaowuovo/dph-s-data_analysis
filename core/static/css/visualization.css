@@ -1,0 +1,142 @@
+/* visualization.css - 数据可视化页面专用样式（已移除RFM相关样式） */
+
+:root {
+    /* 主色调 */
+    --primary-color: #667eea;
+    --primary-dark: #5a6fd8;
+    --primary-light: rgba(102, 126, 234, 0.1);
+
+    /* 图表颜色 */
+    --chart-blue: #3498db;
+    --chart-green: #2ecc71;
+    --chart-orange: #e67e22;
+    --chart-red: #e74c3c;
+    --chart-purple: #9b59b6;
+    --chart-turquoise: #1abc9c;
+
+    /* 中性色 - 添加缺失的变量 */
+    --border-color: #e9ecef;
+    --text-primary: #2c3e50;
+    --text-secondary: #7f8c8d;
+    --background-light: #f8f9fa;
+}
+
+
+.visualization-container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* 页面头部 */
+.visualization-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    border-radius: 10px;
+    color: white;
+}
+
+.visualization-header h1 {
+    font-size: 2.2rem;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
+
+.subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+/* 控制面板 */
+.control-panel {
+    margin-bottom: 30px;
+}
+
+.control-card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    border: 1px solid var(--border-color, #e9ecef);
+}
+
+.control-card h3 {
+    color: var(--primary-color);
+    margin-bottom: 20px;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 10px;
+}
+
+/* ... 其余样式保持不变，只修改颜色相关部分 ... */
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background-color: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+}
+
+.stat-card {
+    border-left: 4px solid var(--primary-color);
+}
+
+.stat-icon {
+    background: linear-gradient(135deg, var(--primary-light), rgba(118, 75, 162, 0.1));
+}
+
+.stat-icon i {
+    color: var(--primary-color);
+}
+
+/* 添加图表容器样式 */
+.chart {
+    width: 100%;
+    height: 400px;
+    min-height: 300px;
+}
+
+/* 响应式设计优化 */
+@media (max-width: 768px) {
+    .visualization-container {
+        padding: 10px;
+    }
+
+    .visualization-header h1 {
+        font-size: 1.6rem;
+        flex-direction: column;
+    }
+
+    .control-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-row {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-card.wide {
+        grid-column: 1;
+    }
+}
+
+/* 添加工具类 */
+.text-primary { color: var(--primary-color); }
+.bg-primary-light { background-color: var(--primary-light); }
+.border-primary { border-color: var(--primary-color); }

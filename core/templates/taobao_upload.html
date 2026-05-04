@@ -1,0 +1,486 @@
+{% extends 'base.html' %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/taobao_upload.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="upload-container">
+    <!-- 页面头部 -->
+    <div class="upload-header">
+        <h1><i class="fas fa-upload"></i> 淘宝用户行为数据上传</h1>
+        <p class="subtitle">上传淘宝用户行为数据文件，开始您的数据分析之旅</p>
+    </div>
+
+    <!-- 上传指南 -->
+    <div class="upload-guide">
+        <div class="guide-card">
+            <h3><i class="fas fa-info-circle"></i> 上传说明</h3>
+            <div class="guide-content">
+                <div class="guide-item">
+                    <i class="fas fa-file-csv"></i>
+                    <div>
+                        <h4>文件格式</h4>
+                        <p>请上传CSV格式的淘宝用户行为数据文件</p>
+                    </div>
+                </div>
+                <div class="guide-item">
+                    <i class="fas fa-table"></i>
+                    <div>
+                        <h4>数据结构</h4>
+                        <p>数据应包含以下字段：user_id, item_id, category_id, behavior_type, timestamp</p>
+                    </div>
+                </div>
+                <div class="guide-item">
+                    <i class="fas fa-check-circle"></i>
+                    <div>
+                        <h4>数据要求</h4>
+                        <p>无表头，数据需完整，时间戳为Unix格式（秒）</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sample-card">
+            <h3><i class="fas fa-file-code"></i> 数据格式示例</h3>
+            <div class="code-sample">
+                <pre><code>user_id,item_id,category_id,behavior_type,timestamp
+1001,2001,3001,pv,1641024000
+1001,2001,3001,cart,1641024060
+1001,2002,3002,pv,1641024120
+1002,2001,3001,buy,1641024180
+1002,2003,3003,fav,1641024240</code></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- 文件上传表单 -->
+    <div class="upload-section">
+        <div class="upload-card">
+            <h3><i class="fas fa-cloud-upload-alt"></i> 数据上传</h3>
+
+            <form action="{{ url_for('taobao_upload') }}" method="POST" enctype="multipart/form-data" id="uploadForm">
+                <!-- 消息提示 -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="message-container">
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }}">
+                                    <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-circle' }}"></i> {{ message }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                <!-- 拖放区域 -->
+                <div class="drop-zone" id="dropZone">
+                    <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                    <p class="drop-text">拖放文件到此处，或点击选择文件</p>
+                    <p class="drop-subtext">支持CSV格式，最大文件大小：100MB</p>
+
+                    <!-- 文件选择 -->
+                    <div class="file-input-wrapper">
+                        <input type="file"
+                               name="taobao_file"
+                               id="taobao_file"
+                               class="file-input-hidden"
+                               accept=".csv"
+                               required
+                               onchange="handleFileSelect(this)">
+                        <label for="taobao_file" class="file-input-label">
+                            <i class="fas fa-folder-open"></i> 选择文件
+                        </label>
+                    </div>
+
+                    <!-- 文件信息显示 -->
+                    <div id="fileInfo" class="file-info">
+                        <div id="fileName" class="file-name">未选择文件</div>
+                        <div id="fileSize" class="file-size"></div>
+                    </div>
+                </div>
+
+                <!-- 上传按钮 -->
+                <div class="upload-actions">
+                    <button type="button" class="btn btn-primary upload-btn" id="previewBtn" onclick="doPreview()">
+                        <i class="fas fa-search"></i> 校验并预览
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
+                        <i class="fas fa-redo"></i> 重置
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 上传历史 -->
+    <div class="upload-history">
+        <h3><i class="fas fa-history"></i> 最近上传记录</h3>
+        {% if upload_history %}
+        <div class="history-list">
+            {% for record in upload_history %}
+            <div class="history-item">
+                <div class="item-info">
+                    <div class="item-header">
+                        <span class="file-name">{{ record.filename }}</span>
+                        <span class="upload-time">{{ record.upload_time }}</span>
+                    </div>
+                    <div class="item-details">
+                        <span class="file-size">{{ record.file_size }}</span>
+                        <span class="record-count">{{ record.record_count|default(0)|format_number }} 条记录</span>
+                        <span class="status-badge {{ record.status }}">
+                            {% if record.status == 'success' %}
+                                <i class="fas fa-check-circle"></i> 成功
+                            {% else %}
+                                <i class="fas fa-exclamation-circle"></i> 失败
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+                <div class="item-actions">
+                    <button class="btn btn-sm btn-outline-primary" onclick="reuploadFile('{{ record.filename }}')">
+                        <i class="fas fa-redo"></i> 重新上传
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="no-history">
+            <i class="fas fa-file-upload"></i>
+            <p>暂无上传记录</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 系统信息 -->
+    <div class="system-info">
+        <h3><i class="fas fa-server"></i> 系统存储信息</h3>
+        <div class="storage-stats">
+            <div class="storage-item">
+                <div class="storage-icon">
+                    <i class="fas fa-database"></i>
+                </div>
+                <div class="storage-content">
+                    <h4>已上传文件</h4>
+                    <p class="storage-value">{{ storage_stats.uploaded_files|default(0)|format_number }} 个</p>
+                </div>
+            </div>
+            <div class="storage-item">
+                <div class="storage-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="storage-content">
+                    <h4>总数据记录</h4>
+                    <p class="storage-value">{{ storage_stats.total_records|default(0)|format_number }} 条</p>
+                </div>
+            </div>
+            <div class="storage-item">
+                <div class="storage-icon">
+                    <i class="fas fa-hdd"></i>
+                </div>
+                <div class="storage-content">
+                    <h4>已用存储空间</h4>
+                    <p class="storage-value">{{ storage_stats.used_storage|default('0 MB') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 预览弹窗 ===== -->
+<div id="previewModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; overflow-y:auto;">
+    <div style="background:#fff; border-radius:12px; max-width:900px; margin:40px auto; padding:30px; position:relative;">
+        <button onclick="closeModal()" style="position:absolute;top:15px;right:20px;background:none;border:none;font-size:22px;cursor:pointer;">✕</button>
+        <h2 style="margin-bottom:20px;"><i class="fas fa-table"></i> 数据校验与预览</h2>
+
+        <!-- 校验摘要 -->
+        <div id="previewSummary" style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;"></div>
+
+        <!-- 行为分布 -->
+        <div id="previewBehavior" style="margin-bottom:20px;"></div>
+
+        <!-- 数据预览表格 -->
+        <div style="overflow-x:auto; margin-bottom:20px;">
+            <table id="previewTable" style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead id="previewThead" style="background:#6f068bad;color:#fff;"></thead>
+                <tbody id="previewTbody"></tbody>
+            </table>
+        </div>
+
+        <div style="display:flex;gap:12px;justify-content:flex-end;">
+            <button onclick="closeModal()" class="btn btn-outline-secondary"><i class="fas fa-times"></i> 取消</button>
+            <button id="confirmImportBtn" onclick="confirmImport()" class="btn btn-primary">
+                <i class="fas fa-database"></i> 确认导入
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block page_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('taobao_file');
+    const uploadForm = document.getElementById('uploadForm');
+    const uploadBtn = document.getElementById('uploadBtn');
+
+    // 拖放功能
+    dropZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.classList.remove('dragover');
+
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            handleFileSelect(fileInput);
+        }
+    });
+
+    // 点击拖放区域触发文件选择
+    dropZone.addEventListener('click', function(e) {
+        if (e.target !== fileInput && e.target !== fileInput.nextElementSibling) {
+            fileInput.click();
+        }
+    });
+
+    // 表单提交验证
+    uploadForm.addEventListener('submit', function(e) {
+        if (!validateFile()) {
+            e.preventDefault();
+            return;
+        }
+        showUploadProgress();
+    });
+});
+
+async function doPreview() {
+    if (!validateFile()) return;
+    const btn = document.getElementById('previewBtn');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 校验中...';
+
+    const fd = new FormData();
+    fd.append('taobao_file', document.getElementById('taobao_file').files[0]);
+
+    try {
+        const resp = await fetch('/api/upload/preview', {method: 'POST', body: fd});
+        const result = await resp.json();
+        if (!result.success) {
+            showError('校验失败: ' + result.error);
+        } else {
+            renderModal(result);
+        }
+    } catch(e) {
+        showError('请求失败: ' + e.message);
+    }
+    btn.disabled = false;
+    btn.innerHTML = orig;
+}
+
+function renderModal(data) {
+    // 摘要卡片
+    const summary = document.getElementById('previewSummary');
+    summary.innerHTML = [
+        {label:'总记录数', val: data.total_records.toLocaleString(), color:'#6f068bad'},
+        {label:'文件大小', val: data.file_size, color:'#17a2b8'},
+    ].map(s => `<div style="background:${s.color};color:#fff;padding:12px 20px;border-radius:8px;min-width:140px;text-align:center;"><div style="font-size:22px;font-weight:700;">${s.val}</div><div style="font-size:12px;opacity:.85;">${s.label}</div></div>`).join('');
+
+    // 行为分布
+    const bDiv = document.getElementById('previewBehavior');
+    const bc = data.behavior_counts || {};
+    const colors = {pv:'#5470C6',cart:'#91CC75',fav:'#FAC858',buy:'#EE6666'};
+    bDiv.innerHTML = '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
+        + Object.entries(bc).map(([k,v]) =>
+            `<span style="background:${colors[k]||'#aaa'};color:#fff;padding:5px 14px;border-radius:20px;font-size:13px;">${k}: ${v.toLocaleString()}</span>`
+        ).join('') + '</div>';
+
+    // 表头
+    const cols = data.columns || [];
+    document.getElementById('previewThead').innerHTML =
+        '<tr>' + cols.map(c => `<th style="padding:8px 10px;">${c}</th>`).join('') + '</tr>';
+
+    // 表体
+    document.getElementById('previewTbody').innerHTML =
+        (data.preview || []).map((row, i) =>
+            `<tr style="background:${i%2===0?'#f8f9fa':'#fff'};">`
+            + cols.map(c => `<td style="padding:6px 10px;border-bottom:1px solid #eee;">${row[c]??''}</td>`).join('')
+            + '</tr>'
+        ).join('');
+
+    document.getElementById('previewModal').style.display = 'block';
+}
+
+function closeModal() {
+    document.getElementById('previewModal').style.display = 'none';
+}
+
+function confirmImport() {
+    closeModal();
+    const btn = document.getElementById('confirmImportBtn');
+    btn.disabled = true;
+    showUploadProgress();
+    document.getElementById('uploadForm').submit();
+}
+
+// 处理文件选择
+function handleFileSelect(input) {
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+
+    if (input.files.length > 0) {
+        const file = input.files[0];
+
+        // 验证文件格式
+        if (!validateFileFormat(file)) {
+            fileInput.value = '';
+            showError('请选择CSV格式的文件');
+            fileInfo.style.display = 'none';
+            return;
+        }
+
+        // 验证文件大小
+        if (file.size > 100 * 1024 * 1024) { // 100MB限制
+            fileInput.value = '';
+            showError('文件大小不能超过100MB');
+            fileInfo.style.display = 'none';
+            return;
+        }
+
+        // 显示文件信息
+        fileName.textContent = file.name;
+        fileSize.textContent = formatFileSize(file.size);
+        fileInfo.style.display = 'flex';
+
+        // 启用上传按钮
+        document.getElementById('uploadBtn').disabled = false;
+    } else {
+        fileInfo.style.display = 'none';
+    }
+}
+
+// 验证文件格式
+function validateFileFormat(file) {
+    const fileName = file.name.toLowerCase();
+    return fileName.endsWith('.csv');
+}
+
+// 验证文件
+function validateFile() {
+    const fileInput = document.getElementById('taobao_file');
+
+    if (!fileInput.files.length) {
+        showError('请先选择要上传的文件！');
+        return false;
+    }
+
+    const file = fileInput.files[0];
+
+    if (!validateFileFormat(file)) {
+        showError('请选择CSV格式的淘宝用户行为数据文件');
+        return false;
+    }
+
+    if (file.size > 100 * 1024 * 1024) {
+        showError('文件大小不能超过100MB');
+        return false;
+    }
+
+    return true;
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// 显示错误信息
+function showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'alert alert-error';
+    errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+
+    const messageContainer = document.querySelector('.message-container') || createMessageContainer();
+    messageContainer.innerHTML = '';
+    messageContainer.appendChild(errorDiv);
+
+    // 3秒后自动移除错误信息
+    setTimeout(() => {
+        if (errorDiv.parentNode) {
+            errorDiv.remove();
+        }
+    }, 3000);
+}
+
+// 创建消息容器
+function createMessageContainer() {
+    const container = document.createElement('div');
+    container.className = 'message-container';
+    const uploadCard = document.querySelector('.upload-card');
+    uploadCard.insertBefore(container, uploadCard.firstChild);
+    return container;
+}
+
+// 显示上传进度
+function showUploadProgress() {
+    const uploadBtn = document.getElementById('uploadBtn');
+    const originalText = uploadBtn.innerHTML;
+
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 上传中...';
+
+    // 模拟进度条
+    setTimeout(() => {
+        uploadBtn.innerHTML = '<i class="fas fa-check"></i> 上传完成！';
+        uploadBtn.style.backgroundColor = '#28a745';
+
+        setTimeout(() => {
+            uploadBtn.innerHTML = originalText;
+            uploadBtn.disabled = false;
+            uploadBtn.style.backgroundColor = '';
+        }, 2000);
+    }, 2000);
+}
+
+// 重置表单
+function resetForm() {
+    document.getElementById('uploadForm').reset();
+    document.getElementById('fileInfo').style.display = 'none';
+    document.getElementById('taobao_file').value = '';
+
+    const errorMessages = document.querySelectorAll('.alert-error');
+    errorMessages.forEach(msg => msg.remove());
+}
+
+// 重新上传文件
+function reuploadFile(filename) {
+    if (confirm(`确定要重新上传文件 "${filename}" 吗？`)) {
+        // 这里应该实现重新上传的逻辑
+        console.log('重新上传文件:', filename);
+        alert('重新上传功能将在后端实现');
+    }
+}
+</script>
+{% endblock %}

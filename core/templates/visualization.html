@@ -1,0 +1,478 @@
+{% extends "base.html" %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/visualization.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="visualization-container">
+    <!-- 页面头部 -->
+    <div class="visualization-header">
+        <h1><i class="fas fa-chart-pie"></i> 数据可视化看板</h1>
+        <p class="subtitle">多维度数据可视化展示，深度洞察用户行为模式</p>
+    </div>
+
+    <!-- 控制面板 -->
+    <div class="control-panel">
+        <div class="control-card">
+            <h3><i class="fas fa-cogs"></i> 可视化配置</h3>
+            <form id="visualizationForm" action="{{ url_for('visualization') }}" method="POST" enctype="multipart/form-data">
+                <div class="control-grid">
+                    <!-- 数据源选择 -->
+                    <div class="control-group">
+                        <label for="dataSource"><i class="fas fa-database"></i> 数据源</label>
+                        <select id="dataSource" name="data_source" class="form-select">
+                            <option value="database" selected>数据库数据</option>
+                            <option value="csv">上传CSV文件</option>
+                            <option value="realtime">实时数据流</option>
+                        </select>
+                    </div>
+
+                    <!-- 时间范围 -->
+                    <div class="control-group">
+                        <label for="timeRange"><i class="fas fa-calendar-alt"></i> 时间范围</label>
+                        <select id="timeRange" name="time_range" class="form-select">
+                            <option value="7">最近7天</option>
+                            <option value="14">最近14天</option>
+                            <option value="30" selected>最近30天</option>
+                            <option value="90">最近90天</option>
+                            <option value="custom">自定义</option>
+                        </select>
+                    </div>
+
+                    <!-- 可视化类型 -->
+                    <div class="control-group">
+                        <label for="visType"><i class="fas fa-chart-bar"></i> 可视化类型</label>
+                        <select id="visType" name="vis_type" class="form-select" multiple>
+                            <option value="overview" selected>数据概览</option>
+                            <option value="trend" selected>趋势分析</option>
+                            <option value="distribution" selected>分布分析</option>
+                            <option value="comparison">对比分析</option>
+                            <option value="correlation">关联分析</option>
+                        </select>
+                    </div>
+
+                    <!-- 自定义时间范围 -->
+                    <div id="customTimeRange" class="custom-range" style="display: none;">
+                        <div class="date-inputs">
+                            <div class="date-group">
+                                <label for="startDate">开始日期</label>
+                                <input type="date" id="startDate" name="start_date" class="form-control">
+                            </div>
+                            <span class="date-separator">至</span>
+                            <div class="date-group">
+                                <label for="endDate">结束日期</label>
+                                <input type="date" id="endDate" name="end_date" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CSV文件上传 -->
+                    <div id="csvUploadSection" class="upload-section" style="display: none;">
+                        <div class="upload-area">
+                            <div class="drop-zone" id="csvDropZone">
+                                <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                                <p class="drop-text">拖放CSV文件到此处，或点击选择文件</p>
+                                <p class="drop-subtext">支持淘宝用户行为数据格式，最大100MB</p>
+                                <input type="file" id="csvFile" name="csv_file" accept=".csv" class="file-input-hidden">
+                                <label for="csvFile" class="btn btn-outline-primary">
+                                    <i class="fas fa-folder-open"></i> 选择文件
+                                </label>
+                                <div id="fileInfo" class="file-info">
+                                    <span id="fileName" class="file-name">未选择文件</span>
+                                    <span id="fileSize" class="file-size"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 控制按钮 -->
+                    <div class="control-actions">
+                        <button type="submit" class="btn btn-primary" id="generateVisualization">
+                            <i class="fas fa-play"></i> 生成可视化
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="resetControls">
+                            <i class="fas fa-redo"></i> 重置
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="exportDashboard">
+                            <i class="fas fa-download"></i> 导出看板
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 实时数据概览 -->
+    <div class="realtime-stats">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-users"></i></div>
+                <div class="stat-content">
+                    <h4>活跃用户数</h4>
+                    <p class="stat-value">{{ stats.active_users|default(0)|format_number }}</p>
+                    <p class="stat-change up">+{{ stats.user_growth|default(0) }}% 较昨日</p>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-eye"></i></div>
+                <div class="stat-content">
+                    <h4>总浏览量</h4>
+                    <p class="stat-value">{{ stats.total_views|default(0)|format_number }}</p>
+                    <p class="stat-change up">+{{ stats.view_growth|default(0) }}% 较昨日</p>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-shopping-bag"></i></div>
+                <div class="stat-content">
+                    <h4>总购买量</h4>
+                    <p class="stat-value">{{ stats.total_purchases|default(0)|format_number }}</p>
+                    <p class="stat-change up">+{{ stats.purchase_growth|default(0) }}% 较昨日</p>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-percentage"></i></div>
+                <div class="stat-content">
+                    <h4>转化率</h4>
+                    <p class="stat-value">{{ stats.conversion_rate|default(0) }}%</p>
+                    <p class="stat-change {{ 'up' if stats.conversion_change|default(0) > 0 else 'down' }}">
+                        {{ stats.conversion_change|default(0) }}% 较昨日
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 可视化图表区域 -->
+    <div class="charts-section">
+        <!-- 行为趋势分析 -->
+        <div class="chart-row">
+            <div class="chart-card wide">
+                <div class="chart-header">
+                    <h3><i class="fas fa-chart-line"></i> 用户行为趋势</h3>
+                    <div class="chart-actions">
+                        <button class="btn btn-sm btn-outline-secondary export-chart" data-chart="trendChart">
+                            <i class="fas fa-download"></i> 导出
+                        </button>
+                    </div>
+                </div>
+                <div class="chart-body">
+                    <div id="trendChart" class="chart"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 多维度对比 -->
+        <div class="chart-row">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3><i class="fas fa-chart-bar"></i> 品类偏好</h3>
+                </div>
+                <div class="chart-body">
+                    <div id="categoryChart" class="chart"></div>
+                </div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3><i class="fas fa-chart-pie"></i> 行为分布</h3>
+                </div>
+                <div class="chart-body">
+                    <div id="behaviorChart" class="chart"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 时间模式分析 -->
+        <div class="chart-row">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3><i class="fas fa-clock"></i> 24小时活跃度</h3>
+                </div>
+                <div class="chart-body">
+                    <div id="hourlyChart" class="chart"></div>
+                </div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3><i class="fas fa-calendar-week"></i> 周活跃模式</h3>
+                </div>
+                <div class="chart-body">
+                    <div id="weeklyChart" class="chart"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 热力图和漏斗图 -->
+        <div class="chart-row">
+            <div class="chart-card wide">
+                <div class="chart-header">
+                    <h3><i class="fas fa-fire"></i> 用户-商品热力图</h3>
+                </div>
+                <div class="chart-body">
+                    <div id="heatmapChart" class="chart"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-row">
+            <div class="chart-card wide">
+                <div class="chart-header">
+                    <h3><i class="fas fa-filter"></i> 转化漏斗分析</h3>
+                </div>
+                <div class="chart-body">
+                    <div id="funnelChart" class="chart"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 数据洞察 -->
+    <div class="insights-section">
+        <div class="insights-card">
+            <h3><i class="fas fa-lightbulb"></i> 数据洞察</h3>
+            <div class="insights-content">
+                <div class="insight-item">
+                    <div class="insight-icon success"><i class="fas fa-chart-line"></i></div>
+                    <div class="insight-text">
+                        <h5>增长趋势</h5>
+                        <p>最近7天用户活跃度增长{{ insights.growth_rate|default(12) }}%，主要受促销活动影响</p>
+                    </div>
+                </div>
+                <div class="insight-item">
+                    <div class="insight-icon warning"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="insight-text">
+                        <h5>流失风险</h5>
+                        <p>有{{ insights.at_risk_users|default(150) }}位用户连续7天无，建议进行召回</p>
+                    </div>
+                </div>
+                <div class="insight-item">
+                    <div class="insight-icon info"><i class="fas fa-shopping-cart"></i></div>
+                    <div class="insight-text">
+                        <h5>转化优化</h5>
+                        <p>加购到购买转化率仅为{{ insights.cart_to_buy|default(15) }}%，优化空间较大</p>
+                    </div>
+                </div>
+                <div class="insight-item">
+                    <div class="insight-icon primary"><i class="fas fa-user-clock"></i></div>
+                    <div class="insight-text">
+                        <h5>活跃时间</h5>
+                        <p>用户活跃高峰集中在{{ insights.peak_hours|default('20:00-22:00') }}，占全天{{ insights.peak_percent|default(35) }}%</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 快速导航到其他分析模块 -->
+    <div class="module-navigation">
+        <h3><i class="fas fa-share-alt"></i> 其他分析模块</h3>
+        <div class="nav-cards">
+            <a href="{{ url_for('rfm_analysis') }}" class="nav-card">
+                <div class="nav-icon"><i class="fas fa-chess-board"></i></div>
+                <div class="nav-content">
+                    <h4>RFM用户分群</h4>
+                    <p>基于用户价值的分群分析</p>
+                    <span class="nav-link">立即前往 <i class="fas fa-arrow-right"></i></span>
+                </div>
+            </a>
+            <a href="{{ url_for('recommendation') }}" class="nav-card">
+                <div class="nav-icon"><i class="fas fa-star"></i></div>
+                <div class="nav-content">
+                    <h4>推荐系统分析</h4>
+                    <p>个性化推荐效果分析</p>
+                    <span class="nav-link">立即前往 <i class="fas fa-arrow-right"></i></span>
+                </div>
+            </a>
+            <a href="{{ url_for('time_pattern') }}" class="nav-card">
+                <div class="nav-icon"><i class="fas fa-clock"></i></div>
+                <div class="nav-content">
+                    <h4>时间模式分析</h4>
+                    <p>深度时间规律分析</p>
+                    <span class="nav-link">立即前往 <i class="fas fa-arrow-right"></i></span>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script src="{{ url_for('static', filename='js/visualization.js') }}"></script>
+<script>
+    // 初始化可视化模块
+    document.addEventListener('DOMContentLoaded', function() {
+        // 初始化控制面板交互
+        initControlPanel();
+
+        // 初始化图表
+        initVisualizationCharts();
+
+        // 绑定事件监听器
+        bindEventListeners();
+    });
+
+    function initControlPanel() {
+        // 数据源切换
+        const dataSource = document.getElementById('dataSource');
+        const csvUploadSection = document.getElementById('csvUploadSection');
+
+        if (dataSource && csvUploadSection) {
+            dataSource.addEventListener('change', function() {
+                csvUploadSection.style.display = this.value === 'csv' ? 'block' : 'none';
+            });
+        }
+
+        // 时间范围切换
+        const timeRange = document.getElementById('timeRange');
+        const customTimeRange = document.getElementById('customTimeRange');
+
+        if (timeRange && customTimeRange) {
+            timeRange.addEventListener('change', function() {
+                customTimeRange.style.display = this.value === 'custom' ? 'block' : 'none';
+            });
+        }
+    }
+
+    function initVisualizationCharts() {
+        // 初始化基础图表
+        const chartConfigs = [
+            {id: 'trendChart', type: 'line', title: '用户行为趋势'},
+            {id: 'categoryChart', type: 'bar', title: '品类偏好'},
+            {id: 'behaviorChart', type: 'pie', title: '行为分布'},
+            {id: 'hourlyChart', type: 'line', title: '24小时活跃度'},
+            {id: 'weeklyChart', type: 'bar', title: '周活跃模式'},
+            {id: 'heatmapChart', type: 'heatmap', title: '用户-商品热力图'},
+            {id: 'funnelChart', type: 'funnel', title: '转化漏斗分析'}
+        ];
+
+        chartConfigs.forEach(config => {
+            initChart(config.id, config.type, config.title);
+        });
+    }
+
+    function initChart(chartId, chartType, title) {
+        // 使用ECharts初始化图表
+        const chartElement = document.getElementById(chartId);
+        if (!chartElement) return;
+
+        const chart = echarts.init(chartElement);
+
+        // 设置默认配置
+        const option = {
+            title: {text: title, left: 'center'},
+            tooltip: {trigger: 'axis'},
+            grid: {left: '3%', right: '4%', bottom: '3%', containLabel: true}
+        };
+
+        chart.setOption(option);
+
+        // 窗口大小变化时重绘
+        window.addEventListener('resize', function() {
+            chart.resize();
+        });
+    }
+
+    function bindEventListeners() {
+        // 表单提交
+        const form = document.getElementById('visualizationForm');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                generateVisualization();
+            });
+        }
+
+        // 重置按钮
+        const resetBtn = document.getElementById('resetControls');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function() {
+                resetVisualization();
+            });
+        }
+
+        // 导出按钮
+        const exportBtn = document.getElementById('exportDashboard');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', function() {
+                exportDashboard();
+            });
+        }
+
+        // 图表导出按钮
+        document.querySelectorAll('.export-chart').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const chartId = this.getAttribute('data-chart');
+                exportChart(chartId);
+            });
+        });
+    }
+
+    async function generateVisualization() {
+        try {
+            const formData = new FormData(document.getElementById('visualizationForm'));
+
+            const response = await fetch('{{ url_for("visualization") }}', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                updateCharts(data);
+            }
+        } catch (error) {
+            console.error('生成可视化失败:', error);
+            showError('生成可视化失败: ' + error.message);
+        }
+    }
+
+    function updateCharts(data) {
+        // 根据返回的数据更新图表
+        console.log('更新图表数据:', data);
+    }
+
+    function exportChart(chartId) {
+        const chart = echarts.getInstanceById(chartId);
+        if (chart) {
+            const url = chart.getDataURL({
+                type: 'png',
+                pixelRatio: 2,
+                backgroundColor: '#fff'
+            });
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${chartId}_${new Date().getTime()}.png`;
+            link.click();
+        }
+    }
+
+    function exportDashboard() {
+        // 导出整个看板
+        html2canvas(document.querySelector('.visualization-container')).then(canvas => {
+            const link = document.createElement('a');
+            link.download = 'dashboard_export.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+    }
+
+    function resetVisualization() {
+        // 重置所有图表和表单
+        document.getElementById('visualizationForm').reset();
+        document.querySelectorAll('.chart').forEach(chartElement => {
+            const chart = echarts.getInstanceByDom(chartElement);
+            if (chart) {
+                chart.clear();
+            }
+        });
+    }
+
+    function showError(message) {
+        // 显示错误提示
+        alert('错误: ' + message);
+    }
+</script>
+{% endblock %}
