@@ -416,14 +416,28 @@ function loadDashboard(days) {
         .then(r => r.json())
         .then(res => {
             if (!res.success) { console.error(res.error); return; }
-            const d = res.data;
-            document.getElementById('sv-users').textContent     = fmt(d.total_users);
-            document.getElementById('sv-items').textContent     = fmt(d.total_items);
-            document.getElementById('sv-behaviors').textContent = fmt(d.total_behaviors);
-            document.getElementById('sv-conv').textContent      = d.conversion_rate + '%';
-            document.getElementById('sv-buy').textContent       = fmt(d.buy);
-            document.getElementById('sv-revenue').textContent   = '¥'+fmt(d.total_revenue);
-            renderCharts(d);
+            const d = res.data || {};
+            
+            // 容错取值：某些字段对 order 数据不存在
+            const sv = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = val;
+            };
+            sv('sv-users',     fmt(d.total_users     ?? 0));
+            sv('sv-items',     fmt(d.total_items     ?? 0));
+            sv('sv-behaviors', fmt(d.total_behaviors ?? d.total_records ?? 0));
+            sv('sv-conv',      (d.conversion_rate    ?? 0) + '%');
+            sv('sv-buy',       fmt(d.buy             ?? 0));
+            sv('sv-revenue',   '¥' + fmt(d.total_revenue ?? 0));
+            
+            // 只有 daily_trend 存在且有数据才渲染图表
+            if (d.daily_trend && d.daily_trend.dates && d.daily_trend.dates.length > 0) {
+                renderCharts(d);
+            } else {
+                // 无趋势数据时显示占位提示
+                const el = document.getElementById('behaviorTrendChart');
+                if (el) el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af;font-size:.9rem;">当前数据类型不包含时序行为数据</div>';
+            }
         })
         .catch(e => console.error('Dashboard load error:', e));
 }

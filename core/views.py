@@ -729,28 +729,35 @@ def api_current_datasource():
 @login_required
 def api_check_fields():
     """检查当前数据源的字段可用性，返回各分析模块的启用状态"""
-    from core.data_engine import check_field_availability
-    
-    # 定义各分析模块的必需字段
-    modules = {
-        'dashboard': ['user_id', 'item_id'],  # 基础看板
-        'sales': ['amount', 'order_time'],  # 销售分析
-        'behavior': ['behavior_type', 'timestamp'],  # 行为分析
-        'rfm': ['user_id', 'amount', 'order_time'],  # RFM分析
-        'user_profile': ['user_id', 'age', 'gender'],  # 用户画像
-        'item_analysis': ['item_id', 'category_name', 'price'],  # 商品分析
-    }
-    
-    result = {}
-    for module, required in modules.items():
-        availability = check_field_availability(required)
-        result[module] = {
-            'enabled': all(availability.values()),
-            'missing_fields': [f for f, avail in availability.items() if not avail],
-            'required_fields': required,
+    try:
+        from core.data_engine import check_field_availability
+        
+        # 定义各分析模块的必需字段
+        modules = {
+            'dashboard':    ['user_id', 'item_id'],
+            'sales':        ['amount', 'order_time'],
+            'behavior':     ['behavior_type', 'timestamp'],
+            'rfm':          ['user_id', 'amount', 'order_time'],
+            'user_profile': ['user_id', 'age', 'gender'],
+            'item_analysis':['item_id', 'category_id'],
         }
-    
-    return jsonify(result)
+        
+        result = {}
+        for module, required in modules.items():
+            availability = check_field_availability(required)
+            missing = [f for f, avail in availability.items() if not avail]
+            result[module] = {
+                'enabled': len(missing) == 0,
+                'missing_fields': missing,
+                'required_fields': required,
+            }
+        
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        # 出错时返回全部模块启用，不影响主界面
+        return jsonify({})
 
 
 @app.route('/api/upload/db_stats')
