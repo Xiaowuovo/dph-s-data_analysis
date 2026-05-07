@@ -21,26 +21,30 @@ class Admin(db.Model, UserMixin):
 
 
 class UserBehavior(db.Model):
-    '''用户行为数据表'''
+    '''用户行为数据表 (适配 UserBehavior_2025.csv)'''
     __tablename__ = 'taobao_user_behavior'
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.BigInteger, nullable=False, index=True)  # 用户ID
-    item_id = db.Column(db.BigInteger, nullable=False, index=True)  # 商品ID
-    category_id = db.Column(db.BigInteger, nullable=False)  # 品类ID
-    behavior_type = db.Column(db.String(10), nullable=False)  # 行为类型: pv,cart,fav,buy
-    timestamp = db.Column(db.BigInteger, nullable=False)  # 时间戳
+    user_id = db.Column(db.BigInteger, nullable=False, index=True)   # 用户ID
+    item_id = db.Column(db.BigInteger, nullable=False, index=True)   # 商品ID
 
-    # 修改这里：将 datetime 改名，避免与模块冲突
-    behavior_datetime = db.Column(db.DateTime, index=True)  # 修改字段名
+    # 新增字段（来自 UserBehavior_2025.csv）
+    brand = db.Column(db.String(100))                                 # 品牌
+    brand_id = db.Column(db.BigInteger)                               # 品牌ID
+    product_name = db.Column(db.String(500))                          # 商品名称
+    category_name = db.Column(db.String(100), index=True)             # 商品类别
 
-    date = db.Column(db.Date, index=True)  # 日期
-    hour = db.Column(db.Integer)  # 小时
+    category_id = db.Column(db.BigInteger, nullable=False)            # 商品类目ID
+    behavior_type = db.Column(db.String(10), nullable=False)          # 行为类型: pv,cart,fav,buy
+    timestamp = db.Column(db.BigInteger, nullable=False)              # 时间戳 (Unix秒)
+    price = db.Column(db.Float)                                       # 售价
 
-    # 添加JSON格式存储的复杂特征
-    user_features = db.Column(db.Text)  # 用户特征
-    item_features = db.Column(db.Text)  # 商品特征
+    behavior_datetime = db.Column(db.DateTime, index=True)            # 解析后的日期时间
+    date = db.Column(db.Date, index=True)                             # 日期
+    hour = db.Column(db.Integer)                                      # 小时
 
+    user_features = db.Column(db.Text)
+    item_features = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):

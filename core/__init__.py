@@ -44,7 +44,26 @@ login_manager.login_view = 'login'
 # 导入视图（必须在创建app之后）
 from core import views
 
-# 自动创建缺失的表（新增模型时生效）
+# 自动创建缺失的表并迁移新字段
 with app.app_context():
     from core import models
     db.create_all()
+    # 自动补充 UserBehavior 新字段（不删除已有数据）
+    try:
+        from sqlalchemy import text, inspect as sa_inspect
+        inspector = sa_inspect(db.engine)
+        existing = {col['name'] for col in inspector.get_columns('taobao_user_behavior')}
+        new_cols = {
+            'brand':         'VARCHAR(100)',
+            'brand_id':      'BIGINT',
+            'product_name':  'VARCHAR(500)',
+            'category_name': 'VARCHAR(100)',
+            'price':         'DOUBLE',
+        }
+        with db.engine.connect() as conn:
+            for col, dtype in new_cols.items():
+                if col not in existing:
+                    conn.execute(text(f'ALTER TABLE taobao_user_behavior ADD COLUMN {col} {dtype}'))
+                    conn.commit()
+    except Exception as _mig_err:
+        print(f'[migration] {_mig_err}')

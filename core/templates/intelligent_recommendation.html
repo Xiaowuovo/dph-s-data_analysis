@@ -403,24 +403,32 @@
     <!-- 运营决策简报 -->
     <div class="executive-brief">
         <div class="brief-header">
-            <div class="brief-icon">
-                <i class="fas fa-chart-line"></i>
-            </div>
+            <div class="brief-icon"><i class="fas fa-chart-line"></i></div>
             <div class="brief-title">
                 <h2>运营决策简报</h2>
-                <p class="brief-time"><i class="fas fa-clock"></i> 更新时间：2026年4月16日 18:30</p>
+                <p class="brief-time"><i class="fas fa-clock"></i>
+                    数据周期：近 {{ days }} 天 &nbsp;|&nbsp; 更新：{{ rec_data.synced_at }}</p>
             </div>
         </div>
         <div class="brief-content">
-            <p><strong>📊 用户行为洞察：</strong>当前平台用户在<span class="highlight">晚间20:00-22:00</span>活跃度最高，占全天流量的<span class="highlight">28.5%</span>，建议在该时段开展直播与秒杀活动，预计可提升转化率<span class="highlight">35%</span>。</p>
-            
-            <p><strong>🛍️ 商品运营建议：</strong>美妆类商品浏览量高但转化率偏低（仅<span class="highlight">8.2%</span>），建议优化商品描述、增加用户评价展示、提供虚拟试妆功能。同时，电子产品类目复购率达<span class="highlight">42%</span>，建议加大库存并推出以旧换新活动。</p>
-            
-            <p><strong>⚠️ 用户流失预警：</strong>检测到<span class="highlight">30%</span>（约2,200人）高价值RFM用户超过<span class="highlight">35天</span>未购买，存在严重流失风险。建议立即启动精准召回计划，发放<span class="highlight">满200减50</span>专属优惠券，预计可挽回<span class="highlight">40%</span>用户。</p>
-            
-            <p><strong>🎯 营销策略优化：</strong>数据显示周末（周六、周日）订单量占比<span class="highlight">35.2%</span>，但营销投放集中在工作日。建议调整预算分配，周末增加<span class="highlight">50%</span>广告投放，并开展"周末狂欢"主题活动。</p>
-            
-            <p><strong>💡 区域差异化：</strong>华东地区用户偏好时尚类商品，客单价比全国平均高<span class="highlight">25%</span>；华南地区用户对价格敏感度高，建议推出区域专属满减活动以提升转化。</p>
+            {% set s = rec_data.stats %}
+            <p><strong>📊 行为总览：</strong>
+                近 {{ days }} 天共产生
+                <span class="highlight">{{ s.get('total_behaviors', 0)|int|string }}</span> 次行为，
+                涉及用户 <span class="highlight">{{ s.get('total_users', 0)|int|string }}</span> 人，
+                浏览→购买转化率 <span class="highlight">{{ s.get('conversion_rate', 0) }}%</span>。
+            </p>
+            {% for sg in rec_data.suggestions %}
+            <p>
+                {% if sg.type == 'warning' %}<strong>⚠️ {{ sg.title }}：</strong>
+                {% elif sg.type == 'success' %}<strong>✅ {{ sg.title }}：</strong>
+                {% elif sg.type == 'primary' %}<strong>🚀 {{ sg.title }}：</strong>
+                {% else %}<strong>💡 {{ sg.title }}：</strong>{% endif %}
+                {{ sg.detail }}
+            </p>
+            {% else %}
+            <p>暂无分析建议，请先导入数据。</p>
+            {% endfor %}
         </div>
     </div>
 
@@ -1131,7 +1139,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
-
     tabButtons.forEach(button => {
         button.addEventListener('click', function() {
             const tabName = this.getAttribute('data-tab');
@@ -1141,6 +1148,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById(tabName + 'Tab').classList.add('active');
         });
     });
+    syncRecommendations();
 });
 
 async function syncRecommendations() {

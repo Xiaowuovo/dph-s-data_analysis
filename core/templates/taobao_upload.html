@@ -28,14 +28,14 @@
                     <i class="fas fa-table"></i>
                     <div>
                         <h4>数据结构</h4>
-                        <p>数据应包含以下字段：user_id, item_id, category_id, behavior_type, timestamp</p>
+                        <p>文件需包含中文列头：用户ID, 商品ID, 商品类目ID, 行为类型, 时间戳（兼容旧版英文列头）</p>
                     </div>
                 </div>
                 <div class="guide-item">
                     <i class="fas fa-check-circle"></i>
                     <div>
                         <h4>数据要求</h4>
-                        <p>无表头，数据需完整，时间戳为Unix格式（秒）</p>
+                        <p>第一行为列名（中文表头），时间戳为Unix格式（秒），行为类型：pv/cart/fav/buy</p>
                     </div>
                 </div>
             </div>
@@ -44,12 +44,10 @@
         <div class="sample-card">
             <h3><i class="fas fa-file-code"></i> 数据格式示例</h3>
             <div class="code-sample">
-                <pre><code>user_id,item_id,category_id,behavior_type,timestamp
-1001,2001,3001,pv,1641024000
-1001,2001,3001,cart,1641024060
-1001,2002,3002,pv,1641024120
-1002,2001,3001,buy,1641024180
-1002,2003,3003,fav,1641024240</code></pre>
+                <pre><code>用户ID,商品ID,品牌,品牌ID,商品名称,商品类别,商品类目ID,行为类型,时间戳,售价
+1001,2001,Nike,101,运动鞋,鞋类,3001,pv,1641024000,299.0
+1001,2001,Nike,101,运动鞋,鞋类,3001,cart,1641024060,299.0
+1002,2001,Nike,101,运动鞋,鞋类,3001,buy,1641024180,299.0</code></pre>
             </div>
         </div>
     </div>
@@ -225,7 +223,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('taobao_file');
     const uploadForm = document.getElementById('uploadForm');
-    const uploadBtn = document.getElementById('uploadBtn');
 
     // 拖放功能
     dropZone.addEventListener('dragover', function(e) {
@@ -349,15 +346,15 @@ function handleFileSelect(input) {
 
         // 验证文件格式
         if (!validateFileFormat(file)) {
-            fileInput.value = '';
+            input.value = '';
             showError('请选择CSV格式的文件');
             fileInfo.style.display = 'none';
             return;
         }
 
         // 验证文件大小
-        if (file.size > 100 * 1024 * 1024) { // 100MB限制
-            fileInput.value = '';
+        if (file.size > 100 * 1024 * 1024) {
+            input.value = '';
             showError('文件大小不能超过100MB');
             fileInfo.style.display = 'none';
             return;
@@ -368,8 +365,8 @@ function handleFileSelect(input) {
         fileSize.textContent = formatFileSize(file.size);
         fileInfo.style.display = 'flex';
 
-        // 启用上传按钮
-        document.getElementById('uploadBtn').disabled = false;
+        // 启用预览按钮
+        document.getElementById('previewBtn').disabled = false;
     } else {
         fileInfo.style.display = 'none';
     }
@@ -445,23 +442,11 @@ function createMessageContainer() {
 
 // 显示上传进度
 function showUploadProgress() {
-    const uploadBtn = document.getElementById('uploadBtn');
-    const originalText = uploadBtn.innerHTML;
-
-    uploadBtn.disabled = true;
-    uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 上传中...';
-
-    // 模拟进度条
-    setTimeout(() => {
-        uploadBtn.innerHTML = '<i class="fas fa-check"></i> 上传完成！';
-        uploadBtn.style.backgroundColor = '#28a745';
-
-        setTimeout(() => {
-            uploadBtn.innerHTML = originalText;
-            uploadBtn.disabled = false;
-            uploadBtn.style.backgroundColor = '';
-        }, 2000);
-    }, 2000);
+    const btn = document.getElementById('confirmImportBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 导入中...';
+    }
 }
 
 // 重置表单

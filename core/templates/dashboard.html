@@ -41,68 +41,45 @@
     <!-- 核心指标卡（6个） -->
     <div class="stats-cards">
         <div class="stat-card">
-            <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                <i class="fas fa-users"></i>
-            </div>
+            <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"><i class="fas fa-users"></i></div>
             <div class="stat-content">
                 <p class="stat-label">总用户数</p>
-                <h3 class="stat-value">77,968</h3>
-                <span class="stat-trend up">+5.2%</span>
+                <h3 class="stat-value" id="sv-users"><i class="fas fa-spinner fa-spin"></i></h3>
             </div>
         </div>
-
         <div class="stat-card">
-            <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                <i class="fas fa-box"></i>
-            </div>
+            <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);"><i class="fas fa-box"></i></div>
             <div class="stat-content">
                 <p class="stat-label">总商品数</p>
-                <h3 class="stat-value">1,388,335</h3>
-                <span class="stat-trend up">+3.8%</span>
+                <h3 class="stat-value" id="sv-items"><i class="fas fa-spinner fa-spin"></i></h3>
             </div>
         </div>
-
         <div class="stat-card">
-            <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                <i class="fas fa-mouse-pointer"></i>
-            </div>
+            <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);"><i class="fas fa-mouse-pointer"></i></div>
             <div class="stat-content">
                 <p class="stat-label">总行为数</p>
-                <h3 class="stat-value">10.12M</h3>
-                <span class="stat-trend up">+12.5%</span>
+                <h3 class="stat-value" id="sv-behaviors"><i class="fas fa-spinner fa-spin"></i></h3>
             </div>
         </div>
-
         <div class="stat-card">
-            <div class="stat-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
-                <i class="fas fa-percentage"></i>
-            </div>
+            <div class="stat-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);"><i class="fas fa-percentage"></i></div>
             <div class="stat-content">
                 <p class="stat-label">转化率</p>
-                <h3 class="stat-value">3.8%</h3>
-                <span class="stat-trend up">+0.5%</span>
+                <h3 class="stat-value" id="sv-conv"><i class="fas fa-spinner fa-spin"></i></h3>
             </div>
         </div>
-
         <div class="stat-card">
-            <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-                <i class="fas fa-shopping-cart"></i>
-            </div>
+            <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);"><i class="fas fa-shopping-cart"></i></div>
             <div class="stat-content">
                 <p class="stat-label">成交订单数</p>
-                <h3 class="stat-value">384,852</h3>
-                <span class="stat-trend up">+8.3%</span>
+                <h3 class="stat-value" id="sv-buy"><i class="fas fa-spinner fa-spin"></i></h3>
             </div>
         </div>
-
         <div class="stat-card">
-            <div class="stat-icon" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);">
-                <i class="fas fa-user-friends"></i>
-            </div>
+            <div class="stat-icon" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);"><i class="fas fa-yen-sign"></i></div>
             <div class="stat-content">
-                <p class="stat-label">新/老用户占比</p>
-                <h3 class="stat-value">28% / 72%</h3>
-                <span class="stat-trend neutral">稳定</span>
+                <p class="stat-label">总销售额(¥)</p>
+                <h3 class="stat-value" id="sv-revenue"><i class="fas fa-spinner fa-spin"></i></h3>
             </div>
         </div>
     </div>
@@ -299,201 +276,135 @@
 {% block page_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // 时间筛选器
-    const timeButtons = document.querySelectorAll('.time-btn');
-    const customDatePicker = document.getElementById('customDatePicker');
-    
-    timeButtons.forEach(btn => {
+    // ── 时间筛选 ──
+    let currentDays = 7;
+    document.querySelectorAll('.time-btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            timeButtons.forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
-            
-            if (this.dataset.range === 'custom') {
-                customDatePicker.style.display = 'flex';
-            } else {
-                customDatePicker.style.display = 'none';
-                updateDashboardData(this.dataset.range);
-            }
+            const r = this.dataset.range;
+            if (r === 'today') currentDays = 1;
+            else if (r === '7days') currentDays = 7;
+            else if (r === '30days') currentDays = 30;
+            if (r !== 'custom') loadDashboard(currentDays);
+            document.getElementById('customDatePicker').style.display = r === 'custom' ? 'block' : 'none';
         });
     });
-    
     document.getElementById('applyCustomDate')?.addEventListener('click', function() {
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        if (startDate && endDate) {
-            updateDashboardData('custom', startDate, endDate);
+        const s = document.getElementById('startDate').value;
+        const e = document.getElementById('endDate').value;
+        if (s && e) {
+            const diff = Math.ceil((new Date(e) - new Date(s)) / 86400000);
+            loadDashboard(diff || 30);
         }
     });
-    
-    // 初始化图表
-    const behaviorTrendChart = echarts.init(document.getElementById('behaviorTrendChart'));
-    const behaviorPieChart = echarts.init(document.getElementById('behaviorPieChart'));
-    const behaviorBarChart = echarts.init(document.getElementById('behaviorBarChart'));
-    const topProductsChart = echarts.init(document.getElementById('topProductsChart'));
-    const topUsersChart = echarts.init(document.getElementById('topUsersChart'));
-    
-    // 日行为趋势图
-    const trendOption = {
+    document.getElementById('refreshBtn')?.addEventListener('click', function() {
+        loadDashboard(currentDays);
+    });
+
+    loadDashboard(currentDays);
+});
+
+function fmt(n) { return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e4 ? (n/1e4).toFixed(1)+'万' : n.toLocaleString(); }
+
+function loadDashboard(days) {
+    fetch(`/api/dashboard/stats?days=${days}`)
+        .then(r => r.json())
+        .then(res => {
+            if (!res.success) { console.error(res.error); return; }
+            const d = res.data;
+            document.getElementById('sv-users').textContent     = fmt(d.total_users);
+            document.getElementById('sv-items').textContent     = fmt(d.total_items);
+            document.getElementById('sv-behaviors').textContent = fmt(d.total_behaviors);
+            document.getElementById('sv-conv').textContent      = d.conversion_rate + '%';
+            document.getElementById('sv-buy').textContent       = fmt(d.buy);
+            document.getElementById('sv-revenue').textContent   = '¥'+fmt(d.total_revenue);
+            renderCharts(d);
+        })
+        .catch(e => console.error('Dashboard load error:', e));
+}
+
+let _charts = {};
+function renderCharts(d) {
+    function ec(id) {
+        if (_charts[id]) _charts[id].dispose();
+        _charts[id] = echarts.init(document.getElementById(id));
+        return _charts[id];
+    }
+    window.addEventListener('resize', () => Object.values(_charts).forEach(c => c.resize()));
+
+    // 日行为趋势
+    const trend = d.daily_trend;
+    ec('behaviorTrendChart').setOption({
         tooltip: { trigger: 'axis' },
+        legend: { data: ['浏览(PV)', '加购', '收藏', '购买'], top: 5 },
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-        xAxis: {
-            type: 'category',
-            boundaryGap: false,
-            data: ['12-10', '12-11', '12-12', '12-13', '12-14', '12-15', '12-16']
-        },
+        xAxis: { type: 'category', data: trend.dates },
         yAxis: { type: 'value' },
         series: [
-            {
-                name: '浏览(PV)',
-                type: 'line',
-                data: [12000, 13200, 10100, 13400, 9000, 13000, 10000],
-                smooth: true,
-                lineStyle: { width: 3, color: '#667eea' },
-                itemStyle: { color: '#667eea' },
-                areaStyle: { color: 'rgba(102, 126, 234, 0.1)' }
-            },
-            {
-                name: '独立访客(UV)',
-                type: 'line',
-                data: [8200, 9320, 9010, 9340, 12900, 13300, 13000],
-                smooth: true,
-                lineStyle: { width: 3, color: '#f093fb' },
-                itemStyle: { color: '#f093fb' },
-                areaStyle: { color: 'rgba(240, 147, 251, 0.1)' }
-            },
-            {
-                name: '加购',
-                type: 'line',
-                data: [3200, 4320, 3010, 5340, 4900, 4300, 4600],
-                smooth: true,
-                lineStyle: { width: 3, color: '#4facfe' },
-                itemStyle: { color: '#4facfe' }
-            },
-            {
-                name: '购买',
-                type: 'line',
-                data: [520, 632, 401, 734, 490, 630, 710],
-                smooth: true,
-                lineStyle: { width: 3, color: '#43e97b' },
-                itemStyle: { color: '#43e97b' }
-            }
+            { name:'浏览(PV)', type:'line', data: trend.pv,   smooth:true, itemStyle:{color:'#667eea'}, areaStyle:{color:'rgba(102,126,234,.1)'} },
+            { name:'加购',     type:'line', data: trend.cart, smooth:true, itemStyle:{color:'#4facfe'} },
+            { name:'收藏',     type:'line', data: trend.fav,  smooth:true, itemStyle:{color:'#f093fb'} },
+            { name:'购买',     type:'line', data: trend.buy,  smooth:true, itemStyle:{color:'#43e97b'} },
         ]
-    };
-    
-    // 行为类型分布 - 饼图
-    const pieOption = {
+    });
+
+    // 行为饼图
+    ec('behaviorPieChart').setOption({
         tooltip: { trigger: 'item' },
-        series: [{
-            type: 'pie',
-            radius: ['40%', '70%'],
-            avoidLabelOverlap: false,
-            itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
-            label: { show: true, formatter: '{b}: {d}%' },
-            data: [
-                { value: 7133888, name: '浏览(PV)', itemStyle: { color: '#667eea' } },
-                { value: 565839, name: '加购', itemStyle: { color: '#4facfe' } },
-                { value: 41839, name: '收藏', itemStyle: { color: '#f093fb' } },
-                { value: 384852, name: '购买', itemStyle: { color: '#43e97b' } }
-            ]
-        }]
-    };
-    
-    // 行为类型分布 - 柱状图
-    const barOption = {
+        series: [{ type:'pie', radius:['40%','70%'], data: [
+            { value: d.pv,   name:'浏览(PV)', itemStyle:{color:'#667eea'} },
+            { value: d.cart, name:'加购',     itemStyle:{color:'#4facfe'} },
+            { value: d.fav,  name:'收藏',     itemStyle:{color:'#f093fb'} },
+            { value: d.buy,  name:'购买',     itemStyle:{color:'#43e97b'} },
+        ], label:{ show:true, formatter:'{b}: {d}%' } }]
+    });
+
+    // 行为柱状图
+    ec('behaviorBarChart').setOption({
         tooltip: { trigger: 'axis' },
-        grid: { left: '10%', right: '5%', bottom: '10%', top: '10%' },
-        xAxis: {
-            type: 'category',
-            data: ['浏览', '加购', '收藏', '购买'],
-            axisLabel: { interval: 0, rotate: 0 }
-        },
-        yAxis: { type: 'value' },
-        series: [{
-            type: 'bar',
+        grid: { left:'10%', right:'5%', bottom:'10%', top:'10%' },
+        xAxis: { type:'category', data:['浏览','加购','收藏','购买'] },
+        yAxis: { type:'value' },
+        series: [{ type:'bar', barWidth:'50%',
             data: [
-                { value: 7133888, itemStyle: { color: '#667eea' } },
-                { value: 565839, itemStyle: { color: '#4facfe' } },
-                { value: 41839, itemStyle: { color: '#f093fb' } },
-                { value: 384852, itemStyle: { color: '#43e97b' } }
-            ],
-            barWidth: '50%',
-            label: { show: true, position: 'top' }
+                { value:d.pv,   itemStyle:{color:'#667eea'} },
+                { value:d.cart, itemStyle:{color:'#4facfe'} },
+                { value:d.fav,  itemStyle:{color:'#f093fb'} },
+                { value:d.buy,  itemStyle:{color:'#43e97b'} },
+            ], label:{show:true, position:'top', formatter: p => fmt(p.value) }
         }]
-    };
-    
-    // 热门商品TOP 10
-    const productsOption = {
-        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-        grid: { left: '10%', right: '5%', bottom: '3%', top: '3%', containLabel: true },
-        xAxis: { type: 'value' },
-        yAxis: {
-            type: 'category',
-            data: ['商品10', '商品9', '商品8', '商品7', '商品6', '商品5', '商品4', '商品3', '商品2', '商品1']
-        },
-        series: [{
-            type: 'bar',
-            data: [2340, 2580, 2890, 3120, 3450, 3780, 4120, 4560, 4890, 5230],
-            itemStyle: {
-                color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                    { offset: 0, color: '#667eea' },
-                    { offset: 1, color: '#764ba2' }
-                ])
-            },
-            label: { show: true, position: 'right' }
-        }]
-    };
-    
-    // 活跃用户TOP 10
-    const usersOption = {
-        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-        grid: { left: '10%', right: '5%', bottom: '3%', top: '3%', containLabel: true },
-        xAxis: { type: 'value' },
-        yAxis: {
-            type: 'category',
-            data: ['用户10', '用户9', '用户8', '用户7', '用户6', '用户5', '用户4', '用户3', '用户2', '用户1']
-        },
-        series: [{
-            type: 'bar',
-            data: [45, 52, 58, 65, 72, 78, 85, 92, 98, 105],
-            itemStyle: {
-                color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                    { offset: 0, color: '#43e97b' },
-                    { offset: 1, color: '#38f9d7' }
-                ])
-            },
-            label: { show: true, position: 'right', formatter: '{c} 次' }
-        }]
-    };
-    
-    // 渲染所有图表
-    behaviorTrendChart.setOption(trendOption);
-    behaviorPieChart.setOption(pieOption);
-    behaviorBarChart.setOption(barOption);
-    topProductsChart.setOption(productsOption);
-    topUsersChart.setOption(usersOption);
-    
-    // 响应式
-    window.addEventListener('resize', function() {
-        behaviorTrendChart.resize();
-        behaviorPieChart.resize();
-        behaviorBarChart.resize();
-        topProductsChart.resize();
-        topUsersChart.resize();
     });
-    
-    // 刷新按钮
-    document.getElementById('refreshBtn')?.addEventListener('click', function() {
-        this.disabled = true;
-        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 更新中...';
-        setTimeout(() => {
-            location.reload();
-        }, 1000);
+
+    // Top10 商品
+    const items = d.top_items.slice().reverse();
+    ec('topProductsChart').setOption({
+        tooltip: { trigger:'axis', axisPointer:{type:'shadow'} },
+        grid: { left:'5%', right:'8%', bottom:'3%', top:'3%', containLabel:true },
+        xAxis: { type:'value' },
+        yAxis: { type:'category', data: items.map(i => (i.name||'').substring(0,12)) },
+        series: [{ type:'bar',
+            data: items.map(i => i.buy_cnt),
+            itemStyle: { color: new echarts.graphic.LinearGradient(0,0,1,0,
+                [{offset:0,color:'#667eea'},{offset:1,color:'#764ba2'}]) },
+            label: { show:true, position:'right' }
+        }]
     });
-    
-    function updateDashboardData(range, startDate, endDate) {
-        console.log('更新数据:', range, startDate, endDate);
-        // 这里应该发送AJAX请求获取新数据并更新图表
-    }
-});
+
+    // Top10 活跃用户
+    const users = d.top_users.slice().reverse();
+    ec('topUsersChart').setOption({
+        tooltip: { trigger:'axis', axisPointer:{type:'shadow'} },
+        grid: { left:'5%', right:'8%', bottom:'3%', top:'3%', containLabel:true },
+        xAxis: { type:'value' },
+        yAxis: { type:'category', data: users.map(u => '用户'+u.user_id) },
+        series: [{ type:'bar',
+            data: users.map(u => u.action_cnt),
+            itemStyle: { color: new echarts.graphic.LinearGradient(0,0,1,0,
+                [{offset:0,color:'#43e97b'},{offset:1,color:'#38f9d7'}]) },
+            label: { show:true, position:'right', formatter:'{c} 次' }
+        }]
+    });
+}
 </script>
 {% endblock %}

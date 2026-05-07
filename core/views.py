@@ -3,6 +3,7 @@
 from core import app, db
 from core.utility import Utility
 from core.models import UserBehavior, UserProfile, ItemProfile, Recommendation, Admin, UploadHistory
+import core.data_engine as de
 from flask_login import login_user, logout_user, login_required, current_user
 from flask import render_template, request, url_for, redirect, flash, jsonify
 import pandas as pd
@@ -255,32 +256,29 @@ def taobao_upload():
             file_size_str = _fmt_size(file_size_bytes)
             upload_file.seek(0)
 
-            processor = DataPreprocessor()
-            data = processor.load_from_csv(upload_file)
-
-            required_columns = ['user_id', 'item_id', 'category_id', 'behavior_type', 'timestamp']
-            missing_columns = [col for col in required_columns if col not in data.columns]
-            if missing_columns:
-                error_msg = f'文件缺少必要的列: {", ".join(missing_columns)}'
-                flash(error_msg, 'error')
-                _log_upload(filename, file_size_str, 0, 'error', error_msg)
-                return redirect(url_for('taobao_upload'))
-
-            valid_behaviors = ['pv', 'cart', 'fav', 'buy']
-            invalid_behaviors = data[~data['behavior_type'].isin(valid_behaviors)]['behavior_type'].unique()
-            if len(invalid_behaviors) > 0:
-                error_msg = f'无效的行为类型: {", ".join(map(str, invalid_behaviors))}'
+            data, error_msg = _load_and_validate_csv(upload_file)
+            if data is None:
                 flash(error_msg, 'error')
                 _log_upload(filename, file_size_str, 0, 'error', error_msg)
                 return redirect(url_for('taobao_upload'))
 
             for _, row in data.iterrows():
+                ts = int(row['timestamp'])
+                dt = datetime.fromtimestamp(ts)
                 behavior = UserBehavior(
                     user_id=int(row['user_id']),
                     item_id=int(row['item_id']),
+                    brand=str(row.get('brand', '') or ''),
+                    brand_id=int(row['brand_id']) if row.get('brand_id') and str(row['brand_id']) != 'nan' else None,
+                    product_name=str(row.get('product_name', '') or ''),
+                    category_name=str(row.get('category_name', '') or ''),
                     category_id=int(row['category_id']),
                     behavior_type=str(row['behavior_type']),
-                    timestamp=int(row['timestamp'])
+                    timestamp=ts,
+                    price=float(row['price']) if row.get('price') and str(row['price']) != 'nan' else None,
+                    behavior_datetime=dt,
+                    date=dt.date(),
+                    hour=dt.hour,
                 )
                 db.session.add(behavior)
                 records_saved += 1
@@ -297,7 +295,59 @@ def taobao_upload():
             _log_upload(filename, file_size_str, records_saved, 'error', error_msg)
             flash(f'数据导入失败: {error_msg}', 'error')
 
-    return render_template('taobao_upload.html')
+    try:
+        recent = UploadHistory.query.order_by(UploadHistory.upload_time.desc()).limit(5).all()
+        upload_history_list = [r.to_dict() for r in recent]
+        total_records = UserBehavior.query.count()
+        total_uploads = UploadHistory.query.count()
+        storage_stats = {
+            'uploaded_files': total_uploads,
+            'total_records':  total_records,
+            'used_storage':   _fmt_size(total_records * 512),
+        }
+    except Exception:
+        upload_history_list = []
+        storage_stats = {'uploaded_files': 0, 'total_records': 0, 'used_storage': '0 B'}
+    return render_template('taobao_upload.html',
+                           upload_history=upload_history_list,
+                           storage_stats=storage_stats)
+
+
+# CSV 列名映射：支持中文列名(UserBehavior_2025.csv) 和 旧英文列名两种格式
+_CSV_COL_MAP = {
+    '用户ID':    'user_id',
+    '商品ID':    'item_id',
+    '品牌':      'brand',
+    '品牌ID':    'brand_id',
+    '商品名称':  'product_name',
+    '商品类别':  'category_name',
+    '商品类目ID':'category_id',
+    '行为类型':  'behavior_type',
+    '时间戳':    'timestamp',
+    '售价':      'price',
+}
+_REQUIRED_INTERNAL = ['user_id', 'item_id', 'category_id', 'behavior_type', 'timestamp']
+_VALID_BEHAVIORS   = {'pv', 'cart', 'fav', 'buy'}
+
+
+def _load_and_validate_csv(file_obj):
+    """读取并校验 CSV，返回 (df, None) 或 (None, error_str)"""
+    for enc in ['utf-8', 'utf-8-sig', 'gbk', 'gb18030']:
+        try:
+            file_obj.seek(0)
+            df = pd.read_csv(file_obj, encoding=enc)
+            # 重命名中文列
+            df.rename(columns=_CSV_COL_MAP, inplace=True)
+            missing = [c for c in _REQUIRED_INTERNAL if c not in df.columns]
+            if missing:
+                continue  # 试下一个编码
+            invalid = df[~df['behavior_type'].isin(_VALID_BEHAVIORS)]['behavior_type'].unique().tolist()
+            if invalid:
+                return None, f'无效行为类型: {", ".join(map(str, invalid[:5]))}，有效值: pv/cart/fav/buy'
+            return df, None
+        except Exception:
+            continue
+    return None, '无法解析CSV文件，请确认格式与 UserBehavior_2025.csv 一致（UTF-8 或 GBK 编码）'
 
 
 def _fmt_size(b):
@@ -338,18 +388,10 @@ def api_upload_preview():
 
         raw = f.read()
         file_size = _fmt_size(len(raw))
-        f.seek(0)
 
-        df = pd.read_csv(f)
-        required_columns = ['user_id', 'item_id', 'category_id', 'behavior_type', 'timestamp']
-        missing = [c for c in required_columns if c not in df.columns]
-        if missing:
-            return jsonify({'success': False, 'error': f'缺少列: {", ".join(missing)}'})
-
-        valid_behaviors = ['pv', 'cart', 'fav', 'buy']
-        invalid = df[~df['behavior_type'].isin(valid_behaviors)]['behavior_type'].unique().tolist()
-        if invalid:
-            return jsonify({'success': False, 'error': f'无效行为类型: {", ".join(map(str, invalid))}'})
+        df, err = _load_and_validate_csv(f)
+        if df is None:
+            return jsonify({'success': False, 'error': err})
 
         behavior_counts = df['behavior_type'].value_counts().to_dict()
         preview_rows = df.head(10).fillna('').astype(str).to_dict('records')
@@ -603,8 +645,15 @@ def generate_category_charts(analysis_results):
 @app.route('/intelligent_recommendation')
 @login_required
 def intelligent_recommendation():
-    """智能推荐系统 - 基于规则的运营推荐"""
-    return render_template('intelligent_recommendation.html')
+    """智能推荐系统 - 基于真实数据的运营建议"""
+    days = int(request.args.get('days', 30))
+    try:
+        rec_data = de.get_recommendation_insights(days)
+    except Exception as e:
+        print(f"推荐数据错误: {e}")
+        rec_data = {'stats': {}, 'suggestions': [], 'top_items': [],
+                    'top_brands': [], 'top_categories': [], 'synced_at': ''}
+    return render_template('intelligent_recommendation.html', rec_data=rec_data, days=days)
 
 
 # ========== 推荐系统视图函数（保留旧路由兼容）==========
@@ -1449,56 +1498,17 @@ def item_analysis():
     item_id_param = request.args.get('item_id')
     selected_item = None
     try:
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=days)
-        # overview stats from ItemProfile
-        all_items = ItemProfile.query.all()
-        total_items = len(all_items)
-        active_items = sum(1 for it in all_items if it.total_views > 0)
-        avg_views = round(sum(it.total_views for it in all_items) / total_items, 1) if total_items else 0
-        avg_conversion = round(sum(it.conversion_rate for it in all_items) / total_items, 2) if total_items else 0
-        overview_stats = {
-            'total_items': total_items,
-            'item_growth': 5.2,
-            'active_items': active_items,
-            'avg_views': avg_views,
-            'avg_conversion': avg_conversion,
-        }
-        # top items
-        sort_col = ItemProfile.total_purchases if sort_by == 'purchases' else \
-                   ItemProfile.total_views if sort_by == 'views' else \
-                   ItemProfile.conversion_rate
-        q = ItemProfile.query
-        if category != 'all':
-            try:
-                q = q.filter_by(category_id=int(category))
-            except Exception:
-                pass
-        top_profiles = q.order_by(sort_col.desc()).limit(20).all()
-        top_items = []
-        for it in top_profiles:
-            conversion = round(it.conversion_rate * 100, 1) if it.conversion_rate <= 1 else round(it.conversion_rate, 1)
-            top_items.append({
-                'item_id': it.item_id,
-                'category_id': it.category_id,
-                'view_count': it.total_views,
-                'view_change': round((it.avg_daily_views or 0) / max(it.total_views, 1) * 100 - 100, 1),
-                'cart_count': 0,
-                'fav_count': 0,
-                'purchase_count': it.total_purchases,
-                'purchase_change': 0,
-                'conversion_rate': conversion,
-                'heat_level': min(10, int(it.total_views / max(avg_views, 1) * 5)),
-            })
-        # selected item
+        engine_data = de.get_item_stats(days, category, sort_by)
+        overview_stats = engine_data['overview']
+        top_items = engine_data['top_items']
         if item_id_param:
             try:
                 selected_item = _build_item_detail(int(item_id_param))
-            except Exception as e:
-                print(f"商品详情查询错误: {e}")
+            except Exception as ex:
+                print(f"商品详情查询错误: {ex}")
     except Exception as e:
         print(f"商品分析页面错误: {e}")
-        overview_stats = {'total_items': 0, 'item_growth': 0, 'active_items': 0, 'avg_views': 0, 'avg_conversion': 0}
+        overview_stats = {'total_items': 0, 'item_growth': 0, 'active_items': 0, 'avg_price': 0}
         top_items = []
     return render_template('item_analysis.html',
                            overview_stats=overview_stats,
@@ -1520,14 +1530,23 @@ def _build_item_detail(item_id):
     conv = round(purchase_cnt / view_cnt * 100, 1) if view_cnt else 0
     cart_conv = round(purchase_cnt / cart_cnt * 100, 1) if cart_cnt else 0
     fav_conv  = round(purchase_cnt / fav_cnt  * 100, 1) if fav_cnt  else 0
+    # 从行为记录提取商品名称/品牌/品类
+    sample = next((b for b in behaviors if b.product_name), None)
+    product_name  = sample.product_name  if sample else f'商品{item_id}'
+    brand         = sample.brand         if sample else '—'
+    category_name = sample.category_name if sample else (f'类目{profile.category_id}' if profile else '未知')
+    total_spent = sum(b.price for b in behaviors if b.behavior_type == 'buy' and b.price)
     return {
         'item_id': item_id,
-        'category_id': profile.category_id if profile else '未知',
-        'category_name': f'类目 {profile.category_id}' if profile else '未知',
+        'product_name': product_name,
+        'brand': brand,
+        'category_id': profile.category_id if profile else 0,
+        'category_name': category_name,
         'view_count': view_cnt,
         'cart_count': cart_cnt,
         'fav_count': fav_cnt,
         'purchase_count': purchase_cnt,
+        'revenue': round(total_spent, 2),
         'conversion_rate': conv,
         'cart_conversion': cart_conv,
         'fav_conversion': fav_conv,
@@ -1538,8 +1557,16 @@ def _build_item_detail(item_id):
 @app.route('/behavior_analysis_center')
 @login_required
 def behavior_analysis_center():
-    """行为分析中心 - 整合转化漏斗、RFM分群和行为可视化"""
+    """行为分析中心 - 整合转化漏斗、RFM分群和行为可视化（数据由 /api/behavior/stats 提供）"""
     return render_template('behavior_analysis_center.html')
+
+
+# ========== 数据看板 ==========
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    """数据看板（数据由 /api/dashboard/stats 动态加载）"""
+    return render_template('dashboard.html')
 
 
 # ========== 其他功能页面 ==========
@@ -1554,31 +1581,37 @@ def conversion_analysis():
 @login_required
 def rfm_analysis():
     """RFM用户价值分析页面"""
+    days = int(request.args.get('days', 90))
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=days)
     try:
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=90)  # RFM需要更长时间范围
-
-        # 获取用户行为数据
-        behaviors = UserBehavior.query.filter(
-            UserBehavior.timestamp.between(start_date, end_date)
-        ).all()
-
-        user_profiles = UserProfile.query.all()
-
-        # 计算RFM分析
-        rfm_results = calculate_rfm_analysis(behaviors, user_profiles, end_date)
-        segment_insights = generate_segment_insights(rfm_results)
-
+        rfm_data = de.get_rfm_data(days)
+        segs = {s['segment']: s for s in rfm_data.get('segments', [])}
+        high_segs = ['champion', 'loyal']
+        risk_segs = ['at_risk', 'slipping']
+        high_val  = sum(segs[k]['count'] for k in high_segs if k in segs)
+        at_risk   = sum(segs[k]['count'] for k in risk_segs if k in segs)
+        total_u   = rfm_data.get('total_users', 0)
+        all_mon   = [s['avg_monetary'] for s in rfm_data.get('segments', []) if s.get('avg_monetary')]
+        rfm_data.update({
+            'total_segments':     len(rfm_data.get('segments', [])),
+            'high_value_count':   high_val,
+            'high_value_percent': round(high_val / total_u * 100, 1) if total_u else 0,
+            'at_risk_count':      at_risk,
+            'avg_customer_value': round(sum(all_mon) / len(all_mon), 2) if all_mon else 0,
+        })
         return render_template('rfm_analysis.html',
-                               rfm_data=rfm_results,
-                               insights=segment_insights,
+                               rfm_data=rfm_data,
+                               insights=[],
                                analysis_period=f"{start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}")
-
     except Exception as e:
         print(f"RFM分析页面错误: {str(e)}")
+        empty = de._empty_rfm()
+        empty.update({'total_segments': 0, 'high_value_count': 0, 'high_value_percent': 0,
+                      'at_risk_count': 0, 'avg_customer_value': 0})
         return render_template('rfm_analysis.html',
-                               rfm_data=get_default_rfm_data(),
-                               insights=get_default_insights())
+                               rfm_data=empty,
+                               insights=[])
 
 
 @app.route('/api/rfm/data')
@@ -2853,69 +2886,115 @@ def logout():
 
 
 
+# ========== 核心数据分析 API（全部来自 data_engine）==========
+
+@app.route('/api/dashboard/stats')
+@login_required
+def api_dashboard_stats():
+    """数据看板 — 全量统计"""
+    days = int(request.args.get('days', 30))
+    try:
+        data = de.get_dashboard_stats(days)
+        return jsonify({'success': True, 'data': data, 'days': days})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/behavior/stats')
+@login_required
+def api_behavior_stats():
+    """行为分析中心 — 全量统计"""
+    days = int(request.args.get('days', 30))
+    try:
+        data = de.get_behavior_stats(days)
+        return jsonify({'success': True, 'data': data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/item/stats')
+@login_required
+def api_item_stats():
+    """商品分析 — 全量统计"""
+    days     = int(request.args.get('days', 30))
+    category = request.args.get('category', 'all')
+    sort_by  = request.args.get('sort_by', 'purchases')
+    try:
+        data = de.get_item_stats(days, category, sort_by)
+        return jsonify({'success': True, 'data': data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/rfm/stats')
+@login_required
+def api_rfm_stats():
+    """RFM分析 — 全量统计"""
+    days = int(request.args.get('days', 90))
+    try:
+        data = de.get_rfm_data(days)
+        return jsonify({'success': True, 'data': data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/user/<int:user_id>/profile')
+@login_required
+def api_user_profile(user_id):
+    """用户画像详情"""
+    try:
+        info = de.get_user_info(user_id)
+        if info:
+            return jsonify({'success': True, 'data': info})
+        return jsonify({'success': False, 'error': '未找到该用户数据'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/export/report')
+@login_required
+def api_export_report():
+    """生成并返回报告数据（CSV/JSON）"""
+    days   = int(request.args.get('days', 30))
+    fmt    = request.args.get('format', 'csv')
+    module = request.args.get('module', 'dashboard')
+    try:
+        if module == 'dashboard':
+            data = de.get_dashboard_stats(days)
+        elif module == 'behavior':
+            data = de.get_behavior_stats(days)
+        elif module == 'item':
+            data = de.get_item_stats(days)
+        elif module == 'rfm':
+            raw = de.get_rfm_data(days)
+            data = {'segments': raw['segments'], 'total_users': raw['total_users']}
+        else:
+            data = de.get_dashboard_stats(days)
+
+        if fmt == 'json':
+            content = json.dumps(data, ensure_ascii=False, indent=2)
+            return jsonify({'success': True, 'data': content,
+                            'filename': f'{module}_report_{datetime.now().strftime("%Y%m%d")}.json'})
+        else:
+            # 对 top_items / segments 等列表做 CSV
+            rows = data.get('top_items') or data.get('segments') or [data]
+            df = pd.DataFrame(rows)
+            content = df.to_csv(index=False, encoding='utf-8-sig')
+            return jsonify({'success': True, 'data': content,
+                            'filename': f'{module}_report_{datetime.now().strftime("%Y%m%d")}.csv'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
 # ========== 智能推荐同步 API ==========
 @app.route('/api/recommendation/sync')
 @login_required
 def api_recommendation_sync():
     """从各分析模块读取最新数据，生成运营建议"""
+    days = int(request.args.get('days', 30))
     try:
-        total_behaviors = UserBehavior.query.count()
-        pv_cnt   = UserBehavior.query.filter_by(behavior_type='pv').count()
-        cart_cnt = UserBehavior.query.filter_by(behavior_type='cart').count()
-        fav_cnt  = UserBehavior.query.filter_by(behavior_type='fav').count()
-        buy_cnt  = UserBehavior.query.filter_by(behavior_type='buy').count()
-
-        total_users = db.session.query(UserBehavior.user_id).distinct().count()
-        active_users = db.session.query(UserBehavior.user_id)\
-            .filter(UserBehavior.behavior_datetime >= datetime.now() - timedelta(days=30))\
-            .distinct().count()
-
-        conv_rate = round(buy_cnt / pv_cnt * 100, 2) if pv_cnt else 0
-        cart_rate = round(cart_cnt / pv_cnt * 100, 2) if pv_cnt else 0
-
-        # 顶级商品
-        from sqlalchemy import func as sqlfunc
-        top_items_q = db.session.query(
-            UserBehavior.item_id,
-            sqlfunc.count().label('cnt')
-        ).filter_by(behavior_type='buy')\
-         .group_by(UserBehavior.item_id)\
-         .order_by(sqlfunc.count().desc())\
-         .limit(5).all()
-        top_items = [{'item_id': r.item_id, 'buy_count': r.cnt} for r in top_items_q]
-
-        # 生成建议
-        suggestions = []
-        if conv_rate < 5:
-            suggestions.append({'type': 'warning', 'title': '转化率偏低', 'detail': f'当前浏览→购买转化率为 {conv_rate}%，建议优化商品详情页和加购引导。'})
-        else:
-            suggestions.append({'type': 'success', 'title': '转化率良好', 'detail': f'当前转化率 {conv_rate}%，保持并持续优化高转化品类。'})
-
-        if active_users < total_users * 0.3:
-            inactive = total_users - active_users
-            suggestions.append({'type': 'warning', 'title': '大量用户沉默', 'detail': f'近30天活跃用户仅 {active_users}，约 {inactive} 名用户未活跃，建议发起召回活动。'})
-
-        if cart_rate > conv_rate * 3:
-            suggestions.append({'type': 'info', 'title': '加购流失较高', 'detail': f'加购率 {cart_rate}% 远高于购买率 {conv_rate}%，建议推送加购未购提醒和限时优惠。'})
-
-        if top_items:
-            ids_str = ', '.join(str(t['item_id']) for t in top_items[:3])
-            suggestions.append({'type': 'primary', 'title': '热销商品推广', 'detail': f'商品 {ids_str} 购买量居前，建议加大推广预算提升曝光。'})
-
-        return jsonify({
-            'success': True,
-            'stats': {
-                'total_behaviors': total_behaviors,
-                'total_users': total_users,
-                'active_users': active_users,
-                'pv': pv_cnt, 'cart': cart_cnt, 'fav': fav_cnt, 'buy': buy_cnt,
-                'conversion_rate': conv_rate,
-                'cart_rate': cart_rate,
-            },
-            'top_items': top_items,
-            'suggestions': suggestions,
-            'synced_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        })
+        result = de.get_recommendation_insights(days)
+        return jsonify({'success': True, **result})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 

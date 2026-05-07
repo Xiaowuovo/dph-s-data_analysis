@@ -4742,6 +4742,58 @@ document.addEventListener('DOMContentLoaded', function() {
             if (chart && chart.resize) chart.resize();
         });
     });
+
+    // ── 从 /api/behavior/stats 加载真实数据并更新关键图表 ──
+    fetch('/api/behavior/stats?days=30')
+        .then(r => r.json())
+        .then(res => {
+            if (!res.success) return;
+            const d = res.data;
+            const f = d.conversion_funnel;
+
+            // 1. 更新转化漏斗桑基图（如已初始化）
+            if (charts.sankey && f && f.length >= 4) {
+                const pv = f[0].value, cart = f[1].value, fav = f[2].value, buy = f[3].value;
+                charts.sankey.setOption({
+                    series: [{
+                        data: [
+                            { name: '浏览(PV)' }, { name: '加购(Cart)' },
+                            { name: '收藏(Fav)' }, { name: '购买(Buy)' },
+                            { name: '流失-未加购' }, { name: '流失-加购未买' }, { name: '流失-收藏未买' }
+                        ],
+                        links: [
+                            { source: '浏览(PV)',   target: '加购(Cart)',    value: cart },
+                            { source: '浏览(PV)',   target: '收藏(Fav)',     value: fav  },
+                            { source: '浏览(PV)',   target: '流失-未加购',  value: Math.max(0, pv - cart - fav) },
+                            { source: '加购(Cart)', target: '购买(Buy)',    value: Math.min(buy, cart) },
+                            { source: '加购(Cart)', target: '流失-加购未买', value: Math.max(0, cart - Math.min(buy, cart)) },
+                            { source: '收藏(Fav)',  target: '购买(Buy)',    value: 0 },
+                            { source: '收藏(Fav)',  target: '流失-收藏未买', value: fav },
+                        ]
+                    }]
+                });
+            }
+
+            // 2. 更新小时分布图（如已初始化）
+            if (charts.hourly && d.hourly) {
+                charts.hourly.setOption({
+                    xAxis: { data: d.hourly.hours },
+                    series: [
+                        { data: d.hourly.pv },
+                        { data: d.hourly.buy },
+                    ]
+                });
+            }
+
+            // 3. 更新转化率数值卡片（页面内 id 含 conv）
+            document.querySelectorAll('[id*="conv-rate"]').forEach(el => {
+                const bd = d.behavior_dist || {};
+                const pv2 = bd.pv || 1;
+                const buy2 = bd.buy || 0;
+                el.textContent = (buy2 / pv2 * 100).toFixed(2) + '%';
+            });
+        })
+        .catch(e => console.warn('behavior/stats load error:', e));
 });
 </script>
 {% endblock %}
