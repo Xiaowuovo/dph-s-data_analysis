@@ -624,16 +624,72 @@ def _get_item_stats_from_dynamic(table, ds, days, category, sort_by):
     
     # 总商品数
     total_items = db.session.query(func.count(distinct(table.c.item_id))).filter(base_filter).scalar() or 0
-    
-    # 简化返回（避免复杂查询）
+
+    # 活跃商品（有购买行为）
+    active_items = total_items
+    if 'behavior_type' in cols:
+        try:
+            active_items = db.session.query(
+                func.count(distinct(table.c.item_id))
+            ).filter(base_filter, table.c.behavior_type == 'buy').scalar() or 0
+        except Exception:
+            pass
+
+    # 均价
+    avg_price = 0.0
+    price_col = 'price' if 'price' in cols else ('amount' if 'amount' in cols else None)
+    if price_col:
+        try:
+            filt = base_filter
+            if 'behavior_type' in cols:
+                from sqlalchemy import and_
+                filt = and_(base_filter, table.c.behavior_type == 'buy')
+            avg_price = float(db.session.query(func.avg(table.c[price_col])).filter(filt).scalar() or 0)
+            avg_price = round(avg_price, 2)
+        except Exception:
+            pass
+
+    # Top 20 商品（按购买/记录数）
+    top_items = []
+    try:
+        name_col = 'product_name' if 'product_name' in cols else None
+        qcols = [table.c.item_id.label('item_id'), func.count().label('cnt')]
+        if name_col:
+            qcols.insert(1, table.c[name_col].label('product_name'))
+        q = db.session.query(*qcols).filter(base_filter)
+        if 'behavior_type' in cols:
+            q = q.filter(table.c.behavior_type == 'buy')
+        grp = [table.c.item_id]
+        if name_col:
+            grp.append(table.c[name_col])
+        # category filter
+        if category != 'all' and 'category_id' in cols:
+            try:
+                q = q.filter(table.c.category_id == int(category))
+            except Exception:
+                pass
+        q = q.group_by(*grp).order_by(func.count().desc()).limit(20).all()
+        for r in q:
+            pname = getattr(r, 'product_name', None) or f'商品{r.item_id}'
+            top_items.append({
+                'item_id': r.item_id,
+                'product_name': pname,
+                'category_id': 0,
+                'purchase_count': r.cnt,
+                'view_count': r.cnt,
+                'conversion_rate': 0,
+            })
+    except Exception as _e:
+        print(f'[WARN] top_items dynamic: {_e}')
+
     return {
         'overview': {
             'total_items': total_items,
             'item_growth': 0,
-            'active_items': total_items,
-            'avg_price': 0
+            'active_items': active_items,
+            'avg_price': avg_price,
         },
-        'top_items': []  # 暂时返回空，避免卡顿
+        'top_items': top_items,
     }
 
 
@@ -1014,20 +1070,174 @@ def get_user_info(user_id: int):  # -> dict | None
     }
 
 
+def _get_recommendation_from_dynamic(table, ds, days: int) -> dict:
+    """从动态数据源表计算真实推荐洞察"""
+    cols = {c.name for c in table.columns}
+    start_dt, end_dt = _relative_time_range(days, ds.max_time)
+    time_col_name = _get_time_column(table, ds.data_type)
+
+    if time_col_name and start_dt and end_dt:
+        base_filter = table.c[time_col_name].between(start_dt, end_dt)
+    else:
+        base_filter = text('1=1')
+
+    # ── 行为类型分布（behavior / order 类型）──
+    counts = {}
+    total_users = 0
+    active_users = 0
+    total_revenue = 0.0
+    pv = cart = buy = 0
+
+    if 'behavior_type' in cols:
+        rows = db.session.query(
+            table.c.behavior_type, func.count().label('cnt')
+        ).filter(base_filter).group_by(table.c.behavior_type).all()
+        counts = {r.behavior_type: r.cnt for r in rows if r.behavior_type}
+        pv   = counts.get('pv',   0)
+        cart = counts.get('cart', 0)
+        buy  = counts.get('buy',  0)
+    else:
+        # order/user 类型：每行视为一次"购买"行为
+        buy = db.session.query(func.count()).select_from(table).filter(base_filter).scalar() or 0
+        counts = {'buy': buy}
+
+    conv_rate = round(buy / pv * 100, 2) if pv else 0
+    cart_rate = round(cart / pv * 100, 2) if pv else 0
+
+    # ── 用户总数 / 活跃（购买）用户数 ──
+    if 'user_id' in cols:
+        total_users = db.session.query(
+            func.count(distinct(table.c.user_id))
+        ).filter(base_filter).scalar() or 0
+        if 'behavior_type' in cols:
+            active_users = db.session.query(
+                func.count(distinct(table.c.user_id))
+            ).filter(base_filter, table.c.behavior_type == 'buy').scalar() or 0
+        else:
+            active_users = total_users
+
+    # ── 总收入 ──
+    rev_col = 'amount' if 'amount' in cols else ('price' if 'price' in cols else None)
+    if rev_col:
+        if 'behavior_type' in cols:
+            total_revenue = float(db.session.query(func.sum(table.c[rev_col])).filter(
+                base_filter, table.c.behavior_type == 'buy').scalar() or 0)
+        else:
+            total_revenue = float(db.session.query(func.sum(table.c[rev_col])).filter(
+                base_filter).scalar() or 0)
+
+    # ── Top 3 品牌 ──
+    top_brands = []
+    if 'brand' in cols:
+        try:
+            bq = db.session.query(
+                table.c.brand, func.count().label('cnt')
+            ).filter(base_filter, table.c.brand != None)
+            if 'behavior_type' in cols:
+                bq = bq.filter(table.c.behavior_type == 'buy')
+            bq = bq.group_by(table.c.brand).order_by(func.count().desc()).limit(3).all()
+            top_brands = [{'brand': r.brand, 'cnt': r.cnt} for r in bq if r.brand]
+        except Exception:
+            pass
+
+    # ── Top 3 品类 ──
+    top_cats = []
+    cat_col = 'category_name' if 'category_name' in cols else ('category' if 'category' in cols else None)
+    if cat_col:
+        try:
+            cq = db.session.query(
+                table.c[cat_col].label('cat'), func.count().label('cnt')
+            ).filter(base_filter, table.c[cat_col] != None)
+            if 'behavior_type' in cols:
+                cq = cq.filter(table.c.behavior_type == 'buy')
+            cq = cq.group_by(table.c[cat_col]).order_by(func.count().desc()).limit(3).all()
+            top_cats = [{'name': r.cat, 'cnt': r.cnt} for r in cq if r.cat]
+        except Exception:
+            pass
+
+    # ── Top 5 热销商品 ──
+    top_items = []
+    prod_id_col  = 'item_id' if 'item_id' in cols else ('product_id' if 'product_id' in cols else None)
+    prod_name_col = 'product_name' if 'product_name' in cols else None
+    if prod_id_col:
+        try:
+            qcols = [table.c[prod_id_col].label('pid'), func.count().label('cnt')]
+            if prod_name_col:
+                qcols.insert(1, table.c[prod_name_col].label('pname'))
+            iq = db.session.query(*qcols).filter(base_filter)
+            if 'behavior_type' in cols:
+                iq = iq.filter(table.c.behavior_type == 'buy')
+            grp = [table.c[prod_id_col]]
+            if prod_name_col:
+                grp.append(table.c[prod_name_col])
+            iq = iq.group_by(*grp).order_by(func.count().desc()).limit(5).all()
+            top_items = [{'item_id': r.pid,
+                          'name': getattr(r, 'pname', None) or f'商品{r.pid}',
+                          'buy_count': r.cnt} for r in iq]
+        except Exception:
+            pass
+
+    # ── 生成运营建议 ──
+    suggestions = []
+    if ds.data_type == 'behavior':
+        if conv_rate < 3:
+            suggestions.append({'type': 'warning', 'title': '转化率偏低',
+                                 'detail': f'浏览→购买转化率仅 {conv_rate}%，建议优化商品详情页、价格策略及促销引导。'})
+        else:
+            suggestions.append({'type': 'success', 'title': '转化率良好',
+                                 'detail': f'转化率 {conv_rate}%，可进一步通过个性化推荐提升。'})
+        inactive_users = total_users - active_users
+        if total_users > 0 and inactive_users > total_users * 0.5:
+            suggestions.append({'type': 'warning', 'title': '大量用户未购买',
+                                 'detail': f'近{days}天内 {inactive_users}/{total_users} 名用户仅浏览未购买，建议发放专项优惠券召回。'})
+        if cart_rate > conv_rate * 4:
+            suggestions.append({'type': 'info', 'title': '加购流失明显',
+                                 'detail': f'加购率 {cart_rate}% 远高于转化率 {conv_rate}%，建议推送「加购未付款」提醒。'})
+    elif ds.data_type == 'order':
+        suggestions.append({'type': 'primary', 'title': '订单数据洞察',
+                             'detail': f'当前数据源包含 {buy} 笔订单，总收入 ¥{total_revenue:,.2f}，人均订单数 {round(buy/total_users,1) if total_users else 0}。'})
+    elif ds.data_type == 'user':
+        suggestions.append({'type': 'primary', 'title': '用户数据洞察',
+                             'detail': f'共 {total_users} 名用户，总购买金额 ¥{total_revenue:,.2f}。'})
+
+    if top_brands:
+        brand_str = '、'.join(b['brand'] for b in top_brands)
+        suggestions.append({'type': 'primary', 'title': '热门品牌推广',
+                             'detail': f'{brand_str} 为近期热销品牌，建议加大其商品曝光量。'})
+    if top_cats:
+        cat_str = '、'.join(c['name'] for c in top_cats)
+        suggestions.append({'type': 'info', 'title': '热门品类运营',
+                             'detail': f'{cat_str} 近期购买量领先，建议重点运营相关商品。'})
+    if not suggestions:
+        suggestions.append({'type': 'info', 'title': '暂无建议',
+                             'detail': '当前数据量较少，建议上传更多行为/订单数据以获取精准运营建议。'})
+
+    return {
+        'stats': {
+            'total_behaviors': sum(counts.values()),
+            'total_users': total_users,
+            'active_users': active_users,
+            'pv': pv, 'cart': cart, 'buy': buy,
+            'conversion_rate': conv_rate,
+            'cart_rate': cart_rate,
+            'total_revenue': round(total_revenue, 2),
+        },
+        'top_brands': top_brands,
+        'top_categories': top_cats,
+        'top_items': top_items,
+        'suggestions': suggestions,
+        'synced_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+    }
+
+
 # ──────────────────────────────────────────────
 # 6. 智能推荐 / 实时建议
 # ──────────────────────────────────────────────
 def get_recommendation_insights(days: int = 30) -> dict:
-    # 优先使用动态数据源（避免卡顿）
+    # 优先使用动态数据源
     table, ds = _get_active_table()
     if table is not None and ds is not None:
-        # 简化返回，避免复杂推荐计算
-        return {
-            'hot_items': [],
-            'trending_categories': [],
-            'user_segments': [],
-            'recommendation_rules': []
-        }
+        return _get_recommendation_from_dynamic(table, ds, days)
     
     s, e = _ts_range(days)
 

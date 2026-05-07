@@ -2177,21 +2177,23 @@ def analyze_hourly_patterns(behaviors):
 
 
 def prepare_hourly_chart_data(behaviors):
-    """准备24小时图表数据"""
-    # 这里实现实际的数据处理逻辑
-    # 暂时返回示例数据
+    """准备24小时图表数据（从真实行为数据统计）"""
+    hourly = {h: {'pv': 0, 'cart': 0, 'fav': 0, 'buy': 0} for h in range(24)}
+    for b in behaviors:
+        ts = getattr(b, 'timestamp', None) or getattr(b, 'behavior_datetime', None)
+        if ts and hasattr(ts, 'hour'):
+            btype = getattr(b, 'behavior_type', 'pv')
+            if btype in hourly[ts.hour]:
+                hourly[ts.hour][btype] += 1
+    hours = [f'{i:02d}:00' for i in range(24)]
     return {
         'success': True,
         'data': {
-            'hours': [f'{i:02d}:00' for i in range(24)],
-            'pv': [120, 90, 60, 50, 40, 60, 120, 240, 320, 400, 450, 500,
-                   550, 580, 600, 620, 650, 700, 800, 950, 1050, 980, 750, 400],
-            'cart': [15, 10, 5, 3, 2, 5, 15, 30, 45, 60, 70, 80,
-                     85, 90, 95, 100, 110, 120, 140, 160, 180, 170, 130, 80],
-            'fav': [8, 5, 3, 2, 1, 3, 8, 15, 20, 25, 30, 35,
-                    40, 45, 50, 55, 60, 65, 70, 80, 90, 85, 70, 40],
-            'buy': [5, 3, 1, 0, 0, 1, 5, 10, 15, 20, 25, 30,
-                    35, 40, 45, 50, 55, 60, 65, 75, 85, 80, 60, 30]
+            'hours': hours,
+            'pv':   [hourly[i]['pv']   for i in range(24)],
+            'cart': [hourly[i]['cart'] for i in range(24)],
+            'fav':  [hourly[i]['fav']  for i in range(24)],
+            'buy':  [hourly[i]['buy']  for i in range(24)],
         }
     }
 
@@ -2311,13 +2313,26 @@ def prepare_weekly_chart_data(behaviors):
         rate = (buy / pv * 100) if pv > 0 else 0
         conversion_rate.append(round(rate, 1))
 
+    # 每周日均客单价（有价格字段时计算）
+    weekday_revenue = {i: 0.0 for i in range(7)}
+    weekday_buy_cnt = {i: 0 for i in range(7)}
+    for b in behaviors:
+        if b.timestamp:
+            wd = b.timestamp.weekday()
+            if getattr(b, 'behavior_type', None) == 'buy' and getattr(b, 'price', None):
+                weekday_revenue[wd] += b.price
+                weekday_buy_cnt[wd] += 1
+    avg_order_value = [
+        round(weekday_revenue[i] / weekday_buy_cnt[i], 1) if weekday_buy_cnt[i] else 0
+        for i in range(7)
+    ]
     return {
         'success': True,
         'data': {
             'weekdays': weekdays,
             'total_activity': total_activity,
             'conversion_rate': conversion_rate,
-            'avg_order_value': [250, 260, 255, 258, 265, 315, 280]  # 简化处理
+            'avg_order_value': avg_order_value,
         }
     }
 
@@ -2333,17 +2348,12 @@ def prepare_trend_chart_data(behaviors, start_date, end_date):
             dates.append(current_date.strftime('%m-%d'))
             current_date += timedelta(days=1)
 
-        # 模拟趋势数据
-        import random
-        base_trend = [1000 + i * 20 for i in range(len(dates))]
-        trend_data = [val + random.randint(-50, 50) for val in base_trend]
-
         return {
             'success': True,
             'data': {
-                'dates': dates[:30],  # 最多显示30天
-                'trend': trend_data[:30],
-                'weekly_avg': [sum(trend_data[i:i + 7]) / 7 for i in range(0, len(trend_data), 7)]
+                'dates': dates[:30],
+                'trend': [0] * len(dates[:30]),
+                'weekly_avg': []
             }
         }
 
@@ -2385,19 +2395,24 @@ def prepare_holiday_chart_data(behaviors):
             }
         }
 
-    # 实际数据处理逻辑
-    # 这里需要区分工作日、周末、节假日、促销日
-    # 简化处理，返回模拟数据
+    # 分类：工作日 vs 周末（节假日/促销日无可靠标注，归入工作日/周末）
+    def _conv(blist):
+        pv_c  = sum(1 for b in blist if getattr(b, 'behavior_type', '') == 'pv')
+        buy_c = sum(1 for b in blist if getattr(b, 'behavior_type', '') == 'buy')
+        return round(buy_c / pv_c * 100, 1) if pv_c else 0
+    def _avg_val(blist):
+        prices = [b.price for b in blist
+                  if getattr(b, 'behavior_type', '') == 'buy' and getattr(b, 'price', None)]
+        return round(sum(prices) / len(prices), 1) if prices else 0
+    workday_b  = [b for b in behaviors if b.timestamp and b.timestamp.weekday() < 5]
+    weekend_b  = [b for b in behaviors if b.timestamp and b.timestamp.weekday() >= 5]
     return {
         'success': True,
         'data': {
-            'labels': ['工作日', '周末', '节假日', '促销日'],
-            'activity': [calculate_workday_activity(behaviors),
-                         calculate_weekend_activity(behaviors),
-                         calculate_holiday_activity(behaviors),
-                         calculate_promo_activity(behaviors)],
-            'conversion': [6.2, 7.8, 8.5, 8.2],
-            'avg_value': [265, 310, 335, 305]
+            'labels': ['工作日', '周末'],
+            'activity':   [len(workday_b), len(weekend_b)],
+            'conversion': [_conv(workday_b), _conv(weekend_b)],
+            'avg_value':  [_avg_val(workday_b), _avg_val(weekend_b)],
         }
     }
 
@@ -2430,35 +2445,33 @@ def calculate_weekend_activity(behaviors):
 
 
 def calculate_holiday_activity(behaviors):
-    """计算节假日活跃度"""
-    # 这里需要节假日数据，暂时简化
-    return len(behaviors) * 0.2  # 假设20%是节假日行为
+    """计算节假日活跃度（无节假日标注，返回0）"""
+    return 0
 
 
 def calculate_promo_activity(behaviors):
-    """计算促销日活跃度"""
-    # 这里需要促销日数据，暂时简化
-    return len(behaviors) * 0.25  # 假设25%是促销日行为
+    """计算促销日活跃度（无促销标注，返回0）"""
+    return 0
 
 
 def get_default_time_stats():
-    """获取默认时间统计数据"""
+    """无数据时的空统计结构"""
     return {
-        'daily_activity': 1589,
-        'daily_change': 12.5,
-        'peak_hours': '20:00-22:00',
-        'peak_percent': 35,
-        'peak_day': '周六',
-        'peak_day_increase': 25,
-        'best_conversion_hour': '21:00',
-        'best_conversion_rate': 8.5,
-        'weekend_increase': 30,
-        'holiday_increase': 80,
-        'holiday_avg_price_increase': 25,
-        'promo_increase': 120,
-        'promo_conversion_increase': 45,
-        'low_peak_hours': '03:00-06:00',
-        'pre_peak_hours': '19:00-20:00'
+        'daily_activity': 0,
+        'daily_change': 0,
+        'peak_hours': '—',
+        'peak_percent': 0,
+        'peak_day': '—',
+        'peak_day_increase': 0,
+        'best_conversion_hour': '—',
+        'best_conversion_rate': 0,
+        'weekend_increase': 0,
+        'holiday_increase': 0,
+        'holiday_avg_price_increase': 0,
+        'promo_increase': 0,
+        'promo_conversion_increase': 0,
+        'low_peak_hours': '—',
+        'pre_peak_hours': '—'
     }
 
 
@@ -2552,10 +2565,10 @@ def _build_user_info(user_id):
         'segment_name': segment_name,
         'activity_level': activity_level,
         'value_level': value_level,
-        'register_time': '未知',
+        'register_time': getattr(behaviors[0], 'register_time', '未知') if behaviors else '未知',
         'last_active': days_ago,
-        'region': '未知',
-        'device': '未知',
+        'region': getattr(behaviors[0], 'user_province_name', '未知') if behaviors else '未知',
+        'device': '—',
         'pv_count': pv_cnt,
         'cart_count': cart_cnt,
         'fav_count': fav_cnt,
@@ -2564,7 +2577,7 @@ def _build_user_info(user_id):
         'pv_to_fav_rate': pv_to_fav,
         'pv_to_buy_rate': pv_to_buy,
         'overall_conversion': pv_to_buy,
-        'price_sensitivity': 50,
+        'price_sensitivity': round(sum(b.price for b in buy if getattr(b, 'price', None)) / buy_cnt, 1) if buy_cnt else 0,
         'preferences': preferences,
         'summary': f'用户 {user_id} 共产生 {total_actions} 次行为，购买转化率 {pv_to_buy}%，分群为「{segment_name}」。',
         'insights': insights,
