@@ -13,6 +13,7 @@ import os
 import tempfile
 import json
 from datetime import datetime, timedelta
+from sqlalchemy import func
 from core.rfm_analysis import (
     calculate_rfm_analysis,
     generate_segment_insights,
@@ -356,6 +357,15 @@ def _fmt_size(b):
             return f'{b:.1f} {unit}'
         b /= 1024
     return f'{b:.1f} GB'
+
+
+def _data_date_range(days: int):
+    """返回 (start_datetime, end_datetime)，以数据库中最新 behavior_datetime 为基准往前推 days 天。
+    若库中无数据则回退到当前时间。用于所有直接过滤 behavior_datetime 列的路由。
+    """
+    max_dt = db.session.query(func.max(UserBehavior.behavior_datetime)).scalar()
+    end_dt = max_dt if max_dt else datetime.now()
+    return end_dt - timedelta(days=days), end_dt
 
 
 def _log_upload(filename, file_size, record_count, status, error_log):
@@ -785,13 +795,12 @@ def query():
 def visualization():
     """数据可视化页面 - 专注于基础数据可视化，与前端JavaScript模块完整集成"""
     try:
-        # 获取最近30天的数据
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=30)
+        # 获取最近30天的数据（以数据库最新记录为基准）
+        start_date, end_date = _data_date_range(30)
 
         # 获取基础数据
         behaviors = UserBehavior.query.filter(
-            UserBehavior.timestamp.between(start_date, end_date)
+            UserBehavior.behavior_datetime.between(start_date, end_date)
         ).all()
 
         user_profiles = UserProfile.query.all()
@@ -1439,25 +1448,16 @@ def get_default_api_data():
     }
 
 
-def generate_chart_data_based_on_config(config):
-    """根据配置生成图表数据（占位实现）"""
-    if not config:
-        return {}
-    chart_type = config.get('type', 'bar')
-    return {'type': chart_type, 'data': [], 'labels': []}
-
-
 # API路由-为前端JavaScript提供数据接口
 @app.route('/api/visualization/data')
 @login_required
 def api_visualization_data():
     """提供可视化数据API"""
     try:
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=30)
+        start_date, end_date = _data_date_range(30)
 
         behaviors = UserBehavior.query.filter(
-            UserBehavior.timestamp.between(start_date, end_date)
+            UserBehavior.behavior_datetime.between(start_date, end_date)
         ).all()
 
         return jsonify({
@@ -1621,11 +1621,10 @@ def api_rfm_data():
     try:
         from datetime import datetime, timedelta
 
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=90)
+        start_date, end_date = _data_date_range(90)
 
         behaviors = UserBehavior.query.filter(
-            UserBehavior.timestamp.between(start_date, end_date)
+            UserBehavior.behavior_datetime.between(start_date, end_date)
         ).all()
 
         user_profiles = UserProfile.query.all()
@@ -1651,13 +1650,12 @@ def api_rfm_data():
 def time_pattern():
     """用户行为时间模式分析页面"""
     try:
-        # 获取最近30天的数据
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=30)
+        # 获取数据（以数据库最新记录为基准）
+        start_date, end_date = _data_date_range(30)
 
         # 获取用户行为数据
         behaviors = UserBehavior.query.filter(
-            UserBehavior.timestamp.between(start_date, end_date)
+            UserBehavior.behavior_datetime.between(start_date, end_date)
         ).all()
 
         # 计算时间模式统计数据

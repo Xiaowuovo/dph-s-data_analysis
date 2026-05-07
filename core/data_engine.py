@@ -18,8 +18,19 @@ from core.models import UserBehavior
 # 工具
 # ──────────────────────────────────────────────
 def _ts_range(days: int):
-    """返回 (start_ts, end_ts) Unix 整数秒，以当前时间往前推 days 天"""
-    end_dt = datetime.now()
+    """返回 (start_ts, end_ts) Unix 整数秒。
+    以数据库中最新记录的时间戳为基准往前推 days 天；
+    若库中无数据则退回到当前时间。这样即使导入的是历史 CSV 数据，
+    时间筛选也能正确命中所有记录。
+    """
+    try:
+        max_ts = db.session.query(func.max(UserBehavior.timestamp)).scalar()
+    except Exception:
+        max_ts = None
+    if max_ts:
+        end_dt = datetime.fromtimestamp(int(max_ts))
+    else:
+        end_dt = datetime.now()
     start_dt = end_dt - timedelta(days=days)
     return int(start_dt.timestamp()), int(end_dt.timestamp())
 
