@@ -384,19 +384,23 @@ def _create_isolated_table(df, data_type: str, filename: str, file_size_str: str
         col_lower = col.lower()
         if col == 'id': continue  # 跳过主键
         
-        # 根据列名推断类型
-        if 'id' in col_lower or col_lower in ['user_id', 'order_id', 'product_id', 'item_id']:
-            columns.append(Column(col, BigInteger))
-        elif 'time' in col_lower or 'date' in col_lower:
-            columns.append(Column(col, DateTime))
-        elif 'amount' in col_lower or 'price' in col_lower or 'revenue' in col_lower:
-            columns.append(Column(col, Float))
-        elif 'count' in col_lower or 'quantity' in col_lower or 'age' in col_lower:
+        # 根据列名推断类型（优先级从高到低）
+        # 1. 数值型字段（避免被误判为时间）
+        if 'times' in col_lower or 'count' in col_lower or 'quantity' in col_lower or 'age' in col_lower or 'num' in col_lower:
             columns.append(Column(col, Integer))
+        elif 'amount' in col_lower or 'price' in col_lower or 'revenue' in col_lower or 'rate' in col_lower:
+            columns.append(Column(col, Float))
+        # 2. ID 字段
+        elif 'id' in col_lower or col_lower in ['user_id', 'order_id', 'product_id', 'item_id']:
+            columns.append(Column(col, BigInteger))
+        # 3. 时间字段（严格匹配，避免误判）
+        elif col_lower.endswith('_time') or col_lower.endswith('_date') or col_lower in ['timestamp', 'datetime', 'order_time', 'register_time', 'behavior_datetime']:
+            columns.append(Column(col, DateTime))
+        # 4. 布尔字段
         elif 'is_' in col_lower or col_lower in ['is_hot']:
             columns.append(Column(col, Boolean))
+        # 5. 默认字符串
         else:
-            # 默认字符串，根据数据长度判断
             max_len = df[col].astype(str).str.len().max() if len(df) > 0 else 100
             if max_len > 500:
                 columns.append(Column(col, Text))
