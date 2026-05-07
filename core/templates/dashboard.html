@@ -20,7 +20,7 @@
     </div>
 
     <!-- 当前数据源信息条 -->
-    <div id="datasourceBanner" style="display:none;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:12px 20px;border-radius:10px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;">
+    <div id="datasourceBanner" style="display:none;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:12px 20px;border-radius:10px;margin-bottom:20px;align-items:center;justify-content:space-between;">
         <div style="display:flex;align-items:center;gap:12px;">
             <i class="fas fa-database" style="font-size:1.2rem;"></i>
             <div>
@@ -346,14 +346,17 @@ async function loadDatasourceInfo() {
         const r = await fetch('/api/datasource/current');
         const d = await r.json();
         
+        const setDisplay = (sel, val) => { const el = document.querySelector(sel); if (el) el.style.display = val; };
+        
         if (!d.active) {
             // 无数据源
             document.getElementById('noDataWarning').style.display = 'block';
             document.getElementById('datasourceBanner').style.display = 'none';
             document.getElementById('filterSection').style.display = 'none';
-            document.querySelector('.stats-cards').style.display = 'none';
-            document.querySelector('.charts-section').style.display = 'none';
-            document.querySelector('.quick-links').style.display = 'none';
+            setDisplay('.stats-cards', 'none');
+            setDisplay('.analysis-section', 'none');
+            setDisplay('.distribution-section', 'none');
+            setDisplay('.charts-row', 'none');
             return;
         }
         
@@ -362,9 +365,10 @@ async function loadDatasourceInfo() {
         document.getElementById('noDataWarning').style.display = 'none';
         document.getElementById('datasourceBanner').style.display = 'flex';
         document.getElementById('filterSection').style.display = 'block';
-        document.querySelector('.stats-cards').style.display = 'grid';
-        document.querySelector('.charts-section').style.display = 'block';
-        document.querySelector('.quick-links').style.display = 'block';
+        setDisplay('.stats-cards', 'grid');
+        setDisplay('.analysis-section', 'block');
+        setDisplay('.distribution-section', 'block');
+        setDisplay('.charts-row', 'block');
         
         const typeMap = {order:'订单数据', user:'用户数据', behavior:'行为数据'};
         document.getElementById('dsFileName').textContent = d.filename;
