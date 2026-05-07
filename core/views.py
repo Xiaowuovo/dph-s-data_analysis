@@ -9,6 +9,7 @@ from flask import render_template, request, url_for, redirect, flash, jsonify
 import pandas as pd
 import numpy as np
 import random
+import io
 import os
 import tempfile
 import json
@@ -257,8 +258,8 @@ def taobao_upload():
             file_size_str = _fmt_size(file_size_bytes)
             upload_file.seek(0)
 
-            # ── 自动识别 CSV 格式 ──
-            df, enc = _read_csv_auto(upload_file)
+            # ── 自动识别 CSV 格式（用 BytesIO，避免游标污染）──
+            df, enc = _read_csv_auto(raw)
             if df is None:
                 error_msg = '无法解析 CSV，请确认文件编码为 UTF-8 或 GBK'
                 flash(error_msg, 'error')
@@ -370,12 +371,13 @@ def _detect_csv_type(df_columns: set) -> str:
     return 'behavior'
 
 
-def _read_csv_auto(file_obj):
-    """用多种编码尝试读取 CSV，返回 (df, encoding) 或 (None, None)"""
+def _read_csv_auto(raw_bytes: bytes):
+    """用多种编码尝试解析 CSV 字节，返回 (df, encoding) 或 (None, None)。
+    接受 bytes，内部每次用全新的 BytesIO，彻底避免游标污染导致的编码错误。
+    """
     for enc in ['utf-8-sig', 'utf-8', 'gbk', 'gb18030']:
         try:
-            file_obj.seek(0)
-            df = pd.read_csv(file_obj, encoding=enc)
+            df = pd.read_csv(io.BytesIO(raw_bytes), encoding=enc)
             if not df.empty:
                 return df, enc
         except Exception:
@@ -560,23 +562,61 @@ def api_upload_preview():
         raw = f.read()
         file_size = _fmt_size(len(raw))
 
-        df, err = _load_and_validate_csv(f)
+        df, enc = _read_csv_auto(raw)
         if df is None:
-            return jsonify({'success': False, 'error': err})
+            return jsonify({'success': False, 'error': '无法解析CSV，请确认为UTF-8或GBK编码'})
 
-        behavior_counts = df['behavior_type'].value_counts().to_dict()
+        csv_type = _detect_csv_type(set(df.columns))
         preview_rows = df.head(10).fillna('').astype(str).to_dict('records')
+
+        # 格式相关摘要
+        extra = {}
+        if csv_type == 'behavior':
+            df.rename(columns=_CSV_COL_MAP, inplace=True)
+            if 'behavior_type' in df.columns:
+                extra['behavior_counts'] = df['behavior_type'].value_counts().to_dict()
+        elif csv_type == 'order':
+            if 'order_status' in df.columns:
+                extra['status_counts'] = df['order_status'].value_counts().to_dict()
+            if 'category' in df.columns:
+                extra['category_counts'] = df['category'].value_counts().head(8).to_dict()
+        elif csv_type == 'user':
+            if 'gender' in df.columns:
+                extra['gender_counts'] = df['gender'].value_counts().to_dict()
+            if 'register_channel' in df.columns:
+                extra['channel_counts'] = df['register_channel'].value_counts().head(6).to_dict()
 
         return jsonify({
             'success': True,
+            'csv_type': csv_type,
+            'encoding': enc,
             'total_records': len(df),
             'file_size': file_size,
-            'behavior_counts': behavior_counts,
-            'preview': preview_rows,
             'columns': list(df.columns),
+            'preview': preview_rows,
+            **extra,
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/upload/db_stats')
+@login_required
+def api_upload_db_stats():
+    """返回各数据表当前记录数，供上传页面状态面板使用"""
+    try:
+        orders_cnt   = Order.query.count()
+        users_cnt    = UserAccount.query.count()
+        behavior_cnt = UserBehavior.query.count()
+        uploads_cnt  = UploadHistory.query.count()
+        return jsonify({
+            'orders':    orders_cnt,
+            'users':     users_cnt,
+            'behaviors': behavior_cnt,
+            'uploads':   uploads_cnt,
+        })
+    except Exception as ex:
+        return jsonify({'error': str(ex), 'orders': 0, 'users': 0, 'behaviors': 0, 'uploads': 0})
 
 
 @app.route('/upload_history')
