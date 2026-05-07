@@ -297,21 +297,19 @@ def taobao_upload():
     return render_template('taobao_upload.html',
                            upload_history=upload_history_list,
                            storage_stats=storage_stats)
-
-
-# CSV 列名映射：支持中文列名(UserBehavior_2025.csv) 和 旧英文列名两种格式
-# ── UserBehavior_2025.csv 列映射 ──
+# CSV 列名映射：仅需处理 UserBehavior_2025.csv 的中文列名
+# order.csv 和 user.csv 本身已是英文列名，不需映射
 _CSV_COL_MAP = {
-    '用户ID':    'user_id',
-    '商品ID':    'item_id',
-    '品牌':      'brand',
-    '品牌ID':    'brand_id',
-    '商品名称':  'product_name',
-    '商品类别':  'category_name',
-    '商品类目ID':'category_id',
-    '行为类型':  'behavior_type',
-    '时间戳':    'timestamp',
-    '售价':      'price',
+    '用户ID':     'user_id',
+    '商品ID':     'item_id',
+    '品牌':       'brand',
+    '品牌ID':     'brand_id',
+    '商品名称':   'product_name',
+    '商品类别':   'category_name',
+    '商品类目ID':  'category_id',
+    '行为类型':   'behavior_type',
+    '时间戳':     'timestamp',
+    '售价':       'price',
 }
 _REQUIRED_INTERNAL = ['user_id', 'item_id', 'category_id', 'behavior_type', 'timestamp']
 _VALID_BEHAVIORS   = {'pv', 'cart', 'fav', 'buy'}
@@ -372,13 +370,14 @@ def _create_isolated_table(df, data_type: str, filename: str, file_size_str: str
             time_col = 'behavior_datetime'
         elif 'behavior_datetime' in df.columns:
             time_col = 'behavior_datetime'
-    elif 'register_time' in df.columns:
+    elif data_type == 'user' and 'register_time' in df.columns:
         time_col = 'register_time'
     
     min_time = max_time = None
     if time_col and time_col in df.columns:
         try:
-            df[time_col] = pd.to_datetime(df[time_col], errors='coerce')
+            # 支持多种日期格式：'2024/11/23 4:03', '2024-05-10 11:14:30' 等
+            df[time_col] = pd.to_datetime(df[time_col], infer_datetime_format=True, errors='coerce')
             valid_times = df[time_col].dropna()
             if not valid_times.empty:
                 min_time = valid_times.min()
@@ -408,12 +407,17 @@ def _create_isolated_table(df, data_type: str, filename: str, file_size_str: str
         elif 'id' in col_lower or col_lower in ['user_id', 'order_id', 'product_id', 'item_id']:
             columns.append(Column(col, BigInteger))
         # 3. 时间字段（严格匹配 + 数据验证）
-        elif col_lower.endswith('_time') or col_lower.endswith('_date') or col_lower in ['timestamp', 'datetime', 'order_time', 'register_time', 'behavior_datetime']:
-            # 验证数据是否真的是时间格式（包含 - 或 :）
-            if sample_val and isinstance(sample_val, str) and ('-' in sample_val or ':' in sample_val):
+        elif col_lower.endswith('_time') or col_lower.endswith('_date') or col_lower in ['timestamp', 'datetime', 'order_time', 'register_time', 'behavior_datetime', 'launch_date']:
+            import numpy as np
+            # 已被 pd.to_datetime 转换的列，dtype 是 datetime64
+            if hasattr(df[col], 'dtype') and np.issubdtype(df[col].dtype, np.datetime64):
+                columns.append(Column(col, DateTime))
+            # 字符串格式的时间（含 - 或 / 或 :）
+            elif sample_val and isinstance(sample_val, str) and ('-' in sample_val or ':' in sample_val or '/' in sample_val):
+                df[col] = pd.to_datetime(df[col], infer_datetime_format=True, errors='coerce')
                 columns.append(Column(col, DateTime))
             else:
-                # 数据是数字，按字符串处理
+                # 纯数字（Unix 时间戳），按整数存储
                 max_len = df[col].astype(str).str.len().max() if len(df) > 0 else 100
                 columns.append(Column(col, String(min(max_len * 2, 200))))
         # 4. 布尔字段

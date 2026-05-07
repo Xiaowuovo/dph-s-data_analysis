@@ -158,6 +158,8 @@ def get_dynamic_dashboard_stats(days: int = 0) -> dict:
         return _stats_for_order_table(table, base_filter, total, time_label, ds)
     elif ds.data_type == 'behavior':
         return _stats_for_behavior_table(table, base_filter, total, time_label, ds)
+    elif ds.data_type == 'user':
+        return _stats_for_user_table(table, base_filter, total, time_label, ds)
     else:
         return {'total_records': total, 'data_type': ds.data_type, 'time_range': time_label, **_empty_dashboard()}
 
@@ -165,22 +167,106 @@ def get_dynamic_dashboard_stats(days: int = 0) -> dict:
 def _stats_for_order_table(table, base_filter, total, time_label, ds):
     """订单表专属统计"""
     cols = {c.name for c in table.columns}
+    stats = {'total_records': total, 'total_behaviors': total,
+             'data_type': 'order', 'time_range': time_label}
     
-    # 核心指标
-    stats = {'total_records': total, 'data_type': 'order', 'time_range': time_label}
-    
+    # 基础指标
     if 'user_id' in cols:
-        stats['total_users'] = db.session.query(func.count(distinct(table.c.user_id))).filter(base_filter).scalar() or 0
-    if 'product_id' in cols:
-        stats['total_items'] = db.session.query(func.count(distinct(table.c.product_id))).filter(base_filter).scalar() or 0
+        stats['total_users'] = db.session.query(
+            func.count(distinct(table.c.user_id))).filter(base_filter).scalar() or 0
+    prod_col = 'product_id' if 'product_id' in cols else ('item_id' if 'item_id' in cols else None)
+    if prod_col:
+        stats['total_items'] = db.session.query(
+            func.count(distinct(table.c[prod_col]))).filter(base_filter).scalar() or 0
     if 'amount' in cols:
-        stats['total_revenue'] = round(db.session.query(func.sum(table.c.amount)).filter(base_filter).scalar() or 0, 2)
+        stats['total_revenue'] = round(
+            db.session.query(func.sum(table.c.amount)).filter(base_filter).scalar() or 0, 2)
         stats['avg_order_value'] = round(stats['total_revenue'] / total, 2) if total else 0
+    
+    # 成交订单数 = 总订单数（订单表每行就是一笔订单）
+    stats['buy'] = total
+    # 订单表无 pv/cart/fav 概念，用订单数代替 pv 供转化率计算
+    stats['pv'] = total
+    stats['conversion_rate'] = 100.0  # 订单数据全部是购买行为
     
     # 订单状态分布
     if 'order_status' in cols:
-        status_q = db.session.query(table.c.order_status, func.count().label('cnt')).filter(base_filter).group_by(table.c.order_status).all()
+        status_q = db.session.query(
+            table.c.order_status, func.count().label('cnt')
+        ).filter(base_filter).group_by(table.c.order_status).all()
         stats['status_dist'] = [{'name': r[0], 'value': r[1]} for r in status_q if r[0]]
+    
+    # 日趋势（按订单时间分组）
+    time_col_name = 'order_time'
+    if time_col_name in cols:
+        try:
+            day_q = db.session.query(
+                func.date(table.c[time_col_name]).label('day'),
+                func.count().label('cnt'),
+                func.sum(table.c.amount).label('rev') if 'amount' in cols else func.count().label('rev')
+            ).filter(base_filter).group_by(
+                func.date(table.c[time_col_name])
+            ).order_by(func.date(table.c[time_col_name])).all()
+            
+            dates = [str(r.day)[:10] for r in day_q if r.day][-60:]
+            cnts  = [r.cnt for r in day_q if r.day][-60:]
+            stats['daily_trend'] = {
+                'dates': dates,
+                'pv':   cnts,
+                'cart': [0]*len(dates),
+                'fav':  [0]*len(dates),
+                'buy':  cnts,
+            }
+        except Exception as _e:
+            print(f'[WARN] order daily_trend: {_e}')
+    
+    # Top10 商品（按订单数）
+    if prod_col:
+        name_col = 'product_name' if 'product_name' in cols else None
+        try:
+            top_q = db.session.query(
+                table.c[prod_col].label('pid'),
+                func.count().label('cnt')
+            ).filter(base_filter).group_by(table.c[prod_col]
+            ).order_by(func.count().desc()).limit(10).all()
+            
+            # 尝试获取商品名
+            if name_col:
+                top_q2 = db.session.query(
+                    table.c[prod_col].label('pid'),
+                    table.c[name_col].label('name'),
+                    func.count().label('cnt')
+                ).filter(base_filter).group_by(table.c[prod_col], table.c[name_col]
+                ).order_by(func.count().desc()).limit(10).all()
+                stats['top_items'] = [{'id': r.pid, 'name': r.name or str(r.pid), 'buy_cnt': r.cnt} for r in top_q2]
+            else:
+                stats['top_items'] = [{'id': r.pid, 'name': str(r.pid), 'buy_cnt': r.cnt} for r in top_q]
+        except Exception as _e:
+            print(f'[WARN] top_items: {_e}')
+    
+    # Top10 活跃用户
+    if 'user_id' in cols:
+        try:
+            top_u = db.session.query(
+                table.c.user_id.label('user_id'),
+                func.count().label('action_cnt')
+            ).filter(base_filter).group_by(table.c.user_id
+            ).order_by(func.count().desc()).limit(10).all()
+            stats['top_users'] = [{'user_id': r.user_id, 'action_cnt': r.action_cnt} for r in top_u]
+        except Exception as _e:
+            print(f'[WARN] top_users: {_e}')
+    
+    # 分类分布
+    cat_col = 'category' if 'category' in cols else ('category_name' if 'category_name' in cols else None)
+    if cat_col:
+        try:
+            cat_q = db.session.query(
+                table.c[cat_col].label('cat'), func.count().label('cnt')
+            ).filter(base_filter).group_by(table.c[cat_col]
+            ).order_by(func.count().desc()).limit(10).all()
+            stats['category_dist'] = [{'name': r.cat, 'value': r.cnt} for r in cat_q if r.cat]
+        except Exception as _e:
+            print(f'[WARN] category_dist: {_e}')
     
     return {**_empty_dashboard(), **stats}
 
@@ -245,6 +331,60 @@ def _stats_for_behavior_table(table, base_filter, total, time_label, ds):
         except Exception as _e:
             print(f'[WARN] daily_trend error: {_e}')
     
+    return {**_empty_dashboard(), **stats}
+
+
+def _stats_for_user_table(table, base_filter, total, time_label, ds):
+    """用户表专属统计"""
+    cols = {c.name for c in table.columns}
+    stats = {'total_records': total, 'total_users': total,
+             'data_type': 'user', 'time_range': time_label}
+
+    # 性别分布
+    if 'gender' in cols:
+        try:
+            g_q = db.session.query(table.c.gender, func.count().label('cnt')).filter(
+                base_filter).group_by(table.c.gender).all()
+            stats['gender_dist'] = [{'name': r[0] or 'Unknown', 'value': r[1]} for r in g_q]
+        except Exception as _e:
+            print(f'[WARN] gender_dist: {_e}')
+
+    # 总购买次数 / 总金额
+    if 'total_purchase_times' in cols:
+        try:
+            stats['buy'] = int(db.session.query(
+                func.sum(table.c.total_purchase_times)).filter(base_filter).scalar() or 0)
+        except Exception as _e:
+            print(f'[WARN] buy sum: {_e}')
+    if 'total_purchase_amount' in cols:
+        try:
+            stats['total_revenue'] = round(float(db.session.query(
+                func.sum(table.c.total_purchase_amount)).filter(base_filter).scalar() or 0), 2)
+        except Exception as _e:
+            print(f'[WARN] revenue sum: {_e}')
+
+    # 注册时间趋势
+    time_col_name = 'register_time'
+    if time_col_name in cols:
+        try:
+            day_q = db.session.query(
+                func.date(table.c[time_col_name]).label('day'),
+                func.count().label('cnt')
+            ).filter(base_filter).group_by(
+                func.date(table.c[time_col_name])
+            ).order_by(func.date(table.c[time_col_name])).all()
+            dates = [str(r.day)[:10] for r in day_q if r.day][-60:]
+            cnts  = [r.cnt for r in day_q if r.day][-60:]
+            stats['daily_trend'] = {
+                'dates': dates,
+                'pv':   cnts,
+                'cart': [0]*len(dates),
+                'fav':  [0]*len(dates),
+                'buy':  cnts,
+            }
+        except Exception as _e:
+            print(f'[WARN] user daily_trend: {_e}')
+
     return {**_empty_dashboard(), **stats}
 
 
