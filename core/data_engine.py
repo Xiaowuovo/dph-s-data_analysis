@@ -63,7 +63,7 @@ def _relative_time_range(days: int, max_time: datetime):
 def check_field_availability(required_fields: list) -> dict:
     """检查当前数据源是否包含必需字段，返回 {field: available}"""
     table, ds = _get_active_table()
-    if not table or not ds:
+    if table is None or ds is None:
         return {f: False for f in required_fields}
     
     import json
@@ -121,7 +121,7 @@ def _q_base(days: int):
 def get_dynamic_dashboard_stats(days: int = 0) -> dict:
     """新版看板统计：基于动态数据源 + 相对时间基准"""
     table, ds = _get_active_table()
-    if not table or not ds:
+    if table is None or ds is None:
         return {'error': '暂无激活数据源', 'empty': True, **_empty_dashboard()}
     
     # 获取时间列
@@ -251,7 +251,7 @@ def _stats_for_behavior_table(table, base_filter, total, time_label, ds):
 def get_dashboard_stats(days: int = 30) -> dict:
     # 优先使用动态数据源
     table, ds = _get_active_table()
-    if table and ds:
+    if table is not None and ds is not None:
         return get_dynamic_dashboard_stats(days)
     
     # 降级到旧逻辑
@@ -503,7 +503,7 @@ def _get_item_stats_from_dynamic(table, ds, days, category, sort_by):
 def get_item_stats(days: int = 30, category: str = 'all', sort_by: str = 'purchases') -> dict:
     # 优先使用动态数据源（避免查询旧的大表导致卡顿）
     table, ds = _get_active_table()
-    if table and ds:
+    if table is not None and ds is not None:
         return _get_item_stats_from_dynamic(table, ds, days, category, sort_by)
     
     # 降级到旧逻辑
@@ -880,7 +880,7 @@ def get_user_info(user_id: int):  # -> dict | None
 def get_recommendation_insights(days: int = 30) -> dict:
     # 优先使用动态数据源（避免卡顿）
     table, ds = _get_active_table()
-    if table and ds:
+    if table is not None and ds is not None:
         # 简化返回，避免复杂推荐计算
         return {
             'hot_items': [],
