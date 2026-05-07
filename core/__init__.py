@@ -96,12 +96,32 @@ with app.app_context():
                 'min_time': 'DATETIME',
                 'max_time': 'DATETIME',
                 'available_fields': 'TEXT',
-                'is_active': 'BOOLEAN DEFAULT 1',
+                'is_active': 'BOOLEAN DEFAULT 0',
             }
             with db.engine.connect() as conn:
                 for col, dtype in hist_new.items():
                     if col not in hist_cols:
                         conn.execute(text(f'ALTER TABLE upload_history ADD COLUMN {col} {dtype}'))
                         conn.commit()
+                        print(f'[migration] Added column {col} to upload_history')
+                
+                # 修复旧记录：将最新的成功上传记录设为激活
+                if 'is_active' in hist_new:
+                    # 先将所有记录设为非激活
+                    conn.execute(text("UPDATE upload_history SET is_active = 0 WHERE status = 'success'"))
+                    conn.commit()
+                    
+                    # 找到最新的成功记录并激活
+                    result = conn.execute(text(
+                        "SELECT id FROM upload_history WHERE status = 'success' AND table_name IS NOT NULL "
+                        "ORDER BY upload_time DESC LIMIT 1"
+                    ))
+                    latest = result.fetchone()
+                    if latest:
+                        conn.execute(text(f"UPDATE upload_history SET is_active = 1 WHERE id = {latest[0]}"))
+                        conn.commit()
+                        print(f'[migration] Set upload_history id={latest[0]} as active')
     except Exception as _mig_err3:
         print(f'[migration upload_history] {_mig_err3}')
+        import traceback
+        traceback.print_exc()

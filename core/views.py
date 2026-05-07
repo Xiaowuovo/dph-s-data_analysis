@@ -697,8 +697,24 @@ def api_current_datasource():
             print(f"  - {u.filename}: is_active={getattr(u, 'is_active', 'NO_FIELD')}, table_name={getattr(u, 'table_name', 'NO_FIELD')}")
         
         ds = _get_active_datasource()
+        
+        # 如果没有激活数据源，尝试自动激活最新的有效记录
         if not ds:
-            return jsonify({'active': False, 'message': '暂无激活数据源，请先上传数据'})
+            latest = UploadHistory.query.filter_by(status='success').filter(
+                UploadHistory.table_name.isnot(None)
+            ).order_by(UploadHistory.upload_time.desc()).first()
+            
+            if latest:
+                print(f"[AUTO-ACTIVATE] 自动激活最新上传: {latest.filename}")
+                # 先将所有记录设为非激活
+                UploadHistory.query.filter_by(is_active=True).update({'is_active': False})
+                # 激活最新记录
+                latest.is_active = True
+                db.session.commit()
+                ds = latest
+            else:
+                return jsonify({'active': False, 'message': '暂无激活数据源，请先上传数据'})
+        
         return jsonify({'active': True, **ds.to_dict()})
     except Exception as e:
         print(f"[ERROR] api_current_datasource: {e}")
