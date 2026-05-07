@@ -266,6 +266,9 @@ def taobao_upload():
                 _log_upload(filename, file_size_str, 0, 'error', error_msg)
                 return redirect(url_for('taobao_upload'))
 
+            # ── 中文列名标准化（UserBehavior_2025.csv 等中文表头） ──
+            df = df.rename(columns=_CSV_COL_MAP)
+            
             csv_type = _detect_csv_type(set(df.columns))
             
             # ── 新模式：每次上传创建独立表 ──
@@ -321,12 +324,16 @@ _USER_REQUIRED  = {'user_id', 'register_time', 'total_purchase_times', 'click_co
 
 def _detect_csv_type(df_columns: set) -> str:
     """根据列名自动判断 CSV 格式：返回 'order' / 'user' / 'behavior'"""
-    cols = {c.lower().strip() for c in df_columns}
-    if _ORDER_REQUIRED <= {c for c in df_columns}:
+    if _ORDER_REQUIRED <= df_columns:
         return 'order'
-    if _USER_REQUIRED <= {c for c in df_columns}:
+    if _USER_REQUIRED <= df_columns:
         return 'user'
-    return 'behavior'
+    # 行为数据特征字段
+    if {'user_id', 'item_id', 'behavior_type'} <= df_columns:
+        return 'behavior'
+    if {'timestamp', 'behavior_type'} <= df_columns:
+        return 'behavior'
+    return 'behavior'  # 默认当行为数据处理
 
 
 def _read_csv_auto(raw_bytes: bytes):
@@ -358,10 +365,13 @@ def _create_isolated_table(df, data_type: str, filename: str, file_size_str: str
     time_col = None
     if data_type == 'order' and 'order_time' in df.columns:
         time_col = 'order_time'
-    elif data_type == 'behavior' and 'timestamp' in df.columns:
-        # 将 Unix 时间戳转为 datetime
-        df['behavior_datetime'] = pd.to_datetime(df['timestamp'], unit='s', errors='coerce')
-        time_col = 'behavior_datetime'
+    elif data_type == 'behavior':
+        if 'timestamp' in df.columns:
+            # Unix 时间戳转为 datetime，新增 behavior_datetime 列
+            df['behavior_datetime'] = pd.to_datetime(df['timestamp'], unit='s', errors='coerce')
+            time_col = 'behavior_datetime'
+        elif 'behavior_datetime' in df.columns:
+            time_col = 'behavior_datetime'
     elif 'register_time' in df.columns:
         time_col = 'register_time'
     
@@ -369,10 +379,12 @@ def _create_isolated_table(df, data_type: str, filename: str, file_size_str: str
     if time_col and time_col in df.columns:
         try:
             df[time_col] = pd.to_datetime(df[time_col], errors='coerce')
-            min_time = df[time_col].min()
-            max_time = df[time_col].max()
-            if pd.isna(min_time): min_time = None
-            if pd.isna(max_time): max_time = None
+            valid_times = df[time_col].dropna()
+            if not valid_times.empty:
+                min_time = valid_times.min()
+                max_time = valid_times.max()
+                if pd.isna(min_time): min_time = None
+                if pd.isna(max_time): max_time = None
         except:
             pass
     

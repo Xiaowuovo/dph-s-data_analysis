@@ -36,15 +36,16 @@ def _get_active_table():
 def _get_time_column(table, data_type: str):
     """根据数据类型返回时间列名"""
     cols = {c.name for c in table.columns}
-    if data_type == 'order' and 'order_time' in cols:
-        return 'order_time'
+    if data_type == 'order':
+        for c in ('order_time', 'create_time', 'created_at'):
+            if c in cols: return c
     elif data_type == 'behavior':
-        if 'behavior_datetime' in cols:
-            return 'behavior_datetime'
-        elif 'timestamp' in cols:
-            return 'timestamp'  # Unix 时间戳需转换
-    elif 'register_time' in cols:
-        return 'register_time'
+        # behavior_datetime 是 Unix 时间戳转换后的列，优先
+        if 'behavior_datetime' in cols: return 'behavior_datetime'
+        if 'timestamp' in cols: return 'timestamp'
+    # user / 其他
+    for c in ('register_time', 'created_at', 'behavior_datetime', 'order_time'):
+        if c in cols: return c
     return None
 
 
@@ -188,7 +189,8 @@ def _stats_for_behavior_table(table, base_filter, total, time_label, ds):
     """行为表专属统计"""
     cols = {c.name for c in table.columns}
     
-    stats = {'total_records': total, 'data_type': 'behavior', 'time_range': time_label}
+    stats = {'total_records': total, 'total_behaviors': total,
+             'data_type': 'behavior', 'time_range': time_label}
     
     if 'user_id' in cols:
         stats['total_users'] = db.session.query(func.count(distinct(table.c.user_id))).filter(base_filter).scalar() or 0
@@ -199,15 +201,49 @@ def _stats_for_behavior_table(table, base_filter, total, time_label, ds):
     if 'behavior_type' in cols:
         beh_q = db.session.query(table.c.behavior_type, func.count().label('cnt')).filter(base_filter).group_by(table.c.behavior_type).all()
         beh_map = {r[0]: r[1] for r in beh_q if r[0]}
-        stats['pv'] = beh_map.get('pv', 0)
+        stats['pv']   = beh_map.get('pv', 0)
         stats['cart'] = beh_map.get('cart', 0)
-        stats['fav'] = beh_map.get('fav', 0)
-        stats['buy'] = beh_map.get('buy', 0)
+        stats['fav']  = beh_map.get('fav', 0)
+        stats['buy']  = beh_map.get('buy', 0)
         stats['conversion_rate'] = round(stats['buy'] / stats['pv'] * 100, 2) if stats.get('pv') else 0
     
-    if 'price' in cols and 'behavior_type' in cols:
-        revenue = db.session.query(func.sum(table.c.price)).filter(base_filter, table.c.behavior_type == 'buy').scalar() or 0
-        stats['total_revenue'] = round(revenue, 2)
+    # 收入（购买行为的售价求和）
+    price_col = 'price' if 'price' in cols else None
+    if price_col and 'behavior_type' in cols:
+        revenue = db.session.query(func.sum(table.c[price_col])).filter(
+            base_filter, table.c.behavior_type == 'buy').scalar() or 0
+        stats['total_revenue'] = round(float(revenue), 2)
+    
+    # 日趋势（计算 behavior_datetime 列的每日各行为数）
+    time_col_name = 'behavior_datetime' if 'behavior_datetime' in cols else None
+    if time_col_name and 'behavior_type' in cols:
+        try:
+            day_q = db.session.query(
+                func.date(table.c[time_col_name]).label('day'),
+                table.c.behavior_type,
+                func.count().label('cnt')
+            ).filter(base_filter).group_by(
+                func.date(table.c[time_col_name]), table.c.behavior_type
+            ).order_by(func.date(table.c[time_col_name])).all()
+            
+            from collections import defaultdict
+            day_map = defaultdict(lambda: {'pv':0,'cart':0,'fav':0,'buy':0})
+            for row in day_q:
+                d_str = str(row.day)[:10] if row.day else ''
+                bt = row.behavior_type or ''
+                if d_str and bt in ('pv','cart','fav','buy'):
+                    day_map[d_str][bt] += row.cnt
+            
+            dates = sorted(day_map.keys())[-30:]  # 最近30天
+            stats['daily_trend'] = {
+                'dates': dates,
+                'pv':   [day_map[d]['pv']   for d in dates],
+                'cart': [day_map[d]['cart'] for d in dates],
+                'fav':  [day_map[d]['fav']  for d in dates],
+                'buy':  [day_map[d]['buy']  for d in dates],
+            }
+        except Exception as _e:
+            print(f'[WARN] daily_trend error: {_e}')
     
     return {**_empty_dashboard(), **stats}
 
