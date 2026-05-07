@@ -715,7 +715,9 @@ def api_current_datasource():
             else:
                 return jsonify({'active': False, 'message': '暂无激活数据源，请先上传数据'})
         
-        return jsonify({'active': True, **ds.to_dict()})
+        result = {'active': True, **ds.to_dict()}
+        print(f"[API] Returning datasource: {result}")
+        return jsonify(result)
     except Exception as e:
         print(f"[ERROR] api_current_datasource: {e}")
         import traceback
@@ -3244,9 +3246,14 @@ def api_dashboard_stats():
     """数据看板 — 全量统计"""
     days = int(request.args.get('days', 30))
     try:
+        print(f"[API] dashboard/stats called with days={days}")
         data = de.get_dashboard_stats(days)
+        print(f"[API] dashboard/stats returned: {data}")
         return jsonify({'success': True, 'data': data, 'days': days})
     except Exception as e:
+        print(f"[ERROR] dashboard/stats: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
 
 
