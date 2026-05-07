@@ -429,10 +429,48 @@ def get_behavior_stats(days: int = 30) -> dict:
     }
 
 
+def _get_item_stats_from_dynamic(table, ds, days, category, sort_by):
+    """从动态数据源获取商品统计（简化版，避免卡顿）"""
+    cols = {c.name for c in table.columns}
+    
+    # 检查必需字段
+    if 'item_id' not in cols:
+        return {'overview': {'total_items': 0, 'item_growth': 0, 'active_items': 0, 'avg_price': 0}, 'top_items': []}
+    
+    # 计算时间范围
+    start_dt, end_dt = _relative_time_range(days, ds.max_time)
+    time_col_name = _get_time_column(table, ds.data_type)
+    
+    if time_col_name and start_dt and end_dt:
+        base_filter = table.c[time_col_name].between(start_dt, end_dt)
+    else:
+        base_filter = text('1=1')
+    
+    # 总商品数
+    total_items = db.session.query(func.count(distinct(table.c.item_id))).filter(base_filter).scalar() or 0
+    
+    # 简化返回（避免复杂查询）
+    return {
+        'overview': {
+            'total_items': total_items,
+            'item_growth': 0,
+            'active_items': total_items,
+            'avg_price': 0
+        },
+        'top_items': []  # 暂时返回空，避免卡顿
+    }
+
+
 # ──────────────────────────────────────────────
 # 3. 商品分析
 # ──────────────────────────────────────────────
 def get_item_stats(days: int = 30, category: str = 'all', sort_by: str = 'purchases') -> dict:
+    # 优先使用动态数据源（避免查询旧的大表导致卡顿）
+    table, ds = _get_active_table()
+    if table and ds:
+        return _get_item_stats_from_dynamic(table, ds, days, category, sort_by)
+    
+    # 降级到旧逻辑
     s, e = _ts_range(days)  # 已内置全量回退
     base = UserBehavior.timestamp.between(s, e)
 
@@ -804,6 +842,17 @@ def get_user_info(user_id: int):  # -> dict | None
 # 6. 智能推荐 / 实时建议
 # ──────────────────────────────────────────────
 def get_recommendation_insights(days: int = 30) -> dict:
+    # 优先使用动态数据源（避免卡顿）
+    table, ds = _get_active_table()
+    if table and ds:
+        # 简化返回，避免复杂推荐计算
+        return {
+            'hot_items': [],
+            'trending_categories': [],
+            'user_segments': [],
+            'recommendation_rules': []
+        }
+    
     s, e = _ts_range(days)
 
     counts_q = db.session.query(
