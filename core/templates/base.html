@@ -202,36 +202,48 @@
 
             document.querySelector('.header-container').appendChild(toggleBtn);
             
-            // ── 监听字段可用性检查结果 ──
-            window.addEventListener('modulesChecked', function(e) {
-                const modules = e.detail;
+            // ── 字段可用性：应用到侧边栏 ──
+            function applyModuleAvailability(modules) {
                 document.querySelectorAll('.nav-link[data-module]').forEach(link => {
                     const moduleName = link.dataset.module;
                     const moduleInfo = modules[moduleName];
                     const warning = link.querySelector('.field-warning');
-                    
+                    // 先移除旧的阻止点击监听器（避免重复绑定）
+                    link._lockHandler && link.removeEventListener('click', link._lockHandler);
                     if (moduleInfo && !moduleInfo.enabled) {
-                        // 置灰 + 显示警告图标
                         link.style.opacity = '0.5';
                         link.style.cursor = 'not-allowed';
                         if (warning) {
                             warning.style.display = 'inline';
-                            warning.title = `缺少字段：${moduleInfo.missing_fields.join(', ')}`;
+                            warning.title = `缺少字段：${(moduleInfo.missing_fields||[]).join(', ')}`;
                         }
-                        
-                        // 阻止点击
-                        link.addEventListener('click', function(evt) {
+                        link._lockHandler = function(evt) {
                             evt.preventDefault();
-                            alert(`当前数据源缺少必需字段，无法使用此功能\n\n缺少字段：${moduleInfo.missing_fields.join(', ')}\n必需字段：${moduleInfo.required_fields.join(', ')}`);
-                        });
+                            alert(`当前数据源缺少必需字段，无法使用此功能\n\n缺少字段：${(moduleInfo.missing_fields||[]).join(', ')}`);
+                        };
+                        link.addEventListener('click', link._lockHandler);
                     } else {
-                        // 恢复正常
                         link.style.opacity = '1';
                         link.style.cursor = 'pointer';
                         if (warning) warning.style.display = 'none';
+                        link._lockHandler = null;
                     }
                 });
+            }
+
+            // ── 监听字段可用性检查结果（dashboard.html 触发）──
+            window.addEventListener('modulesChecked', function(e) {
+                applyModuleAvailability(e.detail);
             });
+
+            // ── 所有页面主动拉取一次字段可用性 ──
+            fetch('/api/datasource/check_fields')
+                .then(r => r.json())
+                .then(modules => {
+                    window.moduleAvailability = modules;
+                    applyModuleAvailability(modules);
+                })
+                .catch(() => {});
         });
 
         // 显示当前时间

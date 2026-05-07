@@ -1034,12 +1034,40 @@ def generate_category_charts(analysis_results):
 def intelligent_recommendation():
     """智能推荐系统 - 基于真实数据的运营建议"""
     days = int(request.args.get('days', 30))
+    _empty_rec = {'stats': {}, 'suggestions': [], 'top_items': [],
+                  'top_brands': [], 'top_categories': [], 'synced_at': ''}
     try:
-        rec_data = de.get_recommendation_insights(days)
+        raw = de.get_recommendation_insights(days)
+        # 若后端返回的结构缺少模板必需字段，补全它们
+        if isinstance(raw, dict):
+            if 'stats' not in raw:
+                # 尝试从 dashboard stats 补充
+                try:
+                    ds_stats = de.get_dashboard_stats(days)
+                    raw['stats'] = {
+                        'total_behaviors': ds_stats.get('total_behaviors', ds_stats.get('total_records', 0)),
+                        'total_users':     ds_stats.get('total_users', 0),
+                        'conversion_rate': ds_stats.get('conversion_rate', 0),
+                        'total_revenue':   ds_stats.get('total_revenue', 0),
+                        'buy':             ds_stats.get('buy', 0),
+                    }
+                except Exception:
+                    raw['stats'] = {}
+            if 'suggestions' not in raw:
+                raw['suggestions'] = []
+            if 'synced_at' not in raw:
+                from datetime import datetime as _dt
+                raw['synced_at'] = _dt.now().strftime('%Y-%m-%d %H:%M')
+            if 'top_brands' not in raw:
+                raw['top_brands'] = []
+            if 'top_categories' not in raw:
+                raw['top_categories'] = []
+            rec_data = raw
+        else:
+            rec_data = _empty_rec
     except Exception as e:
         print(f"推荐数据错误: {e}")
-        rec_data = {'stats': {}, 'suggestions': [], 'top_items': [],
-                    'top_brands': [], 'top_categories': [], 'synced_at': ''}
+        rec_data = _empty_rec
     return render_template('intelligent_recommendation.html', rec_data=rec_data, days=days)
 
 
