@@ -155,23 +155,25 @@
                                 </td>
                                 <td>
                                     <div class="metric-cell">
-                                        <span class="metric-value">{{ item.view_count|format_number }}</span>
-                                        {% if item.view_change > 0 %}
-                                        <span class="change-badge up">+{{ item.view_change }}%</span>
-                                        {% elif item.view_change < 0 %}
-                                        <span class="change-badge down">{{ item.view_change }}%</span>
+                                        <span class="metric-value">{{ item.view_count|default(0)|format_number }}</span>
+                                        {% set vc = item.view_change|default(0) %}
+                                        {% if vc > 0 %}
+                                        <span class="change-badge up">+{{ vc }}%</span>
+                                        {% elif vc < 0 %}
+                                        <span class="change-badge down">{{ vc }}%</span>
                                         {% endif %}
                                     </div>
                                 </td>
-                                <td>{{ item.cart_count|format_number }}</td>
-                                <td>{{ item.fav_count|format_number }}</td>
+                                <td>{{ item.cart_count|default(0)|format_number }}</td>
+                                <td>{{ item.fav_count|default(0)|format_number }}</td>
                                 <td>
                                     <div class="metric-cell">
-                                        <span class="metric-value highlight">{{ item.purchase_count|format_number }}</span>
-                                        {% if item.purchase_change > 0 %}
-                                        <span class="change-badge up">+{{ item.purchase_change }}%</span>
-                                        {% elif item.purchase_change < 0 %}
-                                        <span class="change-badge down">{{ item.purchase_change }}%</span>
+                                        <span class="metric-value highlight">{{ item.purchase_count|default(0)|format_number }}</span>
+                                        {% set pc = item.purchase_change|default(0) %}
+                                        {% if pc > 0 %}
+                                        <span class="change-badge up">+{{ pc }}%</span>
+                                        {% elif pc < 0 %}
+                                        <span class="change-badge down">{{ pc }}%</span>
                                         {% endif %}
                                     </div>
                                 </td>

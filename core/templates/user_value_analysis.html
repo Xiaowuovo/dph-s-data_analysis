@@ -365,22 +365,22 @@
             <div class="rfm-metrics">
                 <div class="metric-card">
                     <div class="metric-label">平均最近消费(R)</div>
-                    <div class="metric-value">15.3 <span style="font-size: 16px;">天</span></div>
+                    <div class="metric-value">{{ rfm_data.avg_recency }} <span style="font-size: 16px;">天</span></div>
                     <div class="metric-desc">距离上次购买平均天数</div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-label">平均消费频率(F)</div>
-                    <div class="metric-value">4.2 <span style="font-size: 16px;">次</span></div>
+                    <div class="metric-value">{{ rfm_data.avg_frequency }} <span style="font-size: 16px;">次</span></div>
                     <div class="metric-desc">统计周期内平均购买次数</div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-label">平均消费金额(M)</div>
-                    <div class="metric-value">¥1,250</div>
+                    <div class="metric-value">¥{{ rfm_data.avg_monetary }}</div>
                     <div class="metric-desc">统计周期内平均消费金额</div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-label">用户总数</div>
-                    <div class="metric-value">10,000</div>
+                    <div class="metric-value">{{ rfm_data.total_users }}</div>
                     <div class="metric-desc">分析的用户总数</div>
                 </div>
             </div>
@@ -415,51 +415,22 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td><span class="segment-badge champions">重要价值客户</span></td>
-                        <td>1,200</td>
-                        <td>12%</td>
-                        <td>5天</td>
-                        <td>8.5次</td>
-                        <td>¥3,500</td>
-                        <td>高频高消费，最近活跃</td>
-                    </tr>
-                    <tr>
-                        <td><span class="segment-badge loyal">重要保持客户</span></td>
-                        <td>1,800</td>
-                        <td>18%</td>
-                        <td>12天</td>
-                        <td>6.2次</td>
-                        <td>¥2,800</td>
-                        <td>高消费，较活跃</td>
-                    </tr>
-                    <tr>
-                        <td><span class="segment-badge potential">重要发展客户</span></td>
-                        <td>2,500</td>
-                        <td>25%</td>
-                        <td>8天</td>
-                        <td>3.5次</td>
-                        <td>¥1,500</td>
-                        <td>近期活跃，待提升</td>
-                    </tr>
-                    <tr>
-                        <td><span class="segment-badge at-risk">重要挽留客户</span></td>
-                        <td>2,200</td>
-                        <td>22%</td>
-                        <td>35天</td>
-                        <td>5.8次</td>
-                        <td>¥2,200</td>
-                        <td>曾高价值，流失风险</td>
-                    </tr>
-                    <tr>
-                        <td><span class="segment-badge lost">一般维持客户</span></td>
-                        <td>2,300</td>
-                        <td>23%</td>
-                        <td>60天</td>
-                        <td>1.5次</td>
-                        <td>¥800</td>
-                        <td>低频低消费，沉睡</td>
-                    </tr>
+                    {% set total_u = rfm_data.total_users %}
+                    {% if rfm_data.segments %}
+                        {% for seg in rfm_data.segments %}
+                        <tr>
+                            <td><span class="segment-badge {{ seg.segment }}">{{ seg.segment_name }}</span></td>
+                            <td>{{ seg.count }}</td>
+                            <td>{{ ((seg.count / total_u * 100)|round(1)) if total_u else 0 }}%</td>
+                            <td>{{ seg.avg_recency }}天</td>
+                            <td>{{ seg.avg_frequency }}次</td>
+                            <td>¥{{ seg.avg_monetary }}</td>
+                            <td>{{ '高频高消费，最近活跃' if seg.segment == 'champion' else ('高消费，较活跃' if seg.segment == 'loyal' else ('近期活跃，待提升' if seg.segment == 'potential' else ('曾高价值，流失风险' if seg.segment == 'at_risk' else ('需跟进关注' if seg.segment == 'slipping' else ('近期新用户' if seg.segment == 'new' else ('低频沉睡' if seg.segment == 'dormant' else '低频低消费')))))) }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="7" style="text-align:center;color:#999;padding:30px;">暂无数据，请上传包含购买行为的数据集</td></tr>
+                    {% endif %}
                 </tbody>
             </table>
 
@@ -493,7 +464,8 @@
                         </div>
                         <div class="strategy-title">
                             <h3>重要价值客户</h3>
-                            <span class="user-count">1,200人 (12%)</span>
+                            {% set seg = rfm_data.segments|selectattr('segment','equalto','champion')|first|default(none) %}
+                            <span class="user-count">{{ seg.count if seg else 0 }}人 ({{ ((seg.count / rfm_data.total_users * 100)|round(1)) if seg and rfm_data.total_users else 0 }}%)</span>
                         </div>
                     </div>
                     <div class="strategy-content">
@@ -525,7 +497,8 @@
                         </div>
                         <div class="strategy-title">
                             <h3>重要保持客户</h3>
-                            <span class="user-count">1,800人 (18%)</span>
+                            {% set seg = rfm_data.segments|selectattr('segment','equalto','loyal')|first|default(none) %}
+                            <span class="user-count">{{ seg.count if seg else 0 }}人 ({{ ((seg.count / rfm_data.total_users * 100)|round(1)) if seg and rfm_data.total_users else 0 }}%)</span>
                         </div>
                     </div>
                     <div class="strategy-content">
@@ -557,7 +530,8 @@
                         </div>
                         <div class="strategy-title">
                             <h3>重要发展客户</h3>
-                            <span class="user-count">2,500人 (25%)</span>
+                            {% set seg = rfm_data.segments|selectattr('segment','equalto','potential')|first|default(none) %}
+                            <span class="user-count">{{ seg.count if seg else 0 }}人 ({{ ((seg.count / rfm_data.total_users * 100)|round(1)) if seg and rfm_data.total_users else 0 }}%)</span>
                         </div>
                     </div>
                     <div class="strategy-content">
@@ -589,7 +563,8 @@
                         </div>
                         <div class="strategy-title">
                             <h3>重要挽留客户</h3>
-                            <span class="user-count">2,200人 (22%)</span>
+                            {% set seg = rfm_data.segments|selectattr('segment','equalto','at_risk')|first|default(none) %}
+                            <span class="user-count">{{ seg.count if seg else 0 }}人 ({{ ((seg.count / rfm_data.total_users * 100)|round(1)) if seg and rfm_data.total_users else 0 }}%)</span>
                         </div>
                     </div>
                     <div class="strategy-content">
@@ -621,7 +596,8 @@
                         </div>
                         <div class="strategy-title">
                             <h3>一般维持客户</h3>
-                            <span class="user-count">2,300人 (23%)</span>
+                            {% set seg = rfm_data.segments|selectattr('segment','equalto','lost')|first|default(none) %}
+                            <span class="user-count">{{ seg.count if seg else 0 }}人 ({{ ((seg.count / rfm_data.total_users * 100)|round(1)) if seg and rfm_data.total_users else 0 }}%)</span>
                         </div>
                     </div>
                     <div class="strategy-content">
@@ -708,14 +684,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const bubbleChart = echarts.init(document.getElementById('rfmBubbleChart'));
         charts.bubble = bubbleChart;
 
-        // 模拟RFM数据 (R, F, M, 用户数, 分群名称)
-        const data = [
-            [5, 8.5, 3500, 1200, '重要价值客户'],
-            [12, 6.2, 2800, 1800, '重要保持客户'],
-            [8, 3.5, 1500, 2500, '重要发展客户'],
-            [35, 5.8, 2200, 2200, '重要挽留客户'],
-            [60, 1.5, 800, 2300, '一般维持客户']
-        ];
+        // 从后端动态加载真实RFM分群数据 (R, F, M, 用户数, 分群名称)
+        const rfmSegs = {{ rfm_data.segments | tojson }};
+        const rfmData = rfmSegs.map(s => [s.avg_recency, s.avg_frequency, s.avg_monetary, s.count, s.segment_name]);
 
         const option = {
             title: {
@@ -785,7 +756,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     symbolSize: function(data) {
                         return Math.sqrt(data[3]) / 2; // 气泡大小代表用户数
                     },
-                    data: data,
+                    data: rfmData,
                     label: {
                         show: true,
                         formatter: function(params) {
@@ -846,13 +817,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             fontWeight: 'bold'
                         }
                     },
-                    data: [
-                        { value: 1200, name: '重要价值客户', itemStyle: { color: '#5470C6' } },
-                        { value: 1800, name: '重要保持客户', itemStyle: { color: '#91CC75' } },
-                        { value: 2500, name: '重要发展客户', itemStyle: { color: '#FAC858' } },
-                        { value: 2200, name: '重要挽留客户', itemStyle: { color: '#EE6666' } },
-                        { value: 2300, name: '一般维持客户', itemStyle: { color: '#73C0DE' } }
-                    ]
+                    data: {{ rfm_data.segment_dist | tojson }}
                 }
             ]
         };
@@ -888,19 +853,19 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             yAxis: {
                 type: 'category',
-                data: ['重要价值', '重要保持', '重要发展', '重要挽留', '一般维持']
+                data: {{ rfm_data.segments | map(attribute='segment_name') | list | tojson }}
             },
             series: [
                 {
                     name: 'GMV贡献',
                     type: 'bar',
-                    data: [42, 30, 18, 7, 3],
+                    data: {{ rfm_data.segments | map(attribute='avg_monetary') | list | tojson }},
                     itemStyle: { color: '#6f068bad' }
                 },
                 {
-                    name: '订单贡献',
+                    name: '用户数',
                     type: 'bar',
-                    data: [35, 28, 20, 12, 5],
+                    data: {{ rfm_data.segments | map(attribute='count') | list | tojson }},
                     itemStyle: { color: '#91CC75' }
                 }
             ]
@@ -925,7 +890,7 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             legend: {
                 bottom: 10,
-                data: ['重要价值客户', '重要保持客户', '重要发展客户', '重要挽留客户', '一般维持客户']
+                data: {{ rfm_data.segments | map(attribute='segment_name') | list | tojson }}
             },
             radar: {
                 indicator: [
@@ -943,33 +908,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 {
                     name: '群组特征',
                     type: 'radar',
-                    data: [
-                        {
-                            value: [95, 90, 98, 85, 92, 95],
-                            name: '重要价值客户',
-                            areaStyle: { color: 'rgba(84, 112, 198, 0.3)' }
-                        },
-                        {
-                            value: [75, 80, 85, 70, 78, 80],
-                            name: '重要保持客户',
-                            areaStyle: { color: 'rgba(145, 204, 117, 0.3)' }
-                        },
-                        {
-                            value: [85, 55, 50, 60, 40, 65],
-                            name: '重要发展客户',
-                            areaStyle: { color: 'rgba(250, 200, 88, 0.3)' }
-                        },
-                        {
-                            value: [40, 70, 75, 65, 60, 45],
-                            name: '重要挽留客户',
-                            areaStyle: { color: 'rgba(238, 102, 102, 0.3)' }
-                        },
-                        {
-                            value: [20, 25, 30, 35, 15, 25],
-                            name: '一般维持客户',
-                            areaStyle: { color: 'rgba(115, 192, 222, 0.3)' }
-                        }
-                    ]
+                    data: (function() {
+                        const segs = {{ rfm_data.segments | tojson }};
+                        if (!segs || !segs.length) return [];
+                        const maxR = Math.max(...segs.map(s => s.avg_recency)) || 1;
+                        const maxF = Math.max(...segs.map(s => s.avg_frequency)) || 1;
+                        const maxM = Math.max(...segs.map(s => s.avg_monetary)) || 1;
+                        const maxC = Math.max(...segs.map(s => s.count)) || 1;
+                        return segs.map(s => ({
+                            value: [
+                                Math.round((1 - s.avg_recency / maxR) * 100),
+                                Math.round(s.avg_frequency / maxF * 100),
+                                Math.round(s.avg_monetary / maxM * 100),
+                                Math.round(s.count / maxC * 100),
+                                Math.round(s.avg_frequency / maxF * 100),
+                                Math.round((1 - s.avg_recency / maxR) * 100)
+                            ],
+                            name: s.segment_name,
+                            itemStyle: { color: s.color }
+                        }));
+                    })()
                 }
             ]
         };
@@ -983,55 +941,27 @@ document.addEventListener('DOMContentLoaded', function() {
         const scatterChart = echarts.init(document.getElementById('scatter3DChart'));
         charts.scatter3d = scatterChart;
 
-        // 生成模拟RFM数据
-        function generateRFMData(segment, count, rRange, fRange, mRange) {
-            const data = [];
-            for (let i = 0; i < count; i++) {
-                data.push([
-                    Math.random() * (rRange[1] - rRange[0]) + rRange[0],
-                    Math.random() * (fRange[1] - fRange[0]) + fRange[0],
-                    Math.random() * (mRange[1] - mRange[0]) + mRange[0]
-                ]);
-            }
-            return data;
-        }
-
+        // 真实用户样本散点图（用分群平均值替代随机模拟）
+        const rfmSegsFor3D = {{ rfm_data.segments | tojson }};
         const option = {
             tooltip: {},
-            xAxis3D: { name: 'Recency', type: 'value' },
-            yAxis3D: { name: 'Frequency', type: 'value' },
-            zAxis3D: { name: 'Monetary', type: 'value' },
+            xAxis3D: { name: 'Recency(天)', type: 'value' },
+            yAxis3D: { name: 'Frequency(次)', type: 'value' },
+            zAxis3D: { name: 'Monetary(元)', type: 'value' },
             grid3D: {
                 boxWidth: 100,
                 boxDepth: 80,
                 boxHeight: 100,
-                viewControl: {
-                    projection: 'orthographic'
-                }
+                viewControl: { projection: 'orthographic' }
             },
-            series: [
-                {
-                    name: '重要价值',
-                    type: 'scatter3D',
-                    symbolSize: 4,
-                    data: generateRFMData('champions', 50, [1, 10], [6, 10], [2500, 5000]),
-                    itemStyle: { color: '#5470C6' }
-                },
-                {
-                    name: '重要保持',
-                    type: 'scatter3D',
-                    symbolSize: 4,
-                    data: generateRFMData('loyal', 50, [10, 20], [4, 8], [2000, 3500]),
-                    itemStyle: { color: '#91CC75' }
-                },
-                {
-                    name: '重要发展',
-                    type: 'scatter3D',
-                    symbolSize: 4,
-                    data: generateRFMData('potential', 50, [5, 15], [2, 5], [1000, 2000]),
-                    itemStyle: { color: '#FAC858' }
-                }
-            ]
+            series: rfmSegsFor3D.map(s => ({
+                name: s.segment_name,
+                type: 'scatter3D',
+                symbolSize: Math.min(Math.max(Math.sqrt(s.count), 4), 12),
+                data: [[s.avg_recency, s.avg_frequency, s.avg_monetary]],
+                itemStyle: { color: s.color },
+                label: { show: true, formatter: s.segment_name, fontSize: 11 }
+            }))
         };
 
         scatterChart.setOption(option);
@@ -1065,43 +995,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 name: '留存率(%)',
                 max: 100
             },
-            series: [
-                {
-                    name: '重要价值',
-                    type: 'line',
-                    data: [95, 94, 93, 94, 95, 96],
-                    itemStyle: { color: '#5470C6' },
-                    smooth: true
-                },
-                {
-                    name: '重要保持',
-                    type: 'line',
-                    data: [80, 79, 78, 80, 82, 83],
-                    itemStyle: { color: '#91CC75' },
-                    smooth: true
-                },
-                {
-                    name: '重要发展',
-                    type: 'line',
-                    data: [65, 63, 60, 62, 65, 68],
-                    itemStyle: { color: '#FAC858' },
-                    smooth: true
-                },
-                {
-                    name: '重要挽留',
-                    type: 'line',
-                    data: [45, 42, 38, 40, 43, 45],
-                    itemStyle: { color: '#EE6666' },
-                    smooth: true
-                },
-                {
-                    name: '一般维持',
-                    type: 'line',
-                    data: [25, 22, 20, 18, 20, 22],
-                    itemStyle: { color: '#73C0DE' },
-                    smooth: true
-                }
-            ]
+            series: (function() {
+                    const segs = {{ rfm_data.segments | tojson }};
+                    const maxR = Math.max(...segs.map(s => s.avg_recency)) || 100;
+                    return segs.map(s => ({
+                        name: s.segment_name,
+                        type: 'line',
+                        data: [null, null, null, null, null, Math.round((1 - s.avg_recency / maxR) * 100)],
+                        itemStyle: { color: s.color },
+                        smooth: true
+                    }));
+                })()
         };
 
         retentionChart.setOption(option);

@@ -90,15 +90,15 @@
                 <div class="funnel-stats">
                     <div class="stat-item">
                         <span class="stat-label">总转化率</span>
-                        <span class="stat-value" id="totalConversion">7.6%</span>
+                        <span class="stat-value" id="totalConversion">{{ funnel.buy_rate }}%</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">关键流失点</span>
-                        <span class="stat-value" id="keyDropPoint">加购→购买 (流失68.3%)</span>
+                        <span class="stat-value" id="keyDropPoint">加购→购买 (流失{{ (100 - funnel.cart_to_buy)|round(1) }}%)</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">最优转化环节</span>
-                        <span class="stat-value" id="bestStep">收藏→购买 (57.7%)</span>
+                        <span class="stat-value" id="bestStep">收藏→购买 ({{ funnel.fav_to_buy }}%)</span>
                     </div>
                 </div>
             </div>
@@ -121,7 +121,7 @@
                                 <span class="path-step">加购</span>
                                 <i class="fas fa-arrow-right"></i>
                                 <span class="path-step">购买</span>
-                                <span class="path-percent">32.1%</span>
+                                <span class="path-percent">{{ funnel.cart_to_buy }}%</span>
                             </div>
                         </div>
                         <div class="path-segment">
@@ -132,7 +132,7 @@
                                 <span class="path-step">收藏</span>
                                 <i class="fas fa-arrow-right"></i>
                                 <span class="path-step">购买</span>
-                                <span class="path-percent">18.7%</span>
+                                <span class="path-percent">{{ funnel.fav_to_buy }}%</span>
                             </div>
                         </div>
                     </div>
@@ -209,35 +209,35 @@
                         <tbody>
                             <tr>
                                 <td>浏览(PV)</td>
-                                <td>24,568</td>
+                                <td>{{ funnel.pv }}</td>
                                 <td>100%</td>
-                                <td><span class="text-success">+2.5% ↑</span></td>
                                 <td>-</td>
-                                <td><span class="badge bg-success">优秀</span></td>
+                                <td>-</td>
+                                <td><span class="badge bg-success">基准</span></td>
                             </tr>
                             <tr>
                                 <td>加购(Cart)</td>
-                                <td>5,742</td>
-                                <td>23.4%</td>
-                                <td><span class="text-danger">-1.2% ↓</span></td>
+                                <td>{{ funnel.cart }}</td>
+                                <td>{{ funnel.cart_rate }}%</td>
+                                <td>-</td>
                                 <td>25.8%</td>
-                                <td><span class="badge bg-warning">需改进</span></td>
+                                <td><span class="badge {{ 'bg-success' if funnel.cart_rate >= 25.8 else 'bg-warning' }}">{{ '良好' if funnel.cart_rate >= 25.8 else '需改进' }}</span></td>
                             </tr>
                             <tr>
                                 <td>收藏(Fav)</td>
-                                <td>3,215</td>
-                                <td>13.1%</td>
-                                <td><span class="text-success">+0.8% ↑</span></td>
+                                <td>{{ funnel.fav }}</td>
+                                <td>{{ funnel.fav_rate }}%</td>
+                                <td>-</td>
                                 <td>12.5%</td>
-                                <td><span class="badge bg-success">良好</span></td>
+                                <td><span class="badge {{ 'bg-success' if funnel.fav_rate >= 12.5 else 'bg-warning' }}">{{ '良好' if funnel.fav_rate >= 12.5 else '需改进' }}</span></td>
                             </tr>
                             <tr>
                                 <td>购买(Buy)</td>
-                                <td>1,856</td>
-                                <td>7.6%</td>
-                                <td><span class="text-success">+1.1% ↑</span></td>
+                                <td>{{ funnel.buy }}</td>
+                                <td>{{ funnel.buy_rate }}%</td>
+                                <td>-</td>
                                 <td>8.9%</td>
-                                <td><span class="badge bg-warning">需改进</span></td>
+                                <td><span class="badge {{ 'bg-success' if funnel.buy_rate >= 8.9 else 'bg-warning' }}">{{ '良好' if funnel.buy_rate >= 8.9 else '需改进' }}</span></td>
                             </tr>
                         </tbody>
                     </table>
@@ -306,9 +306,9 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             data: [
                 {value: 100, name: '浏览(PV)', itemStyle: {color: '#5470C6'}},
-                {value: 23.4, name: '加购(Cart)', itemStyle: {color: '#91CC75'}},
-                {value: 13.1, name: '收藏(Fav)', itemStyle: {color: '#FAC858'}},
-                {value: 7.6, name: '购买(Buy)', itemStyle: {color: '#EE6666'}}
+                {value: {{ funnel.cart_rate }}, name: '加购(Cart)', itemStyle: {color: '#91CC75'}},
+                {value: {{ funnel.fav_rate }}, name: '收藏(Fav)', itemStyle: {color: '#FAC858'}},
+                {value: {{ funnel.buy_rate }}, name: '购买(Buy)', itemStyle: {color: '#EE6666'}}
             ]
         }]
     };
@@ -331,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     name: '加购(Cart)',
                     children: [{
                         name: '购买(Buy)',
-                        value: 7.6
+                        value: {{ funnel.cart_to_buy }}
                     }]
                 }, {
                     name: '收藏(Fav)',
@@ -339,11 +339,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         name: '加购(Cart)',
                         children: [{
                             name: '购买(Buy)',
-                            value: 4.2
+                            value: {{ funnel.cart_to_buy }}
                         }]
                     }, {
                         name: '购买(Buy)',
-                        value: 3.4
+                        value: {{ funnel.fav_to_buy }}
                     }]
                 }]
             }],
@@ -409,7 +409,7 @@ document.addEventListener('DOMContentLoaded', function() {
         series: [{
             name: '您的转化率',
             type: 'bar',
-            data: [23.4, 56.0, 57.7, 32.3],
+            data: [{{ funnel.cart_rate }}, 0, {{ funnel.fav_to_buy }}, {{ funnel.cart_to_buy }}],
             itemStyle: {
                 color: '#6f068bad'
             },

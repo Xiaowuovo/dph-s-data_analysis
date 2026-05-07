@@ -1978,7 +1978,32 @@ def dashboard():
 @app.route('/conversion_analysis')
 @login_required
 def conversion_analysis():
-    return render_template('conversion_analysis.html')
+    days = int(request.args.get('days', 30))
+    try:
+        stats = de.get_dashboard_stats(days)
+        pv   = stats.get('pv', 0) or 1
+        cart = stats.get('cart', 0)
+        fav  = stats.get('fav', 0)
+        buy  = stats.get('buy', 0)
+        cart_rate = round(cart / pv * 100, 1) if pv else 0
+        fav_rate  = round(fav  / pv * 100, 1) if pv else 0
+        buy_rate  = round(buy  / pv * 100, 1) if pv else 0
+        cart_to_buy = round(buy / cart * 100, 1) if cart else 0
+        fav_to_buy  = round(buy / fav  * 100, 1) if fav  else 0
+        funnel_data = {
+            'pv': pv, 'cart': cart, 'fav': fav, 'buy': buy,
+            'cart_rate': cart_rate, 'fav_rate': fav_rate, 'buy_rate': buy_rate,
+            'cart_to_buy': cart_to_buy, 'fav_to_buy': fav_to_buy,
+            'total_users': stats.get('total_users', 0),
+        }
+    except Exception as e:
+        print(f"转化分析页面错误: {e}")
+        funnel_data = {
+            'pv': 0, 'cart': 0, 'fav': 0, 'buy': 0,
+            'cart_rate': 0, 'fav_rate': 0, 'buy_rate': 0,
+            'cart_to_buy': 0, 'fav_to_buy': 0, 'total_users': 0,
+        }
+    return render_template('conversion_analysis.html', funnel=funnel_data, days=days)
 
 
 
@@ -2589,7 +2614,22 @@ def _build_user_info(user_id):
 @login_required
 def user_value_analysis():
     """用户价值分析 - 基于RFM模型的用户分群与运营策略"""
-    return render_template('user_value_analysis.html')
+    days = int(request.args.get('days', 90))
+    try:
+        rfm_data = de.get_rfm_data(days)
+        total_u = rfm_data.get('total_users', 0)
+        segs = rfm_data.get('segments', [])
+        avg_r = round(sum(s['avg_recency'] * s['count'] for s in segs) / total_u, 1) if total_u else 0
+        avg_f = round(sum(s['avg_frequency'] * s['count'] for s in segs) / total_u, 1) if total_u else 0
+        avg_m = round(sum(s['avg_monetary'] * s['count'] for s in segs) / total_u, 2) if total_u else 0
+        rfm_data['avg_recency']   = avg_r
+        rfm_data['avg_frequency'] = avg_f
+        rfm_data['avg_monetary']  = avg_m
+    except Exception as e:
+        print(f"用户价值分析错误: {e}")
+        rfm_data = de._empty_rfm()
+        rfm_data.update({'avg_recency': 0, 'avg_frequency': 0, 'avg_monetary': 0})
+    return render_template('user_value_analysis.html', rfm_data=rfm_data, days=days)
 
 
 # ========== 数据导出视图函数 ==========

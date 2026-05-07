@@ -447,273 +447,137 @@
 
     <!-- Tab 1: 商品运营推荐 -->
     <div id="productTab" class="tab-content active">
+        {% set s = rec_data.stats %}
+        {% set top_items = rec_data.top_items %}
+        {% set top_cats  = rec_data.top_categories %}
         <div class="stats-overview">
             <div class="stat-card">
-                <div class="stat-number">8</div>
-                <div class="stat-label">待优化商品</div>
+                <div class="stat-number">{{ top_items|length }}</div>
+                <div class="stat-label">热销商品数</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">12</div>
-                <div class="stat-label">高潜力商品</div>
+                <div class="stat-number">{{ top_cats|length }}</div>
+                <div class="stat-label">活跃品类数</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">5</div>
-                <div class="stat-label">滞销商品</div>
+                <div class="stat-number">{{ s.get('buy', 0)|int }}</div>
+                <div class="stat-label">购买行为数</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">15</div>
-                <div class="stat-label">推广机会</div>
+                <div class="stat-number">{{ s.get('conversion_rate', 0) }}%</div>
+                <div class="stat-label">整体转化率</div>
             </div>
         </div>
 
         <div class="recommendation-grid">
-            <!-- 高浏览低转化商品 -->
-            <div class="recommendation-card">
-                <div class="card-header">
-                    <div class="card-icon warning">
-                        <i class="fas fa-exclamation-triangle"></i>
+            {% if top_items %}
+                {% for item in top_items %}
+                <div class="recommendation-card">
+                    <div class="card-header">
+                        <div class="card-icon {{ 'success' if loop.index <= 3 else 'primary' }}">
+                            <i class="fas fa-{{ 'crown' if loop.index == 1 else ('star' if loop.index <= 3 else 'box') }}"></i>
+                        </div>
+                        <div class="card-title">
+                            <h3>TOP {{ loop.index }} 热销商品</h3>
+                            <p class="card-subtitle">商品ID: {{ item.item_id }} | {{ item.name }}</p>
+                        </div>
                     </div>
-                    <div class="card-title">
-                        <h3>高浏览低转化商品</h3>
-                        <p class="card-subtitle">商品ID: 10234 | 美妆护肤类</p>
+                    <div class="card-body">
+                        <div class="metric-row">
+                            <span class="metric-label">购买次数</span>
+                            <span class="metric-value success">{{ item.buy_count }} 次</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">排名</span>
+                            <span class="metric-value">第 {{ loop.index }} 位</span>
+                        </div>
                     </div>
-                </div>
-                <div class="card-body">
-                    <div class="metric-row">
-                        <span class="metric-label">近7天浏览量</span>
-                        <span class="metric-value success">2,340次</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">加购率</span>
-                        <span class="metric-value">12.5%</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">转化率</span>
-                        <span class="metric-value danger">3.2%</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">问题诊断</span>
-                        <span class="metric-value">价格偏高、详情页不足</span>
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <div class="recommendation-label">
-                        <i class="fas fa-lightbulb"></i> 优化建议
-                    </div>
-                    <div class="recommendation-text">
-                        1. 优化商品详情页，增加使用场景图和用户评价<br>
-                        2. 调整价格策略，设置满减优惠（原价¥198 → 满100减20）<br>
-                        3. 增加"买家秀"展示，提升信任度
-                    </div>
-                    <div class="action-buttons">
-                        <button class="btn-action btn-primary">
-                            <i class="fas fa-edit"></i> 立即优化
-                        </button>
-                        <button class="btn-action btn-outline">
-                            <i class="fas fa-chart-bar"></i> 查看详情
-                        </button>
+                    <div class="card-footer">
+                        <div class="recommendation-label">
+                            <i class="fas fa-lightbulb"></i> 运营建议
+                        </div>
+                        <div class="recommendation-text">
+                            {% if loop.index == 1 %}
+                            1. 设为首页主推位，加大曝光<br>
+                            2. 搭配限时优惠刺激复购<br>
+                            3. 关联推荐配套商品提升客单价
+                            {% elif loop.index <= 3 %}
+                            1. 持续保持库存充足，避免断货<br>
+                            2. 推出"买家秀"互动提升信任<br>
+                            3. 开展捆绑销售，扩大销售额
+                            {% else %}
+                            1. 优化商品详情页提升转化<br>
+                            2. 参与平台活动增加曝光<br>
+                            3. 分析用户评价改进产品
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- 高销量高复购商品 -->
-            <div class="recommendation-card">
-                <div class="card-header">
-                    <div class="card-icon success">
-                        <i class="fas fa-star"></i>
-                    </div>
-                    <div class="card-title">
-                        <h3>高销量高复购商品</h3>
-                        <p class="card-subtitle">商品ID: 10567 | 电子产品类</p>
-                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="recommendation-card" style="grid-column:1/-1;text-align:center;padding:40px;">
+                    <i class="fas fa-inbox" style="font-size:40px;color:#ccc;"></i>
+                    <p style="color:#999;margin-top:12px;">暂无商品数据，请上传包含 item_id 字段的数据集</p>
                 </div>
-                <div class="card-body">
-                    <div class="metric-row">
-                        <span class="metric-label">近30天销量</span>
-                        <span class="metric-value success">1,856件</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">复购率</span>
-                        <span class="metric-value success">42.3%</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">库存状态</span>
-                        <span class="metric-value danger">仅剩320件</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">预计售罄</span>
-                        <span class="metric-value">5天内</span>
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <div class="recommendation-label">
-                        <i class="fas fa-rocket"></i> 运营建议
-                    </div>
-                    <div class="recommendation-text">
-                        1. 紧急补货，建议增加库存至1,500件<br>
-                        2. 加大推广力度，设置为首页推荐位商品<br>
-                        3. 推出"复购有礼"活动，赠送配件或优惠券
-                    </div>
-                    <div class="action-buttons">
-                        <button class="btn-action btn-primary">
-                            <i class="fas fa-truck"></i> 申请补货
-                        </button>
-                        <button class="btn-action btn-outline">
-                            <i class="fas fa-bullhorn"></i> 设置推广
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 长期滞销商品 -->
-            <div class="recommendation-card">
-                <div class="card-header">
-                    <div class="card-icon warning">
-                        <i class="fas fa-box-open"></i>
-                    </div>
-                    <div class="card-title">
-                        <h3>长期滞销商品</h3>
-                        <p class="card-subtitle">商品ID: 10892 | 家居用品类</p>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="metric-row">
-                        <span class="metric-label">滞销天数</span>
-                        <span class="metric-value danger">62天</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">库存积压</span>
-                        <span class="metric-value danger">580件</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">近30天销量</span>
-                        <span class="metric-value">仅8件</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">资金占用</span>
-                        <span class="metric-value">¥34,800</span>
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <div class="recommendation-label">
-                        <i class="fas fa-fire-alt"></i> 清仓建议
-                    </div>
-                    <div class="recommendation-text">
-                        1. 设置限时清仓价（原价¥98 → 清仓价¥49）<br>
-                        2. 与热销商品捆绑销售（买A送B）<br>
-                        3. 参加平台"清仓特卖"专场活动
-                    </div>
-                    <div class="action-buttons">
-                        <button class="btn-action btn-primary">
-                            <i class="fas fa-percentage"></i> 启动清仓
-                        </button>
-                        <button class="btn-action btn-outline">
-                            <i class="fas fa-link"></i> 捆绑销售
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 高潜力新品 -->
-            <div class="recommendation-card">
-                <div class="card-header">
-                    <div class="card-icon primary">
-                        <i class="fas fa-crown"></i>
-                    </div>
-                    <div class="card-title">
-                        <h3>高潜力新品</h3>
-                        <p class="card-subtitle">商品ID: 11234 | 时尚服饰类</p>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="metric-row">
-                        <span class="metric-label">上架天数</span>
-                        <span class="metric-value">7天</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">浏览量增长</span>
-                        <span class="metric-value success">+285%</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">加购率</span>
-                        <span class="metric-value success">18.7%</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">用户评分</span>
-                        <span class="metric-value success">4.8分</span>
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <div class="recommendation-label">
-                        <i class="fas fa-trending-up"></i> 扶持建议
-                    </div>
-                    <div class="recommendation-text">
-                        1. 申请"新品推荐"首页Banner位置<br>
-                        2. 设置"尝鲜价"限时优惠，吸引首批用户<br>
-                        3. 邀请KOL/网红试穿并发布种草笔记
-                    </div>
-                    <div class="action-buttons">
-                        <button class="btn-action btn-primary">
-                            <i class="fas fa-rocket"></i> 重点推广
-                        </button>
-                        <button class="btn-action btn-outline">
-                            <i class="fas fa-users"></i> KOL合作
-                        </button>
-                    </div>
-                </div>
-            </div>
+            {% endif %}
         </div>
     </div>
 
     <!-- Tab 2: 用户运营推荐 -->
     <div id="userTab" class="tab-content">
+        {% set s = rec_data.stats %}
+        {% set total_u  = s.get('total_users', 0)|int %}
+        {% set active_u = s.get('active_users', 0)|int %}
+        {% set inactive_u = [total_u - active_u, 0]|max %}
+        {% set conv = s.get('conversion_rate', 0) %}
         <div class="stats-overview">
             <div class="stat-card">
-                <div class="stat-number">2,200</div>
-                <div class="stat-label">流失风险用户</div>
+                <div class="stat-number">{{ total_u }}</div>
+                <div class="stat-label">总用户数</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">1,580</div>
-                <div class="stat-label">待激活新用户</div>
+                <div class="stat-number">{{ active_u }}</div>
+                <div class="stat-label">近期购买用户</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">1,200</div>
-                <div class="stat-label">高价值用户</div>
+                <div class="stat-number">{{ inactive_u }}</div>
+                <div class="stat-label">未购买用户</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">850</div>
-                <div class="stat-label">高频复购用户</div>
+                <div class="stat-number">{{ conv }}%</div>
+                <div class="stat-label">用户转化率</div>
             </div>
         </div>
 
         <div class="recommendation-grid">
-            <!-- 高价值用户流失风险 -->
+            {% if total_u > 0 %}
+            <!-- 未购买用户召回 -->
             <div class="recommendation-card">
                 <div class="card-header">
                     <div class="card-icon warning">
                         <i class="fas fa-user-slash"></i>
                     </div>
                     <div class="card-title">
-                        <h3>高价值用户未购买</h3>
-                        <p class="card-subtitle">RFM重要挽留客户群</p>
+                        <h3>未购买用户召回</h3>
+                        <p class="card-subtitle">近 {{ days }} 天内有浏览但未购买</p>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="metric-row">
-                        <span class="metric-label">用户数量</span>
-                        <span class="metric-value danger">2,200人</span>
+                        <span class="metric-label">未购买用户数</span>
+                        <span class="metric-value danger">{{ inactive_u }} 人</span>
                     </div>
                     <div class="metric-row">
-                        <span class="metric-label">平均未购天数</span>
-                        <span class="metric-value danger">35天</span>
+                        <span class="metric-label">占总用户比例</span>
+                        <span class="metric-value danger">{{ ((inactive_u / total_u * 100)|round(1)) if total_u else 0 }}%</span>
                     </div>
                     <div class="metric-row">
-                        <span class="metric-label">历史客单价</span>
-                        <span class="metric-value">¥2,200</span>
+                        <span class="metric-label">当前转化率</span>
+                        <span class="metric-value">{{ conv }}%</span>
                     </div>
                     <div class="metric-row">
-                        <span class="metric-label">流失风险</span>
-                        <span class="metric-value danger">高风险</span>
+                        <span class="metric-label">召回潜力</span>
+                        <span class="metric-value {{ 'danger' if conv|float < 5 else 'success' }}">{{ '高' if conv|float < 5 else '中' }}</span>
                     </div>
                 </div>
                 <div class="card-footer">
@@ -721,9 +585,9 @@
                         <i class="fas fa-undo"></i> 召回策略
                     </div>
                     <div class="recommendation-text">
-                        1. 发送专属召回短信/邮件："好久不见，专属福利等你领取"<br>
-                        2. 发放高额优惠券（满200减50，7天有效期）<br>
-                        3. 推送用户历史偏好商品新品上架信息
+                        1. 针对浏览未购买用户推送专属优惠券<br>
+                        2. 发送"加购未付款"提醒消息<br>
+                        3. 推送其历史浏览品类的热销商品
                     </div>
                     <div class="action-buttons">
                         <button class="btn-action btn-primary">
@@ -736,372 +600,345 @@
                 </div>
             </div>
 
-            <!-- 新用户转化率低 -->
-            <div class="recommendation-card">
-                <div class="card-header">
-                    <div class="card-icon info">
-                        <i class="fas fa-user-plus"></i>
-                    </div>
-                    <div class="card-title">
-                        <h3>新用户转化率低</h3>
-                        <p class="card-subtitle">近30天新注册用户</p>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="metric-row">
-                        <span class="metric-label">新用户数量</span>
-                        <span class="metric-value">1,580人</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">首单转化率</span>
-                        <span class="metric-value danger">仅8.5%</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">平均浏览时长</span>
-                        <span class="metric-value">2分15秒</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">流失率</span>
-                        <span class="metric-value danger">68%</span>
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <div class="recommendation-label">
-                        <i class="fas fa-gift"></i> 福利优化
-                    </div>
-                    <div class="recommendation-text">
-                        1. 提升新人礼包价值（3张优惠券 → 5张+新人专享价）<br>
-                        2. 设置新人专区，展示高性价比爆款商品<br>
-                        3. 注册后24小时内推送"首单立减20"弹窗提醒
-                    </div>
-                    <div class="action-buttons">
-                        <button class="btn-action btn-primary">
-                            <i class="fas fa-edit"></i> 优化福利
-                        </button>
-                        <button class="btn-action btn-outline">
-                            <i class="fas fa-chart-line"></i> 分析数据
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 大量流失风险用户 -->
-            <div class="recommendation-card">
-                <div class="card-header">
-                    <div class="card-icon warning">
-                        <i class="fas fa-exclamation-circle"></i>
-                    </div>
-                    <div class="card-title">
-                        <h3>大量流失风险用户</h3>
-                        <p class="card-subtitle">一般维持客户群</p>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="metric-row">
-                        <span class="metric-label">风险用户数</span>
-                        <span class="metric-value danger">2,300人</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">平均沉睡天数</span>
-                        <span class="metric-value danger">60天</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">历史购买频次</span>
-                        <span class="metric-value">1.5次</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">挽回成本</span>
-                        <span class="metric-value">需控制</span>
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <div class="recommendation-label">
-                        <i class="fas fa-ticket-alt"></i> 激活策略
-                    </div>
-                    <div class="recommendation-text">
-                        1. 批量发送低成本EDM（邮件）触达，控制成本<br>
-                        2. 推送大促活动信息（618、双11等）<br>
-                        3. 发放低门槛优惠券（满50减5），降低决策门槛
-                    </div>
-                    <div class="action-buttons">
-                        <button class="btn-action btn-primary">
-                            <i class="fas fa-envelope"></i> 批量触达
-                        </button>
-                        <button class="btn-action btn-outline">
-                            <i class="fas fa-filter"></i> 筛选用户
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 高频复购用户 -->
+            <!-- 活跃购买用户维护 -->
             <div class="recommendation-card">
                 <div class="card-header">
                     <div class="card-icon success">
                         <i class="fas fa-medal"></i>
                     </div>
                     <div class="card-title">
-                        <h3>高频复购用户</h3>
-                        <p class="card-subtitle">RFM重要价值客户</p>
+                        <h3>活跃购买用户维护</h3>
+                        <p class="card-subtitle">近 {{ days }} 天内有购买行为</p>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="metric-row">
-                        <span class="metric-label">用户数量</span>
-                        <span class="metric-value success">850人</span>
+                        <span class="metric-label">活跃用户数</span>
+                        <span class="metric-value success">{{ active_u }} 人</span>
                     </div>
                     <div class="metric-row">
-                        <span class="metric-label">平均购买频次</span>
-                        <span class="metric-value success">8.5次/月</span>
+                        <span class="metric-label">活跃占比</span>
+                        <span class="metric-value success">{{ ((active_u / total_u * 100)|round(1)) if total_u else 0 }}%</span>
                     </div>
                     <div class="metric-row">
-                        <span class="metric-label">客单价</span>
-                        <span class="metric-value success">¥3,500</span>
+                        <span class="metric-label">购买次数</span>
+                        <span class="metric-value success">{{ s.get('buy', 0)|int }} 次</span>
                     </div>
                     <div class="metric-row">
-                        <span class="metric-label">GMV贡献</span>
-                        <span class="metric-value success">42%</span>
+                        <span class="metric-label">人均购买次数</span>
+                        <span class="metric-value success">{{ ((s.get('buy',0)|int / active_u)|round(1)) if active_u else 0 }} 次</span>
                     </div>
                 </div>
                 <div class="card-footer">
                     <div class="recommendation-label">
-                        <i class="fas fa-crown"></i> 会员维护
+                        <i class="fas fa-crown"></i> 维护策略
                     </div>
                     <div class="recommendation-text">
-                        1. 升级为VIP会员，提供专属客服和优先权益<br>
-                        2. 邀请参与新品内测，收集高质量反馈<br>
-                        3. 建立积分体系，消费积分可兑换礼品或抵扣
+                        1. 为高频购买用户建立会员积分体系<br>
+                        2. 推送个性化新品，维持购买热情<br>
+                        3. 开展"复购有礼"活动提升复购率
                     </div>
                     <div class="action-buttons">
                         <button class="btn-action btn-primary">
-                            <i class="fas fa-star"></i> VIP升级
+                            <i class="fas fa-star"></i> VIP维护
                         </button>
                         <button class="btn-action btn-outline">
-                            <i class="fas fa-gift"></i> 专属礼遇
+                            <i class="fas fa-gift"></i> 专属福利
                         </button>
                     </div>
                 </div>
             </div>
+
+            <!-- 转化率提升建议 -->
+            <div class="recommendation-card">
+                <div class="card-header">
+                    <div class="card-icon {{ 'warning' if conv|float < 5 else 'info' }}">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="card-title">
+                        <h3>转化率{{ '优化' if conv|float < 5 else '提升' }}机会</h3>
+                        <p class="card-subtitle">当前转化率 {{ conv }}%</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="metric-row">
+                        <span class="metric-label">浏览行为数</span>
+                        <span class="metric-value">{{ s.get('pv', 0)|int }}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">加购行为数</span>
+                        <span class="metric-value">{{ s.get('cart', 0)|int }}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">购买行为数</span>
+                        <span class="metric-value success">{{ s.get('buy', 0)|int }}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">加购率</span>
+                        <span class="metric-value">{{ s.get('cart_rate', 0) }}%</span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="recommendation-label">
+                        <i class="fas fa-lightbulb"></i> 优化建议
+                    </div>
+                    <div class="recommendation-text">
+                        {% if s.get('cart_rate', 0)|float > conv|float * 4 %}
+                        1. 加购流失严重，推送"加购未付款"专属提醒<br>
+                        2. 设置限时价格优惠，降低支付决策门槛<br>
+                        3. 简化结算流程，减少用户放弃
+                        {% else %}
+                        1. 优化商品详情页内容，提升用户信任<br>
+                        2. 增加用户评价和使用场景展示<br>
+                        3. 设置首单优惠吸引新用户完成转化
+                        {% endif %}
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-primary">
+                            <i class="fas fa-edit"></i> 优化策略
+                        </button>
+                        <button class="btn-action btn-outline">
+                            <i class="fas fa-chart-bar"></i> 查看漏斗
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+                <div class="recommendation-card" style="grid-column:1/-1;text-align:center;padding:40px;">
+                    <i class="fas fa-users" style="font-size:40px;color:#ccc;"></i>
+                    <p style="color:#999;margin-top:12px;">暂无用户数据，请上传包含 user_id 字段的数据集</p>
+                </div>
+            {% endif %}
         </div>
     </div>
 
     <!-- Tab 3: 营销活动推荐 -->
     <div id="marketingTab" class="tab-content">
+        {% set s = rec_data.stats %}
+        {% set top_brands = rec_data.top_brands %}
+        {% set top_cats   = rec_data.top_categories %}
+        {% set total_b    = s.get('total_behaviors', 0)|int %}
+        {% set buy_b      = s.get('buy', 0)|int %}
+        {% set pv_b       = s.get('pv', 0)|int %}
+        {% set conv       = s.get('conversion_rate', 0) %}
         <div class="stats-overview">
             <div class="stat-card">
-                <div class="stat-number">6</div>
-                <div class="stat-label">活动机会</div>
+                <div class="stat-number">{{ total_b }}</div>
+                <div class="stat-label">总行为数</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">15</div>
-                <div class="stat-label">关联组合</div>
+                <div class="stat-number">{{ buy_b }}</div>
+                <div class="stat-label">购买行为数</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">8</div>
-                <div class="stat-label">区域策略</div>
+                <div class="stat-number">{{ top_brands|length }}</div>
+                <div class="stat-label">热门品牌数</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">12</div>
-                <div class="stat-label">时段优化</div>
+                <div class="stat-number">{{ top_cats|length }}</div>
+                <div class="stat-label">热门品类数</div>
             </div>
         </div>
 
         <div class="recommendation-grid">
-            <!-- 用户活跃高峰时段 -->
+            {% if total_b > 0 %}
+
+            <!-- 转化漏斗营销机会 -->
             <div class="recommendation-card">
                 <div class="card-header">
                     <div class="card-icon primary">
-                        <i class="fas fa-clock"></i>
+                        <i class="fas fa-funnel-dollar"></i>
                     </div>
                     <div class="card-title">
-                        <h3>用户活跃高峰时段</h3>
-                        <p class="card-subtitle">时段营销策略</p>
+                        <h3>转化漏斗营销机会</h3>
+                        <p class="card-subtitle">基于真实行为漏斗</p>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="metric-row">
-                        <span class="metric-label">最高峰时段</span>
-                        <span class="metric-value success">20:00-22:00</span>
+                        <span class="metric-label">浏览总量</span>
+                        <span class="metric-value">{{ pv_b }}</span>
                     </div>
                     <div class="metric-row">
-                        <span class="metric-label">流量占比</span>
-                        <span class="metric-value success">28.5%</span>
+                        <span class="metric-label">加购总量</span>
+                        <span class="metric-value">{{ s.get('cart', 0)|int }}</span>
                     </div>
                     <div class="metric-row">
-                        <span class="metric-label">转化率</span>
-                        <span class="metric-value">比平均高35%</span>
+                        <span class="metric-label">购买总量</span>
+                        <span class="metric-value success">{{ buy_b }}</span>
                     </div>
                     <div class="metric-row">
-                        <span class="metric-label">次高峰</span>
-                        <span class="metric-value">12:00-13:00</span>
+                        <span class="metric-label">浏览→购买转化</span>
+                        <span class="metric-value {{ 'danger' if conv|float < 3 else 'success' }}">{{ conv }}%</span>
                     </div>
                 </div>
                 <div class="card-footer">
                     <div class="recommendation-label">
-                        <i class="fas fa-calendar-alt"></i> 活动建议
+                        <i class="fas fa-calendar-alt"></i> 营销建议
                     </div>
                     <div class="recommendation-text">
-                        1. 晚8点开启"黄金2小时"直播秒杀活动<br>
-                        2. 设置限时闪购（每晚8-10点特价商品）<br>
-                        3. 午间12点推出"午休特惠"快速下单优惠
+                        {% if conv|float < 3 %}
+                        1. 转化率偏低，建议发放限时优惠券提升决策效率<br>
+                        2. 对加购未付款用户推送专属提醒<br>
+                        3. 优化商品详情页，增加评价与场景图
+                        {% else %}
+                        1. 转化表现良好，可进一步提升客单价<br>
+                        2. 推出满减/满赠活动刺激高客单<br>
+                        3. 在高峰时段加大活动曝光力度
+                        {% endif %}
                     </div>
                     <div class="action-buttons">
                         <button class="btn-action btn-primary">
-                            <i class="fas fa-video"></i> 策划直播
+                            <i class="fas fa-bolt"></i> 设置活动
                         </button>
                         <button class="btn-action btn-outline">
-                            <i class="fas fa-bolt"></i> 设置闪购
+                            <i class="fas fa-chart-bar"></i> 漏斗分析
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- 热门关联商品 -->
-            <div class="recommendation-card">
-                <div class="card-header">
-                    <div class="card-icon info">
-                        <i class="fas fa-link"></i>
-                    </div>
-                    <div class="card-title">
-                        <h3>热门关联商品组合</h3>
-                        <p class="card-subtitle">智能搭配销售</p>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="metric-row">
-                        <span class="metric-label">关联组合A</span>
-                        <span class="metric-value">手机+耳机+保护壳</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">同时购买率</span>
-                        <span class="metric-value success">68%</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">关联组合B</span>
-                        <span class="metric-value">口红+粉底+卸妆水</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">同时购买率</span>
-                        <span class="metric-value success">52%</span>
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <div class="recommendation-label">
-                        <i class="fas fa-shopping-basket"></i> 组合策略
-                    </div>
-                    <div class="recommendation-text">
-                        1. 推出"数码三件套"组合套餐，优惠15%<br>
-                        2. 设置"买手机送耳机"活动，提升客单价<br>
-                        3. 美妆类推出"全妆套装"，一站式购物体验
-                    </div>
-                    <div class="action-buttons">
-                        <button class="btn-action btn-primary">
-                            <i class="fas fa-plus-circle"></i> 创建套餐
-                        </button>
-                        <button class="btn-action btn-outline">
-                            <i class="fas fa-chart-bar"></i> 关联分析
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 地区消费偏好 -->
+            <!-- 热门品牌营销 -->
+            {% if top_brands %}
             <div class="recommendation-card">
                 <div class="card-header">
                     <div class="card-icon success">
-                        <i class="fas fa-map-marked-alt"></i>
+                        <i class="fas fa-award"></i>
                     </div>
                     <div class="card-title">
-                        <h3>地区消费偏好差异</h3>
-                        <p class="card-subtitle">区域化营销策略</p>
+                        <h3>热门品牌重点推广</h3>
+                        <p class="card-subtitle">基于真实购买数据</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% for brand in top_brands %}
+                    <div class="metric-row">
+                        <span class="metric-label">{{ brand.brand }}</span>
+                        <span class="metric-value success">{{ brand.cnt }} 次购买</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="card-footer">
+                    <div class="recommendation-label">
+                        <i class="fas fa-bullhorn"></i> 推广策略
+                    </div>
+                    <div class="recommendation-text">
+                        1. 为 {{ top_brands[0].brand }} 等热销品牌设置首页推荐位<br>
+                        2. 推出品牌专场活动，加大曝光投放<br>
+                        3. 与品牌联合设置新品预售，刺激提前购买
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-primary">
+                            <i class="fas fa-bullseye"></i> 品牌推广
+                        </button>
+                        <button class="btn-action btn-outline">
+                            <i class="fas fa-chart-bar"></i> 品牌分析
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 热门品类营销 -->
+            {% if top_cats %}
+            <div class="recommendation-card">
+                <div class="card-header">
+                    <div class="card-icon info">
+                        <i class="fas fa-tags"></i>
+                    </div>
+                    <div class="card-title">
+                        <h3>热门品类重点运营</h3>
+                        <p class="card-subtitle">基于真实购买数据</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% for cat in top_cats %}
+                    <div class="metric-row">
+                        <span class="metric-label">{{ cat.name }}</span>
+                        <span class="metric-value success">{{ cat.cnt }} 次购买</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="card-footer">
+                    <div class="recommendation-label">
+                        <i class="fas fa-shopping-basket"></i> 品类策略
+                    </div>
+                    <div class="recommendation-text">
+                        1. 为 {{ top_cats[0].name }} 等热门品类建立专属频道<br>
+                        2. 推出品类满减活动，提升品类客单价<br>
+                        3. 跨品类捆绑销售，扩大连带购买
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-primary">
+                            <i class="fas fa-plus-circle"></i> 品类活动
+                        </button>
+                        <button class="btn-action btn-outline">
+                            <i class="fas fa-link"></i> 关联分析
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 整体营销建议 -->
+            <div class="recommendation-card">
+                <div class="card-header">
+                    <div class="card-icon warning">
+                        <i class="fas fa-lightbulb"></i>
+                    </div>
+                    <div class="card-title">
+                        <h3>整体营销优化建议</h3>
+                        <p class="card-subtitle">综合数据分析</p>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="metric-row">
-                        <span class="metric-label">华东地区</span>
-                        <span class="metric-value">偏好时尚，客单价+25%</span>
+                        <span class="metric-label">数据时间范围</span>
+                        <span class="metric-value">近 {{ days }} 天</span>
                     </div>
                     <div class="metric-row">
-                        <span class="metric-label">华南地区</span>
-                        <span class="metric-value">价格敏感，优惠响应高</span>
+                        <span class="metric-label">总行为量</span>
+                        <span class="metric-value">{{ total_b }}</span>
                     </div>
                     <div class="metric-row">
-                        <span class="metric-label">华北地区</span>
-                        <span class="metric-value">偏好电子产品</span>
+                        <span class="metric-label">总收入</span>
+                        <span class="metric-value success">¥{{ s.get('total_revenue', 0) }}</span>
                     </div>
                     <div class="metric-row">
-                        <span class="metric-label">西南地区</span>
-                        <span class="metric-value">本地特色商品受欢迎</span>
+                        <span class="metric-label">人均收入</span>
+                        <span class="metric-value">¥{{ ((s.get('total_revenue',0)|float / s.get('total_users',1)|int)|round(1)) if s.get('total_users',0)|int > 0 else 0 }}</span>
                     </div>
                 </div>
                 <div class="card-footer">
                     <div class="recommendation-label">
-                        <i class="fas fa-globe-asia"></i> 区域策略
+                        <i class="fas fa-chart-line"></i> 数据洞察
                     </div>
                     <div class="recommendation-text">
-                        1. 华东推广高端时尚品牌，主打品质和设计<br>
-                        2. 华南开展"满减活动"，如满200减30<br>
-                        3. 西南地区推出地方特色商品专场促销
+                        {% for sg in rec_data.suggestions[:2] %}
+                        {{ loop.index }}. {{ sg.detail }}<br>
+                        {% else %}
+                        1. 持续监测数据变化，及时调整运营策略<br>
+                        2. 结合行业大促节点，提前规划活动<br>
+                        3. 定期复盘数据，优化投入产出比
+                        {% endfor %}
                     </div>
                     <div class="action-buttons">
                         <button class="btn-action btn-primary">
-                            <i class="fas fa-bullseye"></i> 区域投放
+                            <i class="fas fa-sync-alt"></i> 同步数据
                         </button>
                         <button class="btn-action btn-outline">
-                            <i class="fas fa-map"></i> 查看地图
+                            <i class="fas fa-file-export"></i> 导出报告
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- 周末营销机会 -->
-            <div class="recommendation-card">
-                <div class="card-header">
-                    <div class="card-icon primary">
-                        <i class="fas fa-calendar-week"></i>
-                    </div>
-                    <div class="card-title">
-                        <h3>周末营销黄金期</h3>
-                        <p class="card-subtitle">周六日流量高峰</p>
-                    </div>
+            {% else %}
+                <div class="recommendation-card" style="grid-column:1/-1;text-align:center;padding:40px;">
+                    <i class="fas fa-chart-bar" style="font-size:40px;color:#ccc;"></i>
+                    <p style="color:#999;margin-top:12px;">暂无行为数据，请先上传数据集以获取营销建议</p>
                 </div>
-                <div class="card-body">
-                    <div class="metric-row">
-                        <span class="metric-label">周末订单占比</span>
-                        <span class="metric-value success">35.2%</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">当前营销投放</span>
-                        <span class="metric-value danger">集中在工作日</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">优化潜力</span>
-                        <span class="metric-value success">预计提升40%</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">建议调整</span>
-                        <span class="metric-value">周末增投50%</span>
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <div class="recommendation-label">
-                        <i class="fas fa-chart-line"></i> 预算优化
-                    </div>
-                    <div class="recommendation-text">
-                        1. 周末增加50%广告投放预算<br>
-                        2. 开展"周末狂欢"主题促销活动<br>
-                        3. 设置周六日专属优惠（满300减50）
-                    </div>
-                    <div class="action-buttons">
-                        <button class="btn-action btn-primary">
-                            <i class="fas fa-dollar-sign"></i> 调整预算
-                        </button>
-                        <button class="btn-action btn-outline">
-                            <i class="fas fa-calendar-check"></i> 策划活动
-                        </button>
-                    </div>
-                </div>
-            </div>
+            {% endif %}
         </div>
     </div>
 </div>
