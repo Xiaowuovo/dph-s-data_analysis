@@ -11,7 +11,7 @@ from collections import defaultdict
 from sqlalchemy import func, desc, case, distinct, text
 
 from core import db
-from core.models import UserBehavior
+from core.models import UserBehavior, Order, UserAccount
 
 
 # ──────────────────────────────────────────────
@@ -62,6 +62,8 @@ def _q_base(days: int):
 # 1. 数据看板 / 总览
 # ──────────────────────────────────────────────
 def get_dashboard_stats(days: int = 30) -> dict:
+    if has_order_data():
+        return get_order_dashboard_stats(days)
     s, e = _ts_range(days)
     q = UserBehavior.query.filter(UserBehavior.timestamp.between(s, e))
 
@@ -196,6 +198,8 @@ def _empty_dashboard():
 # 2. 行为分析中心
 # ──────────────────────────────────────────────
 def get_behavior_stats(days: int = 30) -> dict:
+    if has_order_data():
+        return get_order_behavior_stats(days)
     s, e = _ts_range(days)  # 已内置全量回退
 
     # 小时分布
@@ -431,6 +435,8 @@ def get_item_stats(days: int = 30, category: str = 'all', sort_by: str = 'purcha
 # 4. RFM 分析
 # ──────────────────────────────────────────────
 def get_rfm_data(days: int = 90) -> dict:
+    if has_order_data():
+        return get_order_rfm_data(days)
     s, e = _ts_range(days)
     end_ts = e
 
@@ -743,4 +749,288 @@ def get_recommendation_insights(days: int = 30) -> dict:
         'top_items': top_items,
         'suggestions': suggestions,
         'synced_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+    }
+
+
+# ══════════════════════════════════════════════════════════════════
+#  Order 表专属分析引擎（适配 order.csv + user.csv 38万订单数据集）
+# ══════════════════════════════════════════════════════════════════
+
+def _order_date_range(days: int):
+    """返回 (start_dt, end_dt) datetime，以 orders 表最新下单时间为基准。
+    days=0 表示全量。若表为空返回 None, None。
+    """
+    try:
+        max_dt = db.session.query(func.max(Order.order_time)).scalar()
+        min_dt = db.session.query(func.min(Order.order_time)).scalar()
+    except Exception:
+        return None, None
+    if not max_dt:
+        return None, None
+    if days == 0:
+        return min_dt, max_dt
+    start_dt = max_dt - timedelta(days=days)
+    # 若范围内无数据则回退全量
+    cnt = db.session.query(func.count(Order.id)).filter(
+        Order.order_time.between(start_dt, max_dt)
+    ).scalar() or 0
+    if cnt == 0:
+        return min_dt, max_dt
+    return start_dt, max_dt
+
+
+def has_order_data() -> bool:
+    """检查 orders 表是否有数据"""
+    try:
+        return (db.session.query(func.count(Order.id)).scalar() or 0) > 0
+    except Exception:
+        return False
+
+
+def get_order_dashboard_stats(days: int = 0) -> dict:
+    """从 orders 表生成数据看板统计（适合 order.csv 数据集）"""
+    s, e = _order_date_range(days)
+    if s is None:
+        return _empty_dashboard()
+
+    base = Order.order_time.between(s, e)
+    q    = Order.query.filter(base)
+    total = q.count()
+    if total == 0:
+        return _empty_dashboard()
+
+    # 核心指标
+    total_users = db.session.query(func.count(distinct(Order.user_id))).filter(base).scalar() or 0
+    total_items = db.session.query(func.count(distinct(Order.product_id))).filter(base).scalar() or 0
+    total_revenue = db.session.query(func.sum(Order.amount)).filter(base).scalar() or 0.0
+    avg_order_val = round(total_revenue / total, 2) if total else 0
+
+    # 漏斗：用 user_accounts 补充 click/cart 数据
+    try:
+        total_clicks = db.session.query(func.sum(UserAccount.click_count)).scalar() or 0
+        total_carts  = db.session.query(func.sum(UserAccount.cart_count)).scalar()  or 0
+    except Exception:
+        total_clicks = total_carts = 0
+
+    conv_rate = round(total / total_clicks * 100, 2) if total_clicks else 0
+
+    # 订单状态分布
+    status_q = db.session.query(
+        Order.order_status, func.count().label('cnt')
+    ).filter(base).group_by(Order.order_status).all()
+    status_dist = {r.order_status: r.cnt for r in status_q}
+
+    # 日趋势（实付金额 + 订单量）
+    daily_q = db.session.query(
+        Order.order_date,
+        func.count().label('orders'),
+        func.sum(Order.amount).label('revenue')
+    ).filter(base, Order.order_date != None
+    ).group_by(Order.order_date).order_by(Order.order_date).all()
+
+    dates_sorted = [r.order_date.strftime('%m-%d') for r in daily_q if r.order_date]
+    daily_trend = {
+        'dates':   dates_sorted,
+        'buy':     [r.orders  for r in daily_q if r.order_date],
+        'revenue': [round(r.revenue or 0, 2) for r in daily_q if r.order_date],
+        'pv': [], 'cart': [], 'fav': [],
+    }
+
+    # Top10 商品（订单量 + 营收）
+    top_items_q = db.session.query(
+        Order.product_id, Order.product_name,
+        func.count().label('buy_cnt'),
+        func.sum(Order.amount).label('revenue')
+    ).filter(base).group_by(Order.product_id, Order.product_name
+    ).order_by(desc('buy_cnt')).limit(10).all()
+    top_items = [
+        {'item_id': r.product_id,
+         'name': r.product_name or f'商品{r.product_id}',
+         'buy_cnt': r.buy_cnt,
+         'revenue': round(r.revenue or 0, 2)}
+        for r in top_items_q
+    ]
+
+    # Top10 活跃用户（订单数）
+    top_users_q = db.session.query(
+        Order.user_id, func.count().label('action_cnt')
+    ).filter(base).group_by(Order.user_id
+    ).order_by(desc('action_cnt')).limit(10).all()
+    top_users = [{'user_id': r.user_id, 'action_cnt': r.action_cnt} for r in top_users_q]
+
+    # 品类分布（营收）
+    cat_q = db.session.query(
+        Order.category, func.count().label('cnt'), func.sum(Order.amount).label('rev')
+    ).filter(base, Order.category != None
+    ).group_by(Order.category).order_by(desc('rev')).limit(8).all()
+    category_dist = [{'name': r.category, 'value': r.cnt, 'revenue': round(r.rev or 0, 2)}
+                     for r in cat_q]
+
+    return {
+        'total_users':     total_users,
+        'total_items':     total_items,
+        'total_behaviors': total,
+        'pv':   total_clicks,
+        'cart': total_carts,
+        'fav':  0,
+        'buy':  total,
+        'conversion_rate': conv_rate,
+        'total_revenue':   round(total_revenue, 2),
+        'avg_order_value': avg_order_val,
+        'status_dist':     status_dist,
+        'daily_trend':     daily_trend,
+        'top_items':       top_items,
+        'top_users':       top_users,
+        'category_dist':   category_dist,
+        '_source':         'order',
+    }
+
+
+def get_order_behavior_stats(days: int = 0) -> dict:
+    """从 orders 表生成行为分析统计（支付方式、促销、订单状态、时段分布）"""
+    s, e = _order_date_range(days)
+    if s is None:
+        return {}
+    base = Order.order_time.between(s, e)
+
+    # 支付方式分布
+    pay_q = db.session.query(
+        Order.payment_method, func.count().label('cnt')
+    ).filter(base, Order.payment_method != None
+    ).group_by(Order.payment_method).order_by(desc('cnt')).all()
+    payment_dist = [{'name': r.payment_method, 'value': r.cnt} for r in pay_q]
+
+    # 促销效果
+    promo_q = db.session.query(
+        Order.promotion_type, func.count().label('cnt'), func.sum(Order.amount).label('rev')
+    ).filter(base).group_by(Order.promotion_type).all()
+    promo_dist = [{'type': r.promotion_type or '无促销', 'count': r.cnt,
+                   'revenue': round(r.rev or 0, 2)} for r in promo_q]
+
+    # 订单状态漏斗
+    status_q = db.session.query(
+        Order.order_status, func.count().label('cnt')
+    ).filter(base, Order.order_status != None
+    ).group_by(Order.order_status).all()
+    status_dist = [{'name': r.order_status, 'value': r.cnt} for r in status_q]
+
+    # 小时分布
+    hour_q = db.session.query(
+        Order.order_hour, func.count().label('cnt')
+    ).filter(base, Order.order_hour != None
+    ).group_by(Order.order_hour).order_by(Order.order_hour).all()
+    hour_map = {r.order_hour: r.cnt for r in hour_q}
+    hourly = {
+        'hours': list(range(24)),
+        'buy':   [hour_map.get(h, 0) for h in range(24)],
+        'pv': [], 'cart': [], 'fav': [],
+    }
+
+    # 性别分布
+    gender_q = db.session.query(
+        Order.gender, func.count().label('cnt')
+    ).filter(base, Order.gender != None
+    ).group_by(Order.gender).all()
+    gender_dist = [{'name': r.gender, 'value': r.cnt} for r in gender_q]
+
+    # 年龄段分布
+    age_q = db.session.query(Order.age).filter(base, Order.age != None).all()
+    age_buckets = defaultdict(int)
+    for (a,) in age_q:
+        bucket = f'{(a // 10) * 10}-{(a // 10) * 10 + 9}岁'
+        age_buckets[bucket] += 1
+    age_dist = [{'name': k, 'value': v} for k, v in sorted(age_buckets.items())]
+
+    # 地域分布（下单省份 top10）
+    prov_q = db.session.query(
+        Order.user_province, func.count().label('cnt'), func.sum(Order.amount).label('rev')
+    ).filter(base, Order.user_province != None
+    ).group_by(Order.user_province).order_by(desc('rev')).limit(10).all()
+    province_dist = [{'name': r.user_province, 'orders': r.cnt,
+                      'revenue': round(r.rev or 0, 2)} for r in prov_q]
+
+    # 品牌排行
+    brand_q = db.session.query(
+        Order.brand, func.count().label('cnt'), func.sum(Order.amount).label('rev')
+    ).filter(base, Order.brand != None
+    ).group_by(Order.brand).order_by(desc('rev')).limit(10).all()
+    brand_dist = [{'name': r.brand, 'count': r.cnt, 'revenue': round(r.rev or 0, 2)}
+                  for r in brand_q]
+
+    return {
+        'payment_dist':  payment_dist,
+        'promo_dist':    promo_dist,
+        'status_dist':   status_dist,
+        'hourly':        hourly,
+        'gender_dist':   gender_dist,
+        'age_dist':      age_dist,
+        'province_dist': province_dist,
+        'brand_dist':    brand_dist,
+        '_source':       'order',
+    }
+
+
+def get_order_rfm_data(days: int = 0) -> dict:
+    """从 orders 表计算 RFM 分群（Recency/Frequency/Monetary 均来自真实订单）"""
+    s, e = _order_date_range(days)
+    if s is None:
+        return {'segments': [], 'total_users': 0}
+    base = Order.order_time.between(s, e)
+
+    rfm_q = db.session.query(
+        Order.user_id,
+        func.max(Order.order_time).label('last_order'),
+        func.count().label('freq'),
+        func.sum(Order.amount).label('monetary')
+    ).filter(base).group_by(Order.user_id).all()
+
+    if not rfm_q:
+        return {'segments': [], 'total_users': 0}
+
+    ref_dt = e
+    rows = []
+    for r in rfm_q:
+        days_ago = (ref_dt - r.last_order).days if r.last_order else 999
+        rows.append({'user_id': r.user_id, 'R': days_ago, 'F': r.freq, 'M': float(r.monetary or 0)})
+
+    # 简单四分位分层
+    import statistics
+    r_vals = [x['R'] for x in rows]
+    f_vals = [x['F'] for x in rows]
+    m_vals = [x['M'] for x in rows]
+    r_med  = statistics.median(r_vals)
+    f_med  = statistics.median(f_vals)
+    m_med  = statistics.median(m_vals)
+
+    seg_counts = defaultdict(int)
+    for row in rows:
+        r_high = row['R'] <= r_med   # 最近购买 → 高=小天数
+        f_high = row['F'] >= f_med
+        m_high = row['M'] >= m_med
+        if r_high and f_high and m_high:
+            seg = '高价值用户'
+        elif r_high and f_high:
+            seg = '潜力用户'
+        elif r_high and m_high:
+            seg = '高消费用户'
+        elif r_high:
+            seg = '新用户'
+        elif f_high and m_high:
+            seg = '忠诚用户'
+        elif not r_high and not f_high and not m_high:
+            seg = '流失用户'
+        else:
+            seg = '一般用户'
+        row['segment'] = seg
+        seg_counts[seg] += 1
+
+    segments = [{'segment': k, 'count': v,
+                 'pct': round(v / len(rows) * 100, 1)} for k, v in seg_counts.items()]
+    segments.sort(key=lambda x: -x['count'])
+
+    return {
+        'segments':    segments,
+        'total_users': len(rows),
+        'rfm_rows':    rows[:200],  # 返回前200条供散点图
+        '_source':     'order',
     }

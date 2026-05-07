@@ -127,6 +127,78 @@ class UploadHistory(db.Model):
         }
 
 
+class Order(db.Model):
+    '''订单数据表 (适配 order.csv — 38万订单数据)'''
+    __tablename__ = 'orders'
+
+    id            = db.Column(db.Integer, primary_key=True)
+    order_id      = db.Column(db.BigInteger, unique=True, index=True, nullable=False)
+    user_id       = db.Column(db.BigInteger, nullable=False, index=True)
+    product_id    = db.Column(db.BigInteger, index=True)
+
+    order_time    = db.Column(db.DateTime, nullable=False, index=True)
+    order_date    = db.Column(db.Date, index=True)
+    order_hour    = db.Column(db.Integer)
+
+    quantity      = db.Column(db.Integer, default=1)
+    amount        = db.Column(db.Float)               # 实付金额（含折扣）
+    payment_method= db.Column(db.String(50))          # Alipay/WeChatPay/DebitCard...
+    promotion_type= db.Column(db.String(50))          # None/Coupon/...
+    order_status  = db.Column(db.String(50), index=True)  # Delivered/Shipped/...
+    shipping_city = db.Column(db.String(100))
+    fulfillment_time = db.Column(db.Integer)          # 履单时长(小时)
+
+    # 用户信息（冗余存储，方便聚合分析）
+    gender        = db.Column(db.String(10))
+    age           = db.Column(db.Integer)
+    user_province = db.Column(db.String(100), index=True)
+
+    # 商品信息
+    product_name  = db.Column(db.String(500))
+    brand         = db.Column(db.String(100), index=True)
+    category      = db.Column(db.String(100), index=True)
+    price         = db.Column(db.Float)               # 原价
+    is_hot        = db.Column(db.Boolean, default=False)
+    launch_date   = db.Column(db.DateTime)
+    product_province = db.Column(db.String(100))
+    product_region_level = db.Column(db.String(50))
+
+    created_at    = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Order {self.order_id}>'
+
+
+class UserAccount(db.Model):
+    '''用户账户表 (适配 user.csv — 9.8万用户数据)'''
+    __tablename__ = 'user_accounts'
+
+    user_id       = db.Column(db.BigInteger, primary_key=True)
+    user_name     = db.Column(db.String(200))
+    gender        = db.Column(db.String(10))
+    age           = db.Column(db.Integer)
+
+    register_time = db.Column(db.DateTime)
+    register_channel = db.Column(db.String(100))     # App Store/Web/Android Market/WeChat
+
+    user_region_id    = db.Column(db.Integer)
+    user_province     = db.Column(db.String(100), index=True)
+    user_region_level = db.Column(db.String(50))     # 一线/二线/三线...
+    province_population = db.Column(db.BigInteger)
+    province_gdp        = db.Column(db.BigInteger)
+
+    total_purchase_times  = db.Column(db.Integer, default=0)
+    total_purchase_amount = db.Column(db.Float, default=0.0)
+    last_purchase_time    = db.Column(db.DateTime)
+    click_count           = db.Column(db.Integer, default=0)
+    cart_count            = db.Column(db.Integer, default=0)
+
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<UserAccount {self.user_id}>'
+
+
 class Recommendation(db.Model):
     '''推荐结果表'''
     __tablename__ = 'recommendation'

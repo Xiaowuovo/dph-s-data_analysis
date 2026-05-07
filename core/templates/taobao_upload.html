@@ -15,27 +15,32 @@
     <!-- 上传指南 -->
     <div class="upload-guide">
         <div class="guide-card">
-            <h3><i class="fas fa-info-circle"></i> 上传说明</h3>
+            <h3><i class="fas fa-info-circle"></i> 支持三种 CSV 格式（自动识别）</h3>
             <div class="guide-content">
                 <div class="guide-item">
-                    <i class="fas fa-file-csv"></i>
+                    <i class="fas fa-receipt"></i>
                     <div>
-                        <h4>文件格式</h4>
-                        <p>请上传CSV格式的淘宝用户行为数据文件</p>
+                        <h4>① 订单数据（推荐）— order.csv</h4>
+                        <p>必须包含列：<code>order_id, user_id, product_id, order_time, amount</code><br>
+                        支持：支付方式、促销、订单状态、用户省份、品牌、品类、性别年龄等完整字段<br>
+                        <strong>重复导入安全</strong>：按 order_id 去重，同一文件导入两次不会重复</p>
                     </div>
                 </div>
                 <div class="guide-item">
-                    <i class="fas fa-table"></i>
+                    <i class="fas fa-users"></i>
                     <div>
-                        <h4>数据结构</h4>
-                        <p>文件需包含中文列头：用户ID, 商品ID, 商品类目ID, 行为类型, 时间戳（兼容旧版英文列头）</p>
+                        <h4>② 用户数据 — user.csv</h4>
+                        <p>必须包含列：<code>user_id, register_time, total_purchase_times, click_count</code><br>
+                        支持：注册渠道、省份、GDP、点击数、加购数等用户画像字段<br>
+                        <strong>重复导入安全</strong>：按 user_id 覆盖更新</p>
                     </div>
                 </div>
                 <div class="guide-item">
-                    <i class="fas fa-check-circle"></i>
+                    <i class="fas fa-mouse-pointer"></i>
                     <div>
-                        <h4>数据要求</h4>
-                        <p>第一行为列名（中文表头），时间戳为Unix格式（秒），行为类型：pv/cart/fav/buy</p>
+                        <h4>③ 行为数据（旧格式）— UserBehavior_2025.csv</h4>
+                        <p>必须包含列：<code>用户ID, 商品ID, 商品类目ID, 行为类型, 时间戳</code><br>
+                        行为类型：pv / cart / fav / buy，时间戳为 Unix 秒</p>
                     </div>
                 </div>
             </div>

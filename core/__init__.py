@@ -66,4 +66,21 @@ with app.app_context():
                     conn.execute(text(f'ALTER TABLE taobao_user_behavior ADD COLUMN {col} {dtype}'))
                     conn.commit()
     except Exception as _mig_err:
-        print(f'[migration] {_mig_err}')
+        print(f'[migration UserBehavior] {_mig_err}')
+
+    # 迁移 orders 表新字段（如有）
+    try:
+        inspector = sa_inspect(db.engine)
+        if 'orders' in inspector.get_table_names():
+            order_cols = {col['name'] for col in inspector.get_columns('orders')}
+            order_new = {
+                'product_province': 'VARCHAR(100)',
+                'product_region_level': 'VARCHAR(50)',
+            }
+            with db.engine.connect() as conn:
+                for col, dtype in order_new.items():
+                    if col not in order_cols:
+                        conn.execute(text(f'ALTER TABLE orders ADD COLUMN {col} {dtype}'))
+                        conn.commit()
+    except Exception as _mig_err2:
+        print(f'[migration orders] {_mig_err2}')

@@ -2,7 +2,7 @@
 """web程序 flask路由文件"""
 from core import app, db
 from core.utility import Utility
-from core.models import UserBehavior, UserProfile, ItemProfile, Recommendation, Admin, UploadHistory
+from core.models import UserBehavior, UserProfile, ItemProfile, Recommendation, Admin, UploadHistory, Order, UserAccount
 import core.data_engine as de
 from flask_login import login_user, logout_user, login_required, current_user
 from flask import render_template, request, url_for, redirect, flash, jsonify
@@ -257,38 +257,61 @@ def taobao_upload():
             file_size_str = _fmt_size(file_size_bytes)
             upload_file.seek(0)
 
-            data, error_msg = _load_and_validate_csv(upload_file)
-            if data is None:
+            # ── 自动识别 CSV 格式 ──
+            df, enc = _read_csv_auto(upload_file)
+            if df is None:
+                error_msg = '无法解析 CSV，请确认文件编码为 UTF-8 或 GBK'
                 flash(error_msg, 'error')
                 _log_upload(filename, file_size_str, 0, 'error', error_msg)
                 return redirect(url_for('taobao_upload'))
 
-            for _, row in data.iterrows():
-                ts = int(row['timestamp'])
-                dt = datetime.fromtimestamp(ts)
-                behavior = UserBehavior(
-                    user_id=int(row['user_id']),
-                    item_id=int(row['item_id']),
-                    brand=str(row.get('brand', '') or ''),
-                    brand_id=int(row['brand_id']) if row.get('brand_id') and str(row['brand_id']) != 'nan' else None,
-                    product_name=str(row.get('product_name', '') or ''),
-                    category_name=str(row.get('category_name', '') or ''),
-                    category_id=int(row['category_id']),
-                    behavior_type=str(row['behavior_type']),
-                    timestamp=ts,
-                    price=float(row['price']) if row.get('price') and str(row['price']) != 'nan' else None,
-                    behavior_datetime=dt,
-                    date=dt.date(),
-                    hour=dt.hour,
-                )
-                db.session.add(behavior)
-                records_saved += 1
-                if records_saved % 1000 == 0:
-                    db.session.flush()
+            csv_type = _detect_csv_type(set(df.columns))
 
-            db.session.commit()
-            _log_upload(filename, file_size_str, records_saved, 'success', None)
-            flash(f'数据导入成功，共保存 {records_saved} 条记录', 'success')
+            if csv_type == 'order':
+                records_saved, skipped = _import_order_csv(df, filename, file_size_str)
+                _log_upload(filename, file_size_str, records_saved, 'success', None)
+                flash(f'订单数据导入成功：新增 {records_saved} 条，跳过重复 {skipped} 条', 'success')
+
+            elif csv_type == 'user':
+                records_saved, skipped = _import_user_csv(df, filename, file_size_str)
+                _log_upload(filename, file_size_str, records_saved, 'success', None)
+                flash(f'用户数据导入成功：保存 {records_saved} 条，跳过异常 {skipped} 条', 'success')
+
+            else:
+                # UserBehavior_2025.csv 原有逻辑
+                upload_file.seek(0)
+                data, error_msg = _load_and_validate_csv(upload_file)
+                if data is None:
+                    flash(error_msg, 'error')
+                    _log_upload(filename, file_size_str, 0, 'error', error_msg)
+                    return redirect(url_for('taobao_upload'))
+
+                for _, row in data.iterrows():
+                    ts = int(row['timestamp'])
+                    dt = datetime.fromtimestamp(ts)
+                    behavior = UserBehavior(
+                        user_id=int(row['user_id']),
+                        item_id=int(row['item_id']),
+                        brand=str(row.get('brand', '') or ''),
+                        brand_id=int(row['brand_id']) if row.get('brand_id') and str(row['brand_id']) != 'nan' else None,
+                        product_name=str(row.get('product_name', '') or ''),
+                        category_name=str(row.get('category_name', '') or ''),
+                        category_id=int(row['category_id']),
+                        behavior_type=str(row['behavior_type']),
+                        timestamp=ts,
+                        price=float(row['price']) if row.get('price') and str(row['price']) != 'nan' else None,
+                        behavior_datetime=dt,
+                        date=dt.date(),
+                        hour=dt.hour,
+                    )
+                    db.session.add(behavior)
+                    records_saved += 1
+                    if records_saved % 1000 == 0:
+                        db.session.flush()
+
+                db.session.commit()
+                _log_upload(filename, file_size_str, records_saved, 'success', None)
+                flash(f'行为数据导入成功，共保存 {records_saved} 条记录', 'success')
 
         except Exception as e:
             db.session.rollback()
@@ -315,6 +338,7 @@ def taobao_upload():
 
 
 # CSV 列名映射：支持中文列名(UserBehavior_2025.csv) 和 旧英文列名两种格式
+# ── UserBehavior_2025.csv 列映射 ──
 _CSV_COL_MAP = {
     '用户ID':    'user_id',
     '商品ID':    'item_id',
@@ -329,6 +353,143 @@ _CSV_COL_MAP = {
 }
 _REQUIRED_INTERNAL = ['user_id', 'item_id', 'category_id', 'behavior_type', 'timestamp']
 _VALID_BEHAVIORS   = {'pv', 'cart', 'fav', 'buy'}
+
+# ── order.csv 必须包含的核心列 ──
+_ORDER_REQUIRED = {'order_id', 'user_id', 'product_id', 'order_time', 'amount'}
+# ── user.csv 必须包含的核心列 ──
+_USER_REQUIRED  = {'user_id', 'register_time', 'total_purchase_times', 'click_count'}
+
+
+def _detect_csv_type(df_columns: set) -> str:
+    """根据列名自动判断 CSV 格式：返回 'order' / 'user' / 'behavior'"""
+    cols = {c.lower().strip() for c in df_columns}
+    if _ORDER_REQUIRED <= {c for c in df_columns}:
+        return 'order'
+    if _USER_REQUIRED <= {c for c in df_columns}:
+        return 'user'
+    return 'behavior'
+
+
+def _read_csv_auto(file_obj):
+    """用多种编码尝试读取 CSV，返回 (df, encoding) 或 (None, None)"""
+    for enc in ['utf-8-sig', 'utf-8', 'gbk', 'gb18030']:
+        try:
+            file_obj.seek(0)
+            df = pd.read_csv(file_obj, encoding=enc)
+            if not df.empty:
+                return df, enc
+        except Exception:
+            continue
+    return None, None
+
+
+def _import_order_csv(df, filename, file_size_str):
+    """将 order.csv 数据写入 orders 表，按 order_id 去重（已存在则跳过）"""
+    saved, skipped = 0, 0
+    existing_ids = {r[0] for r in db.session.query(Order.order_id).all()}
+
+    for _, row in df.iterrows():
+        try:
+            oid = int(row['order_id'])
+            if oid in existing_ids:
+                skipped += 1
+                continue
+
+            # 解析下单时间
+            ot = pd.to_datetime(row['order_time'], errors='coerce')
+            if pd.isna(ot):
+                skipped += 1
+                continue
+            ot = ot.to_pydatetime()
+
+            # 解析上架时间
+            ld = pd.to_datetime(row.get('launch_date'), errors='coerce')
+            ld = ld.to_pydatetime() if not pd.isna(ld) else None
+
+            order = Order(
+                order_id     = oid,
+                user_id      = int(row['user_id']),
+                product_id   = int(row['product_id']) if str(row.get('product_id','')) != 'nan' else None,
+                order_time   = ot,
+                order_date   = ot.date(),
+                order_hour   = ot.hour,
+                quantity     = int(row['quantity']) if str(row.get('quantity','')) != 'nan' else 1,
+                amount       = float(row['amount']) if str(row.get('amount','')) != 'nan' else None,
+                payment_method  = str(row.get('payment_method', '') or '').strip() or None,
+                promotion_type  = str(row.get('promotion_type', '') or '').strip() or None,
+                order_status    = str(row.get('order_status', '') or '').strip() or None,
+                shipping_city   = str(row.get('shipping_city', '') or '').strip() or None,
+                fulfillment_time= int(row['fulfillment_time']) if str(row.get('fulfillment_time','')) not in ('nan','') else None,
+                gender       = str(row.get('gender', '') or '').strip() or None,
+                age          = int(row['age']) if str(row.get('age','')) not in ('nan','') else None,
+                user_province= str(row.get('user_province_name', '') or '').strip() or None,
+                product_name = str(row.get('product_name', '') or '').strip() or None,
+                brand        = str(row.get('brand', '') or '').strip() or None,
+                category     = str(row.get('category', '') or '').strip() or None,
+                price        = float(row['price']) if str(row.get('price','')) not in ('nan','') else None,
+                is_hot       = bool(int(row['is_hot'])) if str(row.get('is_hot','')) not in ('nan','') else False,
+                launch_date  = ld,
+                product_province     = str(row.get('product_province_name', '') or '').strip() or None,
+                product_region_level = str(row.get('product_region_level', '') or '').strip() or None,
+            )
+            db.session.add(order)
+            existing_ids.add(oid)
+            saved += 1
+            if saved % 1000 == 0:
+                db.session.flush()
+        except Exception:
+            skipped += 1
+            continue
+
+    db.session.commit()
+    return saved, skipped
+
+
+def _import_user_csv(df, filename, file_size_str):
+    """将 user.csv 数据写入 user_accounts 表，按 user_id 去重（已存在则覆盖）"""
+    saved, skipped = 0, 0
+
+    for _, row in df.iterrows():
+        try:
+            uid = int(row['user_id'])
+            rt  = pd.to_datetime(row.get('register_time'), errors='coerce')
+            rt  = rt.to_pydatetime() if not pd.isna(rt) else None
+            lpt = pd.to_datetime(row.get('last_purchase_time'), errors='coerce')
+            lpt = lpt.to_pydatetime() if not pd.isna(lpt) else None
+
+            prov_raw = str(row.get('user_province_name', '') or '').strip()
+            # 过滤乱码（非 ASCII 但合理中文由 gbk 编码保证）
+            prov = prov_raw if prov_raw and len(prov_raw) <= 50 else None
+
+            ua = UserAccount.query.get(uid)
+            if ua is None:
+                ua = UserAccount(user_id=uid)
+                db.session.add(ua)
+
+            ua.user_name    = str(row.get('user_name', '') or '').strip() or None
+            ua.gender       = str(row.get('gender', '') or '').strip() or None
+            ua.age          = int(row['age']) if str(row.get('age','')) not in ('nan','') else None
+            ua.register_time= rt
+            ua.register_channel = str(row.get('register_channel', '') or '').strip() or None
+            ua.user_region_id   = int(row['user_region_id']) if str(row.get('user_region_id','')) not in ('nan','') else None
+            ua.user_province    = prov
+            ua.user_region_level= str(row.get('user_region_level', '') or '').strip() or None
+            ua.province_population = int(row['user_province_population']) if str(row.get('user_province_population','')) not in ('nan','') else None
+            ua.province_gdp        = int(row['user_province_gdp'])        if str(row.get('user_province_gdp',''))        not in ('nan','') else None
+            ua.total_purchase_times  = int(row['total_purchase_times'])   if str(row.get('total_purchase_times',''))   not in ('nan','') else 0
+            ua.total_purchase_amount = float(row['total_purchase_amount']) if str(row.get('total_purchase_amount','')) not in ('nan','') else 0.0
+            ua.last_purchase_time    = lpt
+            ua.click_count = int(row['click_count']) if str(row.get('click_count','')) not in ('nan','') else 0
+            ua.cart_count  = int(row['cart_count'])  if str(row.get('cart_count',''))  not in ('nan','') else 0
+            saved += 1
+            if saved % 1000 == 0:
+                db.session.flush()
+        except Exception:
+            skipped += 1
+            continue
+
+    db.session.commit()
+    return saved, skipped
 
 
 def _load_and_validate_csv(file_obj):
