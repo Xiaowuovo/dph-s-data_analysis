@@ -84,3 +84,24 @@ with app.app_context():
                         conn.commit()
     except Exception as _mig_err2:
         print(f'[migration orders] {_mig_err2}')
+
+    # 迁移 upload_history 表新字段（数据隔离功能）
+    try:
+        inspector = sa_inspect(db.engine)
+        if 'upload_history' in inspector.get_table_names():
+            hist_cols = {col['name'] for col in inspector.get_columns('upload_history')}
+            hist_new = {
+                'table_name': 'VARCHAR(100)',
+                'data_type': 'VARCHAR(20)',
+                'min_time': 'DATETIME',
+                'max_time': 'DATETIME',
+                'available_fields': 'TEXT',
+                'is_active': 'BOOLEAN DEFAULT 1',
+            }
+            with db.engine.connect() as conn:
+                for col, dtype in hist_new.items():
+                    if col not in hist_cols:
+                        conn.execute(text(f'ALTER TABLE upload_history ADD COLUMN {col} {dtype}'))
+                        conn.commit()
+    except Exception as _mig_err3:
+        print(f'[migration upload_history] {_mig_err3}')

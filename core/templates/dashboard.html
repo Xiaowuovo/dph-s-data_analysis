@@ -19,8 +19,36 @@
         </div>
     </div>
 
+    <!-- 当前数据源信息条 -->
+    <div id="datasourceBanner" style="display:none;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:12px 20px;border-radius:10px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:12px;">
+            <i class="fas fa-database" style="font-size:1.2rem;"></i>
+            <div>
+                <div style="font-weight:600;font-size:.95rem;" id="dsFileName">-</div>
+                <div style="font-size:.8rem;opacity:.85;margin-top:2px;">
+                    <span id="dsType">-</span> · 
+                    <span id="dsTimeRange">-</span> · 
+                    <span id="dsRecords">-</span> 条记录
+                </div>
+            </div>
+        </div>
+        <button onclick="location.href='/taobao_upload'" style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:.85rem;">
+            <i class="fas fa-exchange-alt"></i> 切换数据源
+        </button>
+    </div>
+
+    <!-- 无数据提示 -->
+    <div id="noDataWarning" style="display:none;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:20px;border-radius:10px;text-align:center;margin-bottom:20px;">
+        <i class="fas fa-exclamation-triangle" style="font-size:2rem;margin-bottom:10px;display:block;"></i>
+        <h3 style="margin:0 0 8px;">暂无激活数据源</h3>
+        <p style="margin:0 0 12px;font-size:.9rem;">请先上传数据文件以开始分析</p>
+        <button onclick="location.href='/taobao_upload'" class="btn btn-primary">
+            <i class="fas fa-upload"></i> 立即上传
+        </button>
+    </div>
+
     <!-- 顶部筛选区 -->
-    <div class="filter-section">
+    <div class="filter-section" id="filterSection" style="display:none;">
         <div class="time-filter">
             <label><i class="fas fa-calendar-alt"></i> 时间范围</label>
             <div class="time-buttons">
@@ -276,9 +304,14 @@
 
 {% block page_js %}
 <script>
+let currentDatasource = null;
+
 document.addEventListener('DOMContentLoaded', function() {
-    // ── 时间筛选 ──
-    let currentDays = 0;  // 0 = 全部数据
+    // ① 先加载数据源信息
+    loadDatasourceInfo();
+    
+    // ② 时间筛选
+    let currentDays = 0;
     document.querySelectorAll('.time-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
@@ -303,11 +336,76 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('refreshBtn')?.addEventListener('click', function() {
         loadDashboard(currentDays);
     });
-
-    loadDashboard(0);  // 页面加载时默认显示全部数据
 });
 
 function fmt(n) { return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e4 ? (n/1e4).toFixed(1)+'万' : n.toLocaleString(); }
+
+// ── 加载数据源信息 ──
+async function loadDatasourceInfo() {
+    try {
+        const r = await fetch('/api/datasource/current');
+        const d = await r.json();
+        
+        if (!d.active) {
+            // 无数据源
+            document.getElementById('noDataWarning').style.display = 'block';
+            document.getElementById('datasourceBanner').style.display = 'none';
+            document.getElementById('filterSection').style.display = 'none';
+            document.querySelector('.stats-cards').style.display = 'none';
+            document.querySelector('.charts-section').style.display = 'none';
+            document.querySelector('.quick-links').style.display = 'none';
+            return;
+        }
+        
+        // 有数据源，显示信息条
+        currentDatasource = d;
+        document.getElementById('noDataWarning').style.display = 'none';
+        document.getElementById('datasourceBanner').style.display = 'flex';
+        document.getElementById('filterSection').style.display = 'block';
+        document.querySelector('.stats-cards').style.display = 'grid';
+        document.querySelector('.charts-section').style.display = 'block';
+        document.querySelector('.quick-links').style.display = 'block';
+        
+        const typeMap = {order:'订单数据', user:'用户数据', behavior:'行为数据'};
+        document.getElementById('dsFileName').textContent = d.filename;
+        document.getElementById('dsType').textContent = typeMap[d.data_type] || d.data_type;
+        document.getElementById('dsTimeRange').textContent = `${d.min_time || '?'} ~ ${d.max_time || '?'}`;
+        document.getElementById('dsRecords').textContent = fmt(d.record_count || 0);
+        
+        // 更新时间按钮提示（相对时间）
+        if (d.max_time) {
+            document.querySelector('[data-range="today"]').title = `数据最大日期：${d.max_time}`;
+            document.querySelector('[data-range="7days"]').title = `${d.max_time} 往前7天`;
+            document.querySelector('[data-range="30days"]').title = `${d.max_time} 往前30天`;
+        }
+        
+        // 加载看板数据
+        loadDashboard(0);
+        
+        // 检查字段可用性（用于侧边栏置灰）
+        checkFieldAvailability();
+        
+    } catch(e) {
+        console.error('加载数据源信息失败:', e);
+        document.getElementById('noDataWarning').style.display = 'block';
+    }
+}
+
+// ── 检查字段可用性（通知侧边栏） ──
+async function checkFieldAvailability() {
+    try {
+        const r = await fetch('/api/datasource/check_fields');
+        const modules = await r.json();
+        
+        // 发送消息给 base.html 的侧边栏
+        window.moduleAvailability = modules;
+        
+        // 触发自定义事件
+        window.dispatchEvent(new CustomEvent('modulesChecked', {detail: modules}));
+    } catch(e) {
+        console.error('字段检测失败:', e);
+    }
+}
 
 function loadDashboard(days) {
     fetch(`/api/dashboard/stats?days=${days}`)

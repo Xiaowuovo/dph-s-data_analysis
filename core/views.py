@@ -267,52 +267,10 @@ def taobao_upload():
                 return redirect(url_for('taobao_upload'))
 
             csv_type = _detect_csv_type(set(df.columns))
-
-            if csv_type == 'order':
-                records_saved, skipped = _import_order_csv(df, filename, file_size_str)
-                _log_upload(filename, file_size_str, records_saved, 'success', None)
-                flash(f'订单数据导入成功：新增 {records_saved} 条，跳过重复 {skipped} 条', 'success')
-
-            elif csv_type == 'user':
-                records_saved, skipped = _import_user_csv(df, filename, file_size_str)
-                _log_upload(filename, file_size_str, records_saved, 'success', None)
-                flash(f'用户数据导入成功：保存 {records_saved} 条，跳过异常 {skipped} 条', 'success')
-
-            else:
-                # UserBehavior_2025.csv 原有逻辑
-                upload_file.seek(0)
-                data, error_msg = _load_and_validate_csv(upload_file)
-                if data is None:
-                    flash(error_msg, 'error')
-                    _log_upload(filename, file_size_str, 0, 'error', error_msg)
-                    return redirect(url_for('taobao_upload'))
-
-                for _, row in data.iterrows():
-                    ts = int(row['timestamp'])
-                    dt = datetime.fromtimestamp(ts)
-                    behavior = UserBehavior(
-                        user_id=int(row['user_id']),
-                        item_id=int(row['item_id']),
-                        brand=str(row.get('brand', '') or ''),
-                        brand_id=int(row['brand_id']) if row.get('brand_id') and str(row['brand_id']) != 'nan' else None,
-                        product_name=str(row.get('product_name', '') or ''),
-                        category_name=str(row.get('category_name', '') or ''),
-                        category_id=int(row['category_id']),
-                        behavior_type=str(row['behavior_type']),
-                        timestamp=ts,
-                        price=float(row['price']) if row.get('price') and str(row['price']) != 'nan' else None,
-                        behavior_datetime=dt,
-                        date=dt.date(),
-                        hour=dt.hour,
-                    )
-                    db.session.add(behavior)
-                    records_saved += 1
-                    if records_saved % 1000 == 0:
-                        db.session.flush()
-
-                db.session.commit()
-                _log_upload(filename, file_size_str, records_saved, 'success', None)
-                flash(f'行为数据导入成功，共保存 {records_saved} 条记录', 'success')
+            
+            # ── 新模式：每次上传创建独立表 ──
+            table_name, records_saved = _create_isolated_table(df, csv_type, filename, file_size_str)
+            flash(f'数据导入成功：创建表 {table_name}，共 {records_saved} 条记录 · 类型：{csv_type}', 'success')
 
         except Exception as e:
             db.session.rollback()
@@ -383,6 +341,97 @@ def _read_csv_auto(raw_bytes: bytes):
         except Exception:
             continue
     return None, None
+
+
+def _create_isolated_table(df, data_type: str, filename: str, file_size_str: str):
+    """为每次上传创建独立数据表，记录元数据到 UploadHistory"""
+    import json
+    from sqlalchemy import MetaData, Table, Column, Integer, BigInteger, String, Float, DateTime, Boolean, Text
+    
+    # 生成唯一表名
+    table_name = f"upload_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    
+    # 检测可用字段
+    available_fields = list(df.columns)
+    
+    # 检测时间范围（根据数据类型选择时间列）
+    time_col = None
+    if data_type == 'order' and 'order_time' in df.columns:
+        time_col = 'order_time'
+    elif data_type == 'behavior' and 'timestamp' in df.columns:
+        # 将 Unix 时间戳转为 datetime
+        df['behavior_datetime'] = pd.to_datetime(df['timestamp'], unit='s', errors='coerce')
+        time_col = 'behavior_datetime'
+    elif 'register_time' in df.columns:
+        time_col = 'register_time'
+    
+    min_time = max_time = None
+    if time_col and time_col in df.columns:
+        try:
+            df[time_col] = pd.to_datetime(df[time_col], errors='coerce')
+            min_time = df[time_col].min()
+            max_time = df[time_col].max()
+            if pd.isna(min_time): min_time = None
+            if pd.isna(max_time): max_time = None
+        except:
+            pass
+    
+    # 动态创建表结构（通用字段映射）
+    metadata = MetaData()
+    columns = [Column('id', Integer, primary_key=True)]
+    
+    for col in df.columns:
+        col_lower = col.lower()
+        if col == 'id': continue  # 跳过主键
+        
+        # 根据列名推断类型
+        if 'id' in col_lower or col_lower in ['user_id', 'order_id', 'product_id', 'item_id']:
+            columns.append(Column(col, BigInteger))
+        elif 'time' in col_lower or 'date' in col_lower:
+            columns.append(Column(col, DateTime))
+        elif 'amount' in col_lower or 'price' in col_lower or 'revenue' in col_lower:
+            columns.append(Column(col, Float))
+        elif 'count' in col_lower or 'quantity' in col_lower or 'age' in col_lower:
+            columns.append(Column(col, Integer))
+        elif 'is_' in col_lower or col_lower in ['is_hot']:
+            columns.append(Column(col, Boolean))
+        else:
+            # 默认字符串，根据数据长度判断
+            max_len = df[col].astype(str).str.len().max() if len(df) > 0 else 100
+            if max_len > 500:
+                columns.append(Column(col, Text))
+            else:
+                columns.append(Column(col, String(min(max_len * 2, 500))))
+    
+    # 创建表
+    table = Table(table_name, metadata, *columns)
+    metadata.create_all(db.engine)
+    
+    # 写入数据
+    df.to_sql(table_name, db.engine, if_exists='append', index=False, method='multi', chunksize=1000)
+    
+    # 记录到 UploadHistory
+    history = UploadHistory(
+        filename=filename,
+        file_size=file_size_str,
+        record_count=len(df),
+        status='success',
+        operator=current_user.username if current_user.is_authenticated else 'system',
+        table_name=table_name,
+        data_type=data_type,
+        min_time=min_time,
+        max_time=max_time,
+        available_fields=json.dumps(available_fields, ensure_ascii=False),
+        is_active=True,  # 新上传的数据默认激活
+    )
+    
+    # 将其他数据源设为非激活
+    UploadHistory.query.filter(UploadHistory.is_active == True).update({'is_active': False})
+    
+    db.session.add(history)
+    db.session.commit()
+    
+    return table_name, len(df)
 
 
 def _import_order_csv(df, filename, file_size_str):
@@ -598,6 +647,68 @@ def api_upload_preview():
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
+
+
+def _get_active_datasource():
+    """获取当前激活的数据源（UploadHistory 记录）"""
+    return UploadHistory.query.filter_by(is_active=True, status='success').first()
+
+
+@app.route('/api/datasource/switch/<int:upload_id>', methods=['POST'])
+@login_required
+def api_switch_datasource(upload_id):
+    """切换当前激活的数据源"""
+    try:
+        # 取消所有激活状态
+        UploadHistory.query.update({'is_active': False})
+        # 激活指定数据源
+        target = UploadHistory.query.get(upload_id)
+        if not target:
+            return jsonify({'success': False, 'error': '数据源不存在'})
+        target.is_active = True
+        db.session.commit()
+        return jsonify({'success': True, 'table_name': target.table_name, 'data_type': target.data_type})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/datasource/current')
+@login_required
+def api_current_datasource():
+    """返回当前激活数据源的元信息"""
+    ds = _get_active_datasource()
+    if not ds:
+        return jsonify({'active': False, 'message': '暂无激活数据源，请先上传数据'})
+    return jsonify({'active': True, **ds.to_dict()})
+
+
+@app.route('/api/datasource/check_fields')
+@login_required
+def api_check_fields():
+    """检查当前数据源的字段可用性，返回各分析模块的启用状态"""
+    from core.data_engine import check_field_availability
+    
+    # 定义各分析模块的必需字段
+    modules = {
+        'dashboard': ['user_id', 'item_id'],  # 基础看板
+        'sales': ['amount', 'order_time'],  # 销售分析
+        'behavior': ['behavior_type', 'timestamp'],  # 行为分析
+        'rfm': ['user_id', 'amount', 'order_time'],  # RFM分析
+        'user_profile': ['user_id', 'age', 'gender'],  # 用户画像
+        'item_analysis': ['item_id', 'category_name', 'price'],  # 商品分析
+    }
+    
+    result = {}
+    for module, required in modules.items():
+        availability = check_field_availability(required)
+        result[module] = {
+            'enabled': all(availability.values()),
+            'missing_fields': [f for f, avail in availability.items() if not avail],
+            'required_fields': required,
+        }
+    
+    return jsonify(result)
 
 
 @app.route('/api/upload/db_stats')

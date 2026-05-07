@@ -209,19 +209,43 @@
             {% if upload_history %}
             <table class="hist-table">
                 <thead><tr>
-                    <th>文件名</th><th>记录数</th><th>时间</th><th>状态</th>
+                    <th>文件名</th><th>类型</th><th>时间范围</th><th>记录数</th><th>上传时间</th><th>状态</th><th>操作</th>
                 </tr></thead>
                 <tbody>
                 {% for r in upload_history %}
-                <tr>
-                    <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ r.filename }}">{{ r.filename }}</td>
+                <tr {% if r.is_active %}style="background:#f0fdf4;"{% endif %}>
+                    <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ r.filename }}">
+                        {% if r.is_active %}<i class="fas fa-check-circle" style="color:#059669;margin-right:4px;"></i>{% endif %}
+                        {{ r.filename }}
+                    </td>
+                    <td>
+                        {% if r.data_type == 'order' %}
+                        <span class="type-pill type-order">订单</span>
+                        {% elif r.data_type == 'user' %}
+                        <span class="type-pill type-user">用户</span>
+                        {% else %}
+                        <span class="type-pill type-behavior">行为</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size:.8rem;white-space:nowrap;">{{ r.min_time or '-' }} ~ {{ r.max_time or '-' }}</td>
                     <td>{{ r.record_count|default(0)|format_number }}</td>
-                    <td style="white-space:nowrap;">{{ r.upload_time }}</td>
+                    <td style="white-space:nowrap;font-size:.85rem;">{{ r.upload_time }}</td>
                     <td>
                         {% if r.status == 'success' %}
                         <span class="status-ok"><i class="fas fa-check-circle"></i> 成功</span>
                         {% else %}
                         <span class="status-err"><i class="fas fa-times-circle"></i> 失败</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if r.status == 'success' %}
+                            {% if r.is_active %}
+                            <span style="color:#059669;font-size:.8rem;font-weight:600;">当前激活</span>
+                            {% else %}
+                            <button onclick="switchDatasource({{ r.id }})" style="background:#6f068b;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:.8rem;">
+                                <i class="fas fa-exchange-alt"></i> 切换
+                            </button>
+                            {% endif %}
                         {% endif %}
                     </td>
                 </tr>
@@ -446,6 +470,25 @@ function showToast(type, msg) {
     d.innerHTML = `<i class="fas fa-${type==='error'?'exclamation-circle':'check-circle'}"></i>${msg}`;
     document.body.appendChild(d);
     setTimeout(() => d.remove(), 5000);
+}
+
+// ── 切换数据源 ──
+async function switchDatasource(uploadId) {
+    if (!confirm('确定要切换到此数据源吗？\n所有分析模块将基于该数据进行统计。')) return;
+    
+    try {
+        const r = await fetch(`/api/datasource/switch/${uploadId}`, {method: 'POST'});
+        const d = await r.json();
+        
+        if (d.success) {
+            showToast('success', `已切换到数据源：${d.table_name}`);
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast('error', '切换失败：' + d.error);
+        }
+    } catch(e) {
+        showToast('error', '请求失败：' + e.message);
+    }
 }
 </script>
 {% endblock %}

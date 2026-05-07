@@ -102,7 +102,7 @@ class ItemProfile(db.Model):
 
 
 class UploadHistory(db.Model):
-    '''数据上传历史记录表'''
+    '''数据上传历史记录表（扩展：支持独立数据表 + 字段检测）'''
     __tablename__ = 'upload_history'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -113,8 +113,17 @@ class UploadHistory(db.Model):
     error_log = db.Column(db.Text)
     operator = db.Column(db.String(100))
     upload_time = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    # ── 新增：数据隔离 + 字段检测 ──
+    table_name = db.Column(db.String(100), index=True)  # 独立表名，如 upload_20260507_183045
+    data_type = db.Column(db.String(20))  # order / user / behavior
+    min_time = db.Column(db.DateTime)  # 数据最小时间
+    max_time = db.Column(db.DateTime)  # 数据最大时间（作为"今日"基准）
+    available_fields = db.Column(db.Text)  # JSON 字符串，记录可用字段列表
+    is_active = db.Column(db.Boolean, default=True)  # 是否为当前激活数据源
 
     def to_dict(self):
+        import json
         return {
             'id': self.id,
             'filename': self.filename,
@@ -124,6 +133,12 @@ class UploadHistory(db.Model):
             'error_log': self.error_log,
             'operator': self.operator,
             'upload_time': self.upload_time.strftime('%Y-%m-%d %H:%M:%S') if self.upload_time else '',
+            'table_name': self.table_name,
+            'data_type': self.data_type,
+            'min_time': self.min_time.strftime('%Y-%m-%d') if self.min_time else None,
+            'max_time': self.max_time.strftime('%Y-%m-%d') if self.max_time else None,
+            'available_fields': json.loads(self.available_fields) if self.available_fields else [],
+            'is_active': self.is_active,
         }
 
 

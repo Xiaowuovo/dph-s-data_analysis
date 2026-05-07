@@ -69,13 +69,15 @@
                     <h3 class="section-title"><i class="fas fa-chart-area"></i> 行为分析中心</h3>
                     <ul class="nav-list">
                         <li class="nav-item">
-                            <a href="{{ url_for('behavior_analysis_center') }}" class="nav-link">
+                            <a href="{{ url_for('behavior_analysis_center') }}" class="nav-link" data-module="behavior">
                                 <i class="fas fa-chart-line"></i> 行为分析
+                                <span class="field-warning" style="display:none;color:#f59e0b;font-size:.7rem;margin-left:auto;">⚠</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="{{ url_for('item_analysis') }}" class="nav-link">
+                            <a href="{{ url_for('item_analysis') }}" class="nav-link" data-module="item_analysis">
                                 <i class="fas fa-shopping-bag"></i> 商品分析
+                                <span class="field-warning" style="display:none;color:#f59e0b;font-size:.7rem;margin-left:auto;">⚠</span>
                             </a>
                         </li>
                     </ul>
@@ -85,13 +87,15 @@
                     <h3 class="section-title"><i class="fas fa-user-friends"></i> 用户价值分析</h3>
                     <ul class="nav-list">
                         <li class="nav-item">
-                            <a href="{{ url_for('user_value_analysis') }}" class="nav-link">
+                            <a href="{{ url_for('user_value_analysis') }}" class="nav-link" data-module="rfm">
                                 <i class="fas fa-gem"></i> RFM价值分析
+                                <span class="field-warning" style="display:none;color:#f59e0b;font-size:.7rem;margin-left:auto;">⚠</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="{{ url_for('user_analysis') }}" class="nav-link">
+                            <a href="{{ url_for('user_analysis') }}" class="nav-link" data-module="user_profile">
                                 <i class="fas fa-user-chart"></i> 用户画像
+                                <span class="field-warning" style="display:none;color:#f59e0b;font-size:.7rem;margin-left:auto;">⚠</span>
                             </a>
                         </li>
                     </ul>
@@ -197,6 +201,37 @@
             });
 
             document.querySelector('.header-container').appendChild(toggleBtn);
+            
+            // ── 监听字段可用性检查结果 ──
+            window.addEventListener('modulesChecked', function(e) {
+                const modules = e.detail;
+                document.querySelectorAll('.nav-link[data-module]').forEach(link => {
+                    const moduleName = link.dataset.module;
+                    const moduleInfo = modules[moduleName];
+                    const warning = link.querySelector('.field-warning');
+                    
+                    if (moduleInfo && !moduleInfo.enabled) {
+                        // 置灰 + 显示警告图标
+                        link.style.opacity = '0.5';
+                        link.style.cursor = 'not-allowed';
+                        if (warning) {
+                            warning.style.display = 'inline';
+                            warning.title = `缺少字段：${moduleInfo.missing_fields.join(', ')}`;
+                        }
+                        
+                        // 阻止点击
+                        link.addEventListener('click', function(evt) {
+                            evt.preventDefault();
+                            alert(`当前数据源缺少必需字段，无法使用此功能\n\n缺少字段：${moduleInfo.missing_fields.join(', ')}\n必需字段：${moduleInfo.required_fields.join(', ')}`);
+                        });
+                    } else {
+                        // 恢复正常
+                        link.style.opacity = '1';
+                        link.style.cursor = 'pointer';
+                        if (warning) warning.style.display = 'none';
+                    }
+                });
+            });
         });
 
         // 显示当前时间

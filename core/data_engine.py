@@ -11,11 +11,67 @@ from collections import defaultdict
 from sqlalchemy import func, desc, case, distinct, text
 
 from core import db
-from core.models import UserBehavior, Order, UserAccount
+from core.models import UserBehavior, Order, UserAccount, UploadHistory
+from sqlalchemy import Table, MetaData
+
+
+# ══════════════════════════════════════════════════════════════════
+#  动态数据源加载（支持独立表 + 相对时间基准）
+# ══════════════════════════════════════════════════════════════════
+
+def _get_active_table():
+    """获取当前激活数据源的表对象 + 元信息"""
+    ds = UploadHistory.query.filter_by(is_active=True, status='success').first()
+    if not ds or not ds.table_name:
+        return None, None
+    
+    metadata = MetaData()
+    try:
+        table = Table(ds.table_name, metadata, autoload_with=db.engine)
+        return table, ds
+    except Exception:
+        return None, None
+
+
+def _get_time_column(table, data_type: str):
+    """根据数据类型返回时间列名"""
+    cols = {c.name for c in table.columns}
+    if data_type == 'order' and 'order_time' in cols:
+        return 'order_time'
+    elif data_type == 'behavior':
+        if 'behavior_datetime' in cols:
+            return 'behavior_datetime'
+        elif 'timestamp' in cols:
+            return 'timestamp'  # Unix 时间戳需转换
+    elif 'register_time' in cols:
+        return 'register_time'
+    return None
+
+
+def _relative_time_range(days: int, max_time: datetime):
+    """基于数据最大时间计算相对时间范围（解决静态数据的"今日"问题）
+    days=0  → 全量
+    days>0  → [max_time - days, max_time]
+    """
+    if days == 0 or not max_time:
+        return None, None  # 全量
+    start_dt = max_time - timedelta(days=days)
+    return start_dt, max_time
+
+
+def check_field_availability(required_fields: list) -> dict:
+    """检查当前数据源是否包含必需字段，返回 {field: available}"""
+    table, ds = _get_active_table()
+    if not table or not ds:
+        return {f: False for f in required_fields}
+    
+    import json
+    available = set(json.loads(ds.available_fields) if ds.available_fields else [])
+    return {f: (f in available) for f in required_fields}
 
 
 # ──────────────────────────────────────────────
-# 工具
+# 工具（旧版，保留兼容）
 # ──────────────────────────────────────────────
 def _ts_range(days: int):
     """返回 (start_ts, end_ts) Unix 整数秒。
@@ -61,7 +117,108 @@ def _q_base(days: int):
 # ──────────────────────────────────────────────
 # 1. 数据看板 / 总览
 # ──────────────────────────────────────────────
+def get_dynamic_dashboard_stats(days: int = 0) -> dict:
+    """新版看板统计：基于动态数据源 + 相对时间基准"""
+    table, ds = _get_active_table()
+    if not table or not ds:
+        return {'error': '暂无激活数据源', 'empty': True, **_empty_dashboard()}
+    
+    # 获取时间列
+    time_col_name = _get_time_column(table, ds.data_type)
+    if not time_col_name:
+        # 无时间列，返回全量统计
+        total = db.session.query(func.count()).select_from(table).scalar() or 0
+        return {
+            'total_records': total,
+            'data_type': ds.data_type,
+            'time_range': '全量数据（无时间字段）',
+            **_empty_dashboard()
+        }
+    
+    # 计算相对时间范围
+    start_dt, end_dt = _relative_time_range(days, ds.max_time)
+    time_col = table.c[time_col_name]
+    
+    # 构建查询
+    if start_dt and end_dt:
+        base_filter = time_col.between(start_dt, end_dt)
+        time_label = f"{start_dt.strftime('%Y-%m-%d')} ~ {end_dt.strftime('%Y-%m-%d')}"
+    else:
+        base_filter = text('1=1')  # 全量
+        time_label = f"{ds.min_time.strftime('%Y-%m-%d') if ds.min_time else '?'} ~ {ds.max_time.strftime('%Y-%m-%d') if ds.max_time else '?'}"
+    
+    total = db.session.query(func.count()).select_from(table).filter(base_filter).scalar() or 0
+    
+    if total == 0:
+        return {'total_records': 0, 'data_type': ds.data_type, 'time_range': time_label, **_empty_dashboard()}
+    
+    # 根据数据类型返回不同统计
+    if ds.data_type == 'order':
+        return _stats_for_order_table(table, base_filter, total, time_label, ds)
+    elif ds.data_type == 'behavior':
+        return _stats_for_behavior_table(table, base_filter, total, time_label, ds)
+    else:
+        return {'total_records': total, 'data_type': ds.data_type, 'time_range': time_label, **_empty_dashboard()}
+
+
+def _stats_for_order_table(table, base_filter, total, time_label, ds):
+    """订单表专属统计"""
+    cols = {c.name for c in table.columns}
+    
+    # 核心指标
+    stats = {'total_records': total, 'data_type': 'order', 'time_range': time_label}
+    
+    if 'user_id' in cols:
+        stats['total_users'] = db.session.query(func.count(distinct(table.c.user_id))).filter(base_filter).scalar() or 0
+    if 'product_id' in cols:
+        stats['total_items'] = db.session.query(func.count(distinct(table.c.product_id))).filter(base_filter).scalar() or 0
+    if 'amount' in cols:
+        stats['total_revenue'] = round(db.session.query(func.sum(table.c.amount)).filter(base_filter).scalar() or 0, 2)
+        stats['avg_order_value'] = round(stats['total_revenue'] / total, 2) if total else 0
+    
+    # 订单状态分布
+    if 'order_status' in cols:
+        status_q = db.session.query(table.c.order_status, func.count().label('cnt')).filter(base_filter).group_by(table.c.order_status).all()
+        stats['status_dist'] = [{'name': r[0], 'value': r[1]} for r in status_q if r[0]]
+    
+    return {**_empty_dashboard(), **stats}
+
+
+def _stats_for_behavior_table(table, base_filter, total, time_label, ds):
+    """行为表专属统计"""
+    cols = {c.name for c in table.columns}
+    
+    stats = {'total_records': total, 'data_type': 'behavior', 'time_range': time_label}
+    
+    if 'user_id' in cols:
+        stats['total_users'] = db.session.query(func.count(distinct(table.c.user_id))).filter(base_filter).scalar() or 0
+    if 'item_id' in cols:
+        stats['total_items'] = db.session.query(func.count(distinct(table.c.item_id))).filter(base_filter).scalar() or 0
+    
+    # 行为类型分布
+    if 'behavior_type' in cols:
+        beh_q = db.session.query(table.c.behavior_type, func.count().label('cnt')).filter(base_filter).group_by(table.c.behavior_type).all()
+        beh_map = {r[0]: r[1] for r in beh_q if r[0]}
+        stats['pv'] = beh_map.get('pv', 0)
+        stats['cart'] = beh_map.get('cart', 0)
+        stats['fav'] = beh_map.get('fav', 0)
+        stats['buy'] = beh_map.get('buy', 0)
+        stats['conversion_rate'] = round(stats['buy'] / stats['pv'] * 100, 2) if stats.get('pv') else 0
+    
+    if 'price' in cols and 'behavior_type' in cols:
+        revenue = db.session.query(func.sum(table.c.price)).filter(base_filter, table.c.behavior_type == 'buy').scalar() or 0
+        stats['total_revenue'] = round(revenue, 2)
+    
+    return {**_empty_dashboard(), **stats}
+
+
 def get_dashboard_stats(days: int = 30) -> dict:
+    # 优先使用动态数据源
+    table, ds = _get_active_table()
+    if table and ds:
+        return get_dynamic_dashboard_stats(days)
+    
+    # 降级到旧逻辑
     if has_order_data():
         return get_order_dashboard_stats(days)
     s, e = _ts_range(days)
