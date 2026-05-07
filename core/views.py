@@ -1439,6 +1439,14 @@ def get_default_api_data():
     }
 
 
+def generate_chart_data_based_on_config(config):
+    """根据配置生成图表数据（占位实现）"""
+    if not config:
+        return {}
+    chart_type = config.get('type', 'bar')
+    return {'type': chart_type, 'data': [], 'labels': []}
+
+
 # API路由-为前端JavaScript提供数据接口
 @app.route('/api/visualization/data')
 @login_required
@@ -1477,14 +1485,6 @@ def api_generate_charts():
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
-
-
-# ========== 数据看板视图函数 ==========
-@app.route('/dashboard')
-@login_required
-def dashboard():
-    """数据看板"""
-    return render_template('dashboard.html')
 
 
 # ========== 商品分析视图函数 ==========
