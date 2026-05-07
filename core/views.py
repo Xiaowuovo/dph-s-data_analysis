@@ -2898,6 +2898,25 @@ def api_dashboard_stats():
         return jsonify({'success': False, 'error': str(e)})
 
 
+@app.route('/api/debug/db_status')
+@login_required
+def api_debug_db_status():
+    """调试端点：返回数据库中的记录总数及时间范围，用于验证数据是否入库"""
+    try:
+        total = UserBehavior.query.count()
+        max_ts = db.session.query(func.max(UserBehavior.timestamp)).scalar()
+        min_ts = db.session.query(func.min(UserBehavior.timestamp)).scalar()
+        from datetime import datetime as _dt
+        return jsonify({
+            'total_records': total,
+            'min_time': _dt.fromtimestamp(int(min_ts)).strftime('%Y-%m-%d %H:%M:%S') if min_ts else None,
+            'max_time': _dt.fromtimestamp(int(max_ts)).strftime('%Y-%m-%d %H:%M:%S') if max_ts else None,
+            'server_now': _dt.now().strftime('%Y-%m-%d %H:%M:%S'),
+        })
+    except Exception as ex:
+        return jsonify({'error': str(ex)})
+
+
 @app.route('/api/behavior/stats')
 @login_required
 def api_behavior_stats():

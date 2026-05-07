@@ -24,8 +24,9 @@
         <div class="time-filter">
             <label><i class="fas fa-calendar-alt"></i> 时间范围</label>
             <div class="time-buttons">
+                <button class="time-btn active" data-range="all">全部</button>
                 <button class="time-btn" data-range="today">今日</button>
-                <button class="time-btn active" data-range="7days">近7天</button>
+                <button class="time-btn" data-range="7days">近7天</button>
                 <button class="time-btn" data-range="30days">近30天</button>
                 <button class="time-btn" data-range="custom">自定义</button>
             </div>
@@ -277,14 +278,15 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // ── 时间筛选 ──
-    let currentDays = 7;
+    let currentDays = 0;  // 0 = 全部数据
     document.querySelectorAll('.time-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             const r = this.dataset.range;
-            if (r === 'today') currentDays = 1;
-            else if (r === '7days') currentDays = 7;
+            if      (r === 'all')    currentDays = 0;
+            else if (r === 'today')  currentDays = 1;
+            else if (r === '7days')  currentDays = 7;
             else if (r === '30days') currentDays = 30;
             if (r !== 'custom') loadDashboard(currentDays);
             document.getElementById('customDatePicker').style.display = r === 'custom' ? 'block' : 'none';
@@ -302,7 +304,7 @@ document.addEventListener('DOMContentLoaded', function() {
         loadDashboard(currentDays);
     });
 
-    loadDashboard(currentDays);
+    loadDashboard(0);  // 页面加载时默认显示全部数据
 });
 
 function fmt(n) { return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e4 ? (n/1e4).toFixed(1)+'万' : n.toLocaleString(); }

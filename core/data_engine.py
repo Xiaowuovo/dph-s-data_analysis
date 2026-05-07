@@ -19,20 +19,37 @@ from core.models import UserBehavior
 # ──────────────────────────────────────────────
 def _ts_range(days: int):
     """返回 (start_ts, end_ts) Unix 整数秒。
-    以数据库中最新记录的时间戳为基准往前推 days 天；
-    若库中无数据则退回到当前时间。这样即使导入的是历史 CSV 数据，
-    时间筛选也能正确命中所有记录。
+    days=0  → 全量（DB 实际 min~max）；
+    days>0  → 以 DB 最新记录为基准往前推 days 天；
+    若计算出的范围内无数据，自动回退到全量范围，确保历史 CSV 也能正确显示。
     """
     try:
         max_ts = db.session.query(func.max(UserBehavior.timestamp)).scalar()
+        min_ts = db.session.query(func.min(UserBehavior.timestamp)).scalar()
     except Exception:
-        max_ts = None
-    if max_ts:
-        end_dt = datetime.fromtimestamp(int(max_ts))
-    else:
-        end_dt = datetime.now()
+        max_ts = min_ts = None
+
+    # 全量模式 或 库空
+    if days == 0 or not max_ts or not min_ts:
+        if max_ts and min_ts:
+            return int(min_ts), int(max_ts)
+        return 0, int(datetime.now().timestamp())
+
+    end_dt   = datetime.fromtimestamp(int(max_ts))
     start_dt = end_dt - timedelta(days=days)
-    return int(start_dt.timestamp()), int(end_dt.timestamp())
+    s, e     = int(start_dt.timestamp()), int(end_dt.timestamp())
+
+    # 校验：若范围内无数据则回退到全量（防止 days 设置过小遗漏数据）
+    try:
+        in_range = db.session.query(
+            func.count(UserBehavior.id)
+        ).filter(UserBehavior.timestamp.between(s, e)).scalar() or 0
+    except Exception:
+        in_range = 0
+
+    if in_range == 0:
+        return int(min_ts), int(max_ts)
+    return s, e
 
 
 def _q_base(days: int):
@@ -51,7 +68,15 @@ def get_dashboard_stats(days: int = 30) -> dict:
     # 行为总计
     total = q.count()
     if total == 0:
-        return _empty_dashboard()
+        # 时间窗口内无数据 → 自动扩展到全量
+        all_count = UserBehavior.query.count()
+        if all_count == 0:
+            return _empty_dashboard()
+        min_ts = db.session.query(func.min(UserBehavior.timestamp)).scalar()
+        max_ts = db.session.query(func.max(UserBehavior.timestamp)).scalar()
+        s, e = int(min_ts), int(max_ts)
+        q = UserBehavior.query.filter(UserBehavior.timestamp.between(s, e))
+        total = q.count()
 
     # 按行为类型聚合
     counts_q = db.session.query(
@@ -171,7 +196,7 @@ def _empty_dashboard():
 # 2. 行为分析中心
 # ──────────────────────────────────────────────
 def get_behavior_stats(days: int = 30) -> dict:
-    s, e = _ts_range(days)
+    s, e = _ts_range(days)  # 已内置全量回退
 
     # 小时分布
     hour_q = db.session.query(
@@ -247,7 +272,7 @@ def get_behavior_stats(days: int = 30) -> dict:
 # 3. 商品分析
 # ──────────────────────────────────────────────
 def get_item_stats(days: int = 30, category: str = 'all', sort_by: str = 'purchases') -> dict:
-    s, e = _ts_range(days)
+    s, e = _ts_range(days)  # 已内置全量回退
     base = UserBehavior.timestamp.between(s, e)
 
     # 总商品数 / 活跃商品
