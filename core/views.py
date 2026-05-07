@@ -384,8 +384,10 @@ def _create_isolated_table(df, data_type: str, filename: str, file_size_str: str
         col_lower = col.lower()
         if col == 'id': continue  # 跳过主键
         
-        # 根据列名推断类型（优先级从高到低）
-        # 1. 数值型字段（避免被误判为时间）
+        # 智能类型推断：先检查数据内容，再结合列名
+        sample_val = df[col].dropna().iloc[0] if len(df[col].dropna()) > 0 else None
+        
+        # 1. 数值型字段（优先级最高，避免被误判）
         if 'times' in col_lower or 'count' in col_lower or 'quantity' in col_lower or 'age' in col_lower or 'num' in col_lower:
             columns.append(Column(col, Integer))
         elif 'amount' in col_lower or 'price' in col_lower or 'revenue' in col_lower or 'rate' in col_lower:
@@ -393,9 +395,15 @@ def _create_isolated_table(df, data_type: str, filename: str, file_size_str: str
         # 2. ID 字段
         elif 'id' in col_lower or col_lower in ['user_id', 'order_id', 'product_id', 'item_id']:
             columns.append(Column(col, BigInteger))
-        # 3. 时间字段（严格匹配，避免误判）
+        # 3. 时间字段（严格匹配 + 数据验证）
         elif col_lower.endswith('_time') or col_lower.endswith('_date') or col_lower in ['timestamp', 'datetime', 'order_time', 'register_time', 'behavior_datetime']:
-            columns.append(Column(col, DateTime))
+            # 验证数据是否真的是时间格式（包含 - 或 :）
+            if sample_val and isinstance(sample_val, str) and ('-' in sample_val or ':' in sample_val):
+                columns.append(Column(col, DateTime))
+            else:
+                # 数据是数字，按字符串处理
+                max_len = df[col].astype(str).str.len().max() if len(df) > 0 else 100
+                columns.append(Column(col, String(min(max_len * 2, 200))))
         # 4. 布尔字段
         elif 'is_' in col_lower or col_lower in ['is_hot']:
             columns.append(Column(col, Boolean))
@@ -681,10 +689,22 @@ def api_switch_datasource(upload_id):
 @login_required
 def api_current_datasource():
     """返回当前激活数据源的元信息"""
-    ds = _get_active_datasource()
-    if not ds:
-        return jsonify({'active': False, 'message': '暂无激活数据源，请先上传数据'})
-    return jsonify({'active': True, **ds.to_dict()})
+    try:
+        # 调试：检查所有上传记录
+        all_uploads = UploadHistory.query.filter_by(status='success').all()
+        print(f"[DEBUG] 所有成功上传记录数: {len(all_uploads)}")
+        for u in all_uploads:
+            print(f"  - {u.filename}: is_active={getattr(u, 'is_active', 'NO_FIELD')}, table_name={getattr(u, 'table_name', 'NO_FIELD')}")
+        
+        ds = _get_active_datasource()
+        if not ds:
+            return jsonify({'active': False, 'message': '暂无激活数据源，请先上传数据'})
+        return jsonify({'active': True, **ds.to_dict()})
+    except Exception as e:
+        print(f"[ERROR] api_current_datasource: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'active': False, 'error': str(e)})
 
 
 @app.route('/api/datasource/check_fields')
