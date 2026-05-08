@@ -2035,13 +2035,15 @@ def rfm_analysis():
                                insights=[],
                                analysis_period=f"{start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}")
     except Exception as e:
+        import traceback; traceback.print_exc()
         print(f"RFM分析页面错误: {str(e)}")
         empty = de._empty_rfm()
         empty.update({'total_segments': 0, 'high_value_count': 0, 'high_value_percent': 0,
                       'at_risk_count': 0, 'avg_customer_value': 0})
         return render_template('rfm_analysis.html',
                                rfm_data=empty,
-                               insights=[])
+                               insights=[],
+                               analysis_period=f"{start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}")
 
 
 @app.route('/api/rfm/data')
@@ -2049,29 +2051,48 @@ def rfm_analysis():
 def api_rfm_data():
     """RFM数据API接口"""
     try:
-        from datetime import datetime, timedelta
+        days = int(request.args.get('days', 90))
+        rfm = de.get_rfm_data(days)
+        segments = rfm.get('segments', [])
+        total = rfm.get('total_users', 0) or 1
 
-        start_date, end_date = _data_date_range(90)
+        # 构建矩阵散点数据 — 兼容 order 路径(rfm_rows) 和 behavior 路径(user_sample)
+        raw_rows = rfm.get('rfm_rows') or rfm.get('user_sample') or []
+        matrix = [{'x': r.get('R', r.get('recency', 0)),
+                   'y': r.get('F', r.get('freq', 1)),
+                   'z': r.get('M', r.get('monetary', 0)),
+                   'seg': r.get('segment', '')}
+                  for r in raw_rows[:300]]
 
-        behaviors = UserBehavior.query.filter(
-            UserBehavior.behavior_datetime.between(start_date, end_date)
-        ).all()
+        # 分群分布饼图数据
+        seg_dist = [
+            {'name': s.get('segment_name', s.get('segment', '')),
+             'value': s['count'],
+             'pct': round(s['count'] / total * 100, 1),
+             'color': s.get('color', '#aaa')}
+            for s in segments
+        ]
 
-        user_profiles = UserProfile.query.all()
-
-        rfm_data = calculate_complete_rfm_analysis(behaviors, user_profiles, end_date)
+        # 分群对比（频次 / 消费 / 最近度）
+        seg_comparison = {
+            'names':     [s.get('segment_name', s.get('segment', '')) for s in segments],
+            'frequency': [s.get('avg_frequency', s.get('F', 0)) for s in segments],
+            'monetary':  [s.get('avg_monetary',  s.get('M', 0)) for s in segments],
+            'recency':   [s.get('avg_recency',   s.get('R', 0)) for s in segments],
+        }
 
         return jsonify({
             'success': True,
             'data': {
-                'rfm_matrix': prepare_rfm_matrix_data(rfm_data),
-                'segment_distribution': prepare_segment_distribution(rfm_data),
-                'segment_trends': prepare_segment_trends(behaviors, start_date, end_date),
-                'segment_comparison': prepare_segment_comparison(rfm_data),
-                'user_segments': rfm_data['user_segments']
+                'rfm_matrix':           matrix,
+                'segment_distribution': seg_dist,
+                'segment_comparison':   seg_comparison,
+                'segments':             segments,
+                'total_users':          rfm.get('total_users', 0),
             }
         })
     except Exception as e:
+        import traceback; traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
 
 
