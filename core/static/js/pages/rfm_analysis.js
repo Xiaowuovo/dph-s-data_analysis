@@ -70,6 +70,7 @@ class RFMAnalysisModule {
             const res  = await fetch('/api/rfm/data?days=' + days).then(r => r.json());
             if (!res.success) throw new Error(res.error || '接口错误');
             this.rfmData = res.data;
+            this.updateMetricCards();
             this.renderSegmentPie();
             this.renderSegmentComparison();
             this.renderRFMScatter();
@@ -79,6 +80,25 @@ class RFMAnalysisModule {
             console.error('RFM加载失败:', err);
             this.showError('数据加载失败: ' + err.message);
         }
+    }
+
+    /* ── update top metric cards ── */
+    updateMetricCards() {
+        const d = this.rfmData;
+        const segs = d.segments || [];
+        const total = d.total_users || 0;
+        // high-value: segment names containing 高价值/冠军/忠诚
+        const highNames = ['冠军客户','忠诚客户','高价值用户','忠诚用户'];
+        const riskNames = ['流失风险','需关注','流失用户','已流失客户'];
+        const highCnt = segs.filter(s => highNames.includes(s.segment_name || s.segment)).reduce((a,s)=>a+s.count,0);
+        const riskCnt = segs.filter(s => riskNames.includes(s.segment_name || s.segment)).reduce((a,s)=>a+s.count,0);
+        const avgMon  = segs.length ? (segs.reduce((a,s)=>a+(s.avg_monetary||s.M||0),0)/segs.length).toFixed(1) : 0;
+        const _set = (sel, val) => { const el = document.querySelector(sel); if (el) el.textContent = val; };
+        _set('.metric-card:nth-child(1) .metric-value', segs.length);
+        _set('.metric-card:nth-child(2) .metric-value', highCnt.toLocaleString());
+        _set('.metric-card:nth-child(2) .metric-change', `占比 ${total ? (highCnt/total*100).toFixed(1) : 0}%`);
+        _set('.metric-card:nth-child(3) .metric-value', riskCnt.toLocaleString());
+        _set('.metric-card:nth-child(4) .metric-value', avgMon);
     }
 
     /* ── Chart 1: Segment distribution pie ── */

@@ -2010,40 +2010,16 @@ def conversion_analysis():
 @app.route('/rfm_analysis')
 @login_required
 def rfm_analysis():
-    """RFM用户价值分析页面"""
+    """RFM用户价值分析页面 — 页面骨架立即返回，数据由 /api/rfm/data 异步加载"""
     days = int(request.args.get('days', 90))
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
-    try:
-        rfm_data = de.get_rfm_data(days)
-        segs = {s['segment']: s for s in rfm_data.get('segments', [])}
-        high_segs = ['champion', 'loyal']
-        risk_segs = ['at_risk', 'slipping']
-        high_val  = sum(segs[k]['count'] for k in high_segs if k in segs)
-        at_risk   = sum(segs[k]['count'] for k in risk_segs if k in segs)
-        total_u   = rfm_data.get('total_users', 0)
-        all_mon   = [s['avg_monetary'] for s in rfm_data.get('segments', []) if s.get('avg_monetary')]
-        rfm_data.update({
-            'total_segments':     len(rfm_data.get('segments', [])),
-            'high_value_count':   high_val,
-            'high_value_percent': round(high_val / total_u * 100, 1) if total_u else 0,
-            'at_risk_count':      at_risk,
-            'avg_customer_value': round(sum(all_mon) / len(all_mon), 2) if all_mon else 0,
-        })
-        return render_template('rfm_analysis.html',
-                               rfm_data=rfm_data,
-                               insights=[],
-                               analysis_period=f"{start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}")
-    except Exception as e:
-        import traceback; traceback.print_exc()
-        print(f"RFM分析页面错误: {str(e)}")
-        empty = de._empty_rfm()
-        empty.update({'total_segments': 0, 'high_value_count': 0, 'high_value_percent': 0,
-                      'at_risk_count': 0, 'avg_customer_value': 0})
-        return render_template('rfm_analysis.html',
-                               rfm_data=empty,
-                               insights=[],
-                               analysis_period=f"{start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}")
+    empty = {'total_segments': 0, 'high_value_count': 0, 'high_value_percent': 0,
+             'at_risk_count': 0, 'avg_customer_value': 0, 'segments': []}
+    return render_template('rfm_analysis.html',
+                           rfm_data=empty,
+                           insights=[],
+                           analysis_period=f"{start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}")
 
 
 @app.route('/api/rfm/data')

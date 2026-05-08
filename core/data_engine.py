@@ -899,14 +899,15 @@ def get_rfm_data(days: int = 90) -> dict:
                       'freq': freq, 'monetary': monetary,
                       'r_score': r_score})
 
-    # 计算分位数
+    # 计算分位数 — O(log n) via bisect
+    import bisect
     freqs = sorted(u['freq'] for u in users)
     mons  = sorted(u['monetary'] for u in users)
     n = len(freqs)
 
     def pct_score(val, arr):
         if not arr: return 3
-        rank = sum(1 for v in arr if v <= val) / len(arr)
+        rank = bisect.bisect_right(arr, val) / len(arr)
         return 5 if rank > 0.8 else (4 if rank > 0.6 else (3 if rank > 0.4 else (2 if rank > 0.2 else 1)))
 
     seg_map = {
