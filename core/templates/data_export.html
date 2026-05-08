@@ -2,305 +2,138 @@
 
 {% block page_css %}
 <style>
-    .export-container {
-        padding: 20px;
+    .export-container { padding: 20px; }
+    .page-header { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #f0f0f0; }
+    .page-header h1 { font-size: 26px; color: #333; margin-bottom: 6px; display: flex; align-items: center; gap: 12px; }
+    .page-header .subtitle { color: #666; font-size: 14px; }
+    .ds-banner {
+        display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+        background: linear-gradient(135deg, #6f068bad 0%, #4a0578 100%);
+        color: white; border-radius: 12px; padding: 18px 24px;
+        margin-bottom: 28px; box-shadow: 0 4px 16px rgba(111,6,139,.25);
     }
-
-    .page-header {
-        margin-bottom: 30px;
-        padding-bottom: 20px;
-        border-bottom: 2px solid #f0f0f0;
+    .ds-banner-icon { font-size: 2rem; opacity: .85; }
+    .ds-banner-info { flex: 1; min-width: 0; }
+    .ds-banner-info h3 { margin: 0 0 4px; font-size: 17px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ds-banner-info p { margin: 0; font-size: 13px; opacity: .85; }
+    .ds-banner-meta { display: flex; gap: 20px; flex-wrap: wrap; }
+    .ds-meta-item { text-align: center; }
+    .ds-meta-item .val { font-size: 18px; font-weight: 700; }
+    .ds-meta-item .lbl { font-size: 11px; opacity: .8; }
+    .ds-banner-actions { display: flex; gap: 8px; }
+    .ds-btn-switch {
+        background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.5);
+        color: white; padding: 8px 16px; border-radius: 7px; cursor: pointer;
+        font-size: 13px; transition: all .2s; display: flex; align-items: center; gap: 6px;
     }
-
-    .page-header h1 {
-        font-size: 28px;
-        color: #333;
-        margin-bottom: 10px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
+    .ds-btn-switch:hover { background: rgba(255,255,255,.28); }
+    .no-source-banner {
+        background: #fff3cd; border: 1px solid #ffc107; border-radius: 10px;
+        padding: 20px 24px; margin-bottom: 28px; display: flex; align-items: center; gap: 14px;
     }
-
-    .page-header .subtitle {
-        color: #666;
-        font-size: 14px;
+    .no-source-banner i { font-size: 1.8rem; color: #856404; }
+    .no-source-banner p { margin: 0; color: #856404; font-size: 15px; }
+    .no-source-banner a { color: #6f068bad; font-weight: 600; }
+    .modal-overlay {
+        display: none; position: fixed; inset: 0;
+        background: rgba(0,0,0,.45); z-index: 1000; align-items: center; justify-content: center;
     }
-
-    /* 一键生成日报 */
-    .quick-report {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 12px;
-        padding: 30px;
-        margin-bottom: 30px;
-        color: white;
-        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+        background: white; border-radius: 14px; width: 620px; max-width: 95vw;
+        max-height: 80vh; overflow: hidden; display: flex; flex-direction: column;
+        box-shadow: 0 20px 60px rgba(0,0,0,.3);
     }
-
-    .quick-report h2 {
-        margin: 0 0 10px 0;
-        font-size: 24px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
+    .modal-head { padding: 20px 24px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+    .modal-head h3 { margin: 0; font-size: 17px; color: #333; }
+    .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #666; }
+    .modal-body { padding: 16px 24px; overflow-y: auto; }
+    .source-row {
+        display: flex; align-items: center; gap: 12px;
+        padding: 12px 14px; border-radius: 8px; cursor: pointer;
+        border: 2px solid transparent; margin-bottom: 8px; transition: all .2s;
     }
-
-    .quick-report p {
-        margin: 0 0 20px 0;
-        opacity: 0.9;
-        font-size: 14px;
+    .source-row:hover { background: #f5f0ff; border-color: #c4b5d4; }
+    .source-row.active-row { border-color: #6f068bad; background: #f5f0ff; }
+    .src-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: white; flex-shrink: 0; }
+    .src-behavior { background: linear-gradient(135deg,#4facfe,#00f2fe); }
+    .src-order    { background: linear-gradient(135deg,#43e97b,#38f9d7); }
+    .src-user     { background: linear-gradient(135deg,#fa709a,#fee140); }
+    .src-unknown  { background: #adb5bd; }
+    .source-row-info { flex: 1; min-width: 0; }
+    .source-row-info strong { display: block; font-size: 14px; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .source-row-info span { font-size: 12px; color: #888; }
+    .active-badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 10px; background: #6f068bad; color: white; flex-shrink: 0; }
+    .section-h2 { font-size: 20px; color: #333; margin: 0 0 18px; display: flex; align-items: center; gap: 10px; }
+    .ds-type-tag { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 10px; color: white; background: #6f068bad; }
+    .export-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 18px; margin-bottom: 32px; }
+    .export-card {
+        background: white; border-radius: 12px; padding: 22px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.07); border: 2px solid transparent;
+        transition: all .25s; display: flex; flex-direction: column;
     }
-
-    .report-actions {
-        display: flex;
-        gap: 15px;
-        flex-wrap: wrap;
+    .export-card:hover { transform: translateY(-4px); box-shadow: 0 8px 22px rgba(0,0,0,.12); border-color: #b39dce; }
+    .export-card.unavailable { opacity: .42; pointer-events: none; }
+    .ec-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+    .ec-icon { width: 46px; height: 46px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; color: white; flex-shrink: 0; }
+    .ec-icon.blue   { background: linear-gradient(135deg,#4facfe,#00f2fe); }
+    .ec-icon.green  { background: linear-gradient(135deg,#43e97b,#38f9d7); }
+    .ec-icon.purple { background: linear-gradient(135deg,#a855f7,#7c3aed); }
+    .ec-icon.orange { background: linear-gradient(135deg,#f093fb,#f5576c); }
+    .ec-icon.teal   { background: linear-gradient(135deg,#11998e,#38ef7d); }
+    .ec-icon.gold   { background: linear-gradient(135deg,#f7971e,#ffd200); }
+    .ec-title h3 { margin: 0 0 3px; font-size: 16px; color: #333; }
+    .ec-title p  { margin: 0; font-size: 12px; color: #777; }
+    .ec-body { flex: 1; margin-bottom: 14px; }
+    .ec-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+    .ec-row:last-child { border-bottom: none; }
+    .ec-row .lbl { color: #777; }
+    .ec-row .val { font-weight: 600; color: #333; }
+    .ec-foot { display: flex; gap: 8px; }
+    .ec-btn {
+        flex: 1; padding: 9px 14px; border: none; border-radius: 7px;
+        font-size: 13px; cursor: pointer; transition: all .2s;
+        display: flex; align-items: center; justify-content: center; gap: 6px;
     }
-
+    .ec-btn.primary { background: #6f068bad; color: white; }
+    .ec-btn.primary:hover { background: #4a0578; }
+    .ec-btn.outline { background: white; color: #6f068bad; border: 1px solid #6f068bad; }
+    .ec-btn.outline:hover { background: #6f068bad; color: white; }
+    .ec-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+    .report-bar {
+        background: linear-gradient(135deg,#667eea,#764ba2);
+        border-radius: 12px; padding: 24px 28px; margin-bottom: 28px;
+        color: white; box-shadow: 0 6px 18px rgba(102,126,234,.3);
+    }
+    .report-bar h2 { margin: 0 0 8px; font-size: 20px; display: flex; align-items: center; gap: 10px; }
+    .report-bar p  { margin: 0 0 16px; opacity: .88; font-size: 13px; }
+    .report-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+    .report-row label { color: white; font-size: 13px; }
+    .report-row input[type=date], .report-row select { padding: 7px 10px; border-radius: 6px; border: none; font-size: 13px; }
+    .report-actions { display: flex; gap: 10px; flex-wrap: wrap; }
     .report-btn {
-        padding: 12px 24px;
-        background: rgba(255, 255, 255, 0.2);
-        border: 2px solid rgba(255, 255, 255, 0.5);
-        border-radius: 8px;
-        color: white;
-        font-size: 15px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        gap: 8px;
+        padding: 10px 20px; border-radius: 8px; font-size: 14px;
+        cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 7px;
+        background: rgba(255,255,255,.18); border: 2px solid rgba(255,255,255,.45); color: white;
     }
-
-    .report-btn:hover {
-        background: rgba(255, 255, 255, 0.3);
-        border-color: white;
-        transform: translateY(-2px);
-    }
-
-    .report-btn.primary {
-        background: white;
-        color: #667eea;
-        border-color: white;
-    }
-
-    .report-btn.primary:hover {
-        background: #f8f9fa;
-        transform: translateY(-2px);
-    }
-
-    /* 常用导出模板 */
-    .templates-section {
-        margin-bottom: 30px;
-    }
-
-    .templates-section h2 {
-        font-size: 22px;
-        color: #333;
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .templates-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-        gap: 20px;
-    }
-
-    .template-card {
-        background: white;
-        border-radius: 12px;
-        padding: 25px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        transition: all 0.3s ease;
-        border: 2px solid transparent;
-    }
-
-    .template-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.12);
-        border-color: #667eea;
-    }
-
-    .template-header {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        margin-bottom: 15px;
-    }
-
-    .template-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        color: white;
-    }
-
-    .template-icon.blue {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-    }
-
-    .template-icon.green {
-        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-    }
-
-    .template-icon.purple {
-        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-    }
-
-    .template-icon.orange {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    }
-
-    .template-title h3 {
-        margin: 0 0 5px 0;
-        font-size: 18px;
-        color: #333;
-    }
-
-    .template-subtitle {
-        font-size: 13px;
-        color: #666;
-    }
-
-    .template-body {
-        margin-bottom: 15px;
-    }
-
-    .template-info {
-        display: flex;
-        justify-content: space-between;
-        padding: 10px 0;
-        border-bottom: 1px solid #f0f0f0;
-        font-size: 14px;
-    }
-
-    .template-info:last-child {
-        border-bottom: none;
-    }
-
-    .info-label {
-        color: #666;
-    }
-
-    .info-value {
-        font-weight: 600;
-        color: #333;
-    }
-
-    .template-footer {
-        display: flex;
-        gap: 10px;
-    }
-
-    .btn {
-        flex: 1;
-        padding: 10px 20px;
-        border: none;
-        border-radius: 8px;
-        font-size: 14px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-    }
-
-    .btn-primary {
-        background: #667eea;
-        color: white;
-    }
-
-    .btn-primary:hover {
-        background: #5568d3;
-        transform: scale(1.02);
-    }
-
-    .btn-outline {
-        background: white;
-        color: #667eea;
-        border: 1px solid #667eea;
-    }
-
-    .btn-outline:hover {
-        background: #667eea;
-        color: white;
-    }
-
-    /* 导出历史 */
-    .export-history {
-        background: white;
-        border-radius: 12px;
-        padding: 25px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
-
-    .export-history h2 {
-        font-size: 22px;
-        color: #333;
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .table th {
-        background: #f8f9fa;
-        padding: 12px;
-        text-align: left;
-        font-weight: 600;
-        color: #333;
-        border-bottom: 2px solid #dee2e6;
-    }
-
-    .table td {
-        padding: 12px;
-        border-bottom: 1px solid #dee2e6;
-    }
-
-    .table tr:hover {
-        background: #f8f9fa;
-    }
-
-    .badge {
-        padding: 4px 12px;
-        border-radius: 12px;
-        font-size: 12px;
-        font-weight: 600;
-    }
-
-    .badge.success {
-        background: #d4edda;
-        color: #155724;
-    }
-
-    .btn-sm {
-        padding: 6px 12px;
-        font-size: 13px;
-    }
-
+    .report-btn:hover { background: rgba(255,255,255,.3); border-color: white; transform: translateY(-1px); }
+    .report-btn.primary { background: white; color: #667eea; border-color: white; }
+    .report-btn.primary:hover { background: #f0f0f0; }
+    .report-btn:disabled { opacity: .6; cursor: not-allowed; }
+    .history-section { background: white; border-radius: 12px; padding: 22px; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+    .history-section h2 { font-size: 20px; color: #333; margin: 0 0 16px; display: flex; align-items: center; gap: 10px; }
+    .hist-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .hist-table th { background: #f8f9fa; padding: 10px 12px; text-align: left; font-weight: 600; color: #555; border-bottom: 2px solid #dee2e6; }
+    .hist-table td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; }
+    .hist-table tr:hover td { background: #faf8ff; }
+    .hist-empty { text-align: center; color: #aaa; padding: 24px; }
+    .badge-ok { background: #d4edda; color: #155724; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .dl-btn { padding: 5px 12px; border-radius: 6px; border: 1px solid #6f068bad; background: white; color: #6f068bad; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+    .dl-btn:hover { background: #6f068bad; color: white; }
     @media (max-width: 768px) {
-        .templates-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .report-actions {
-            flex-direction: column;
-        }
-
-        .report-btn {
-            width: 100%;
-        }
+        .export-grid { grid-template-columns: 1fr; }
+        .report-actions { flex-direction: column; }
+        .ds-banner-meta { gap: 12px; }
     }
 </style>
 {% endblock %}
@@ -309,10 +142,39 @@
 <div class="export-container">
     <div class="page-header">
         <h1><i class="fas fa-download"></i> 数据导出</h1>
-        <p class="subtitle">快速导出常用数据模板和生成分析报告</p>
+        <p class="subtitle">基于当前激活数据源，按数据类型智能匹配可用导出项</p>
     </div>
 
-    <!-- 一键生成日报 -->
+    {% if active_ds %}
+    <div class="ds-banner">
+        <div class="ds-banner-icon"><i class="fas fa-database"></i></div>
+        <div class="ds-banner-info">
+            <h3>{{ active_ds.filename }}</h3>
+            <p>数据类型：{{ {'behavior':'行为数据','order':'订单数据','user':'用户数据'}.get(active_ds.data_type,'未知') }}
+               &nbsp;·&nbsp;上传：{{ active_ds.upload_time }}
+               &nbsp;·&nbsp;记录数：{{ '{:,}'.format(active_ds.record_count) }} 条</p>
+        </div>
+        <div class="ds-banner-meta">
+            {% if active_ds.min_time %}
+            <div class="ds-meta-item"><div class="val">{{ active_ds.min_time }}</div><div class="lbl">最早记录</div></div>
+            <div class="ds-meta-item"><div class="val">{{ active_ds.max_time }}</div><div class="lbl">最新记录</div></div>
+            {% endif %}
+            <div class="ds-meta-item"><div class="val">{{ active_ds.fields | length }}</div><div class="lbl">可用字段</div></div>
+        </div>
+        <div class="ds-banner-actions">
+            <button class="ds-btn-switch" onclick="openSourceModal()">
+                <i class="fas fa-exchange-alt"></i> 切换数据源
+            </button>
+        </div>
+    </div>
+    {% else %}
+    <div class="no-source-banner">
+        <i class="fas fa-exclamation-triangle"></i>
+        <p>当前没有激活的数据源。请先 <a href="{{ url_for('taobao_upload') }}">上传数据</a> 并激活数据源，才能使用导出功能。</p>
+    </div>
+    {% endif %}
+
+    <!-- ── 一键综合报告 ── -->
     <div class="quick-report">
         <h2><i class="fas fa-calendar-day"></i> 一键生成分析报告</h2>
         <p>快速生成包含核心指标、用户行为、商品分析的综合报告</p>
@@ -325,18 +187,12 @@
             <input type="date" id="end_date" style="padding: 8px; border-radius: 5px; border: none;">
         </div>
 
-        <!-- 保存位置选择 -->
-        <div style="margin-bottom: 20px; background:rgba(255,255,255,.15); border-radius:8px; padding:14px 18px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
-            <label style="color:white; font-size:14px;"><i class="fas fa-folder-open"></i> 导出格式：</label>
-            <select id="exportFormat" style="padding:7px 12px; border-radius:5px; border:none; font-size:14px;">
+        <div style="margin-bottom: 16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <label style="color:white; font-size:14px;"><i class="fas fa-file-export"></i> 导出格式：</label>
+            <select id="reportFmt" style="padding:7px 12px; border-radius:5px; border:none; font-size:14px;">
                 <option value="csv">CSV (.csv)</option>
                 <option value="json">JSON (.json)</option>
             </select>
-            <label style="color:white; font-size:14px; margin-left:16px;"><i class="fas fa-save"></i> 保存位置：</label>
-            <button type="button" id="pickSaveDir" onclick="pickDirectory()" style="padding:7px 14px; border-radius:5px; border:1px solid rgba(255,255,255,.6); background:rgba(255,255,255,.2); color:white; cursor:pointer; font-size:13px;">
-                <i class="fas fa-folder"></i> 选择文件夹
-            </button>
-            <span id="saveDirLabel" style="color:rgba(255,255,255,.8); font-size:13px;">（默认：浏览器下载目录）</span>
         </div>
         
         <div class="report-actions">
@@ -355,251 +211,297 @@
         </div>
     </div>
 
-    <!-- 常用导出模板 -->
-    <div class="templates-section">
-        <h2><i class="fas fa-th-large"></i> 常用导出模板</h2>
+    <!-- ── 依数据源类型展示导出卡片 ── -->
+    {% if active_ds %}
+    {% set dtype = active_ds.data_type or 'unknown' %}
+    {% set fields = active_ds.fields or [] %}
+    {% set rec = active_ds.record_count %}
 
-        <div class="templates-grid">
-            <!-- 行为日志导出 -->
-            <div class="template-card">
-                <div class="template-header">
-                    <div class="template-icon blue">
-                        <i class="fas fa-clipboard-list"></i>
-                    </div>
-                    <div class="template-title">
-                        <h3>行为日志导出</h3>
-                        <p class="template-subtitle">用户浏览、加购、收藏、购买行为记录</p>
-                    </div>
-                </div>
-                <div class="template-body">
-                    <div class="template-info">
-                        <span class="info-label">数据字段</span>
-                        <span class="info-value">用户ID、商品ID、行为类型、时间戳</span>
-                    </div>
-                    <div class="template-info">
-                        <span class="info-label">默认范围</span>
-                        <span class="info-value">近30天</span>
-                    </div>
-                    <div class="template-info">
-                        <span class="info-label">导出格式</span>
-                        <span class="info-value">CSV、Excel</span>
-                    </div>
-                </div>
-                <div class="template-footer">
-                    <button class="btn btn-primary" onclick="exportData('behavior', 'csv')">
-                        <i class="fas fa-download"></i> 导出CSV
-                    </button>
-                    <button class="btn btn-outline" onclick="exportData('behavior', 'excel')">
-                        <i class="fas fa-file-excel"></i> 导出Excel
-                    </button>
-                </div>
-            </div>
+    {# ── 行为数据源 ── #}
+    {% if dtype == 'behavior' %}
+    <h2 class="section-h2"><i class="fas fa-th-large"></i> 行为数据导出 <span class="ds-type-tag">行为数据源</span></h2>
+    <div class="export-grid">
 
-            <!-- 商品销售导出 -->
-            <div class="template-card">
-                <div class="template-header">
-                    <div class="template-icon green">
-                        <i class="fas fa-shopping-cart"></i>
-                    </div>
-                    <div class="template-title">
-                        <h3>商品销售数据</h3>
-                        <p class="template-subtitle">商品浏览量、销量、转化率统计</p>
-                    </div>
-                </div>
-                <div class="template-body">
-                    <div class="template-info">
-                        <span class="info-label">数据字段</span>
-                        <span class="info-value">商品ID、浏览量、销量、转化率</span>
-                    </div>
-                    <div class="template-info">
-                        <span class="info-label">排序方式</span>
-                        <span class="info-value">按销量降序</span>
-                    </div>
-                    <div class="template-info">
-                        <span class="info-label">导出格式</span>
-                        <span class="info-value">Excel、CSV</span>
-                    </div>
-                </div>
-                <div class="template-footer">
-                    <button class="btn btn-primary" onclick="exportData('product', 'excel')">
-                        <i class="fas fa-download"></i> 导出Excel
-                    </button>
-                    <button class="btn btn-outline" onclick="exportData('product', 'csv')">
-                        <i class="fas fa-file-csv"></i> 导出CSV
-                    </button>
-                </div>
-            </div>
-
-            <!-- 用户分群结果 -->
-            <div class="template-card">
-                <div class="template-header">
-                    <div class="template-icon purple">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <div class="template-title">
-                        <h3>用户分群结果</h3>
-                        <p class="template-subtitle">RFM用户分群及各群组用户列表</p>
-                    </div>
-                </div>
-                <div class="template-body">
-                    <div class="template-info">
-                        <span class="info-label">数据字段</span>
-                        <span class="info-value">用户ID、分群标签、R/F/M值</span>
-                    </div>
-                    <div class="template-info">
-                        <span class="info-label">分群数量</span>
-                        <span class="info-value">5个核心分群</span>
-                    </div>
-                    <div class="template-info">
-                        <span class="info-label">导出格式</span>
-                        <span class="info-value">Excel（多Sheet）</span>
-                    </div>
-                </div>
-                <div class="template-footer">
-                    <button class="btn btn-primary" onclick="exportData('rfm', 'excel')">
-                        <i class="fas fa-download"></i> 导出分群结果
-                    </button>
-                    <button class="btn btn-outline" onclick="window.location.href='/user_value_analysis'">
-                        <i class="fas fa-list"></i> 查看详情
-                    </button>
-                </div>
-            </div>
-
-            <!-- 转化漏斗数据 -->
-            <div class="template-card">
-                <div class="template-header">
-                    <div class="template-icon orange">
-                        <i class="fas fa-filter"></i>
-                    </div>
-                    <div class="template-title">
-                        <h3>转化漏斗数据</h3>
-                        <p class="template-subtitle">浏览→加购→收藏→购买转化数据</p>
-                    </div>
-                </div>
-                <div class="template-body">
-                    <div class="template-info">
-                        <span class="info-label">数据字段</span>
-                        <span class="info-value">各环节数量、转化率、流失率</span>
-                    </div>
-                    <div class="template-info">
-                        <span class="info-label">分析维度</span>
-                        <span class="info-value">总体 + 按品类</span>
-                    </div>
-                    <div class="template-info">
-                        <span class="info-label">导出格式</span>
-                        <span class="info-value">Excel、PDF</span>
-                    </div>
-                </div>
-                <div class="template-footer">
-                    <button class="btn btn-primary" onclick="exportData('funnel', 'excel')">
-                        <i class="fas fa-download"></i> 导出Excel
-                    </button>
-                    <button class="btn btn-outline" onclick="exportData('funnel', 'json')">
-                        <i class="fas fa-file-code"></i> 导出JSON
-                    </button>
-                </div>
-            </div>
+      <div class="export-card">
+        <div class="ec-head"><div class="ec-icon blue"><i class="fas fa-clipboard-list"></i></div>
+          <div class="ec-title"><h3>全量行为日志</h3><p>浏览·加购·收藏·购买完整记录</p></div></div>
+        <div class="ec-body">
+          <div class="ec-row"><span class="lbl">核心字段</span><span class="val">用户ID · 商品ID · 行为类型 · 时间</span></div>
+          <div class="ec-row"><span class="lbl">记录总数</span><span class="val">{{ '{:,}'.format(rec) }} 条</span></div>
+          <div class="ec-row"><span class="lbl">格式</span><span class="val">CSV / JSON</span></div>
         </div>
+        <div class="ec-foot">
+          <button class="ec-btn primary" onclick="doExport('behavior','csv',this)"><i class="fas fa-download"></i> 导出 CSV</button>
+          <button class="ec-btn outline" onclick="doExport('behavior','json',this)"><i class="fas fa-file-code"></i> JSON</button>
+        </div>
+      </div>
+
+      <div class="export-card">
+        <div class="ec-head"><div class="ec-icon orange"><i class="fas fa-filter"></i></div>
+          <div class="ec-title"><h3>转化漏斗统计</h3><p>浏览→加购→收藏→购买各环节</p></div></div>
+        <div class="ec-body">
+          <div class="ec-row"><span class="lbl">包含指标</span><span class="val">各阶段量 · 转化率 · 流失率</span></div>
+          <div class="ec-row"><span class="lbl">分析维度</span><span class="val">总体 + 按行为类型</span></div>
+          <div class="ec-row"><span class="lbl">格式</span><span class="val">CSV / JSON</span></div>
+        </div>
+        <div class="ec-foot">
+          <button class="ec-btn primary" onclick="doExport('behavior','csv',this)"><i class="fas fa-download"></i> 导出 CSV</button>
+          <button class="ec-btn outline" onclick="doExport('behavior','json',this)"><i class="fas fa-file-code"></i> JSON</button>
+        </div>
+      </div>
+
+      <div class="export-card {% if 'item_id' not in fields %}unavailable{% endif %}">
+        <div class="ec-head"><div class="ec-icon green"><i class="fas fa-fire"></i></div>
+          <div class="ec-title"><h3>商品热度排行</h3><p>Top 商品浏览量/购买量</p></div></div>
+        <div class="ec-body">
+          <div class="ec-row"><span class="lbl">核心字段</span><span class="val">商品ID · 浏览量 · 购买量 · 转化率</span></div>
+          <div class="ec-row"><span class="lbl">排序</span><span class="val">按购买量降序</span></div>
+          <div class="ec-row"><span class="lbl">格式</span><span class="val">CSV</span></div>
+        </div>
+        <div class="ec-foot">
+          <button class="ec-btn primary" onclick="doExport('item','csv',this)"><i class="fas fa-download"></i> 导出 CSV</button>
+        </div>
+      </div>
+
+      <div class="export-card {% if 'user_id' not in fields %}unavailable{% endif %}">
+        <div class="ec-head"><div class="ec-icon purple"><i class="fas fa-users"></i></div>
+          <div class="ec-title"><h3>RFM 用户分群</h3><p>RFM 模型用户分群标签</p></div></div>
+        <div class="ec-body">
+          <div class="ec-row"><span class="lbl">核心字段</span><span class="val">用户ID · 分群标签 · R/F/M 值</span></div>
+          <div class="ec-row"><span class="lbl">分群数</span><span class="val">5 个核心分群</span></div>
+          <div class="ec-row"><span class="lbl">格式</span><span class="val">CSV / JSON</span></div>
+        </div>
+        <div class="ec-foot">
+          <button class="ec-btn primary" onclick="doExport('rfm','csv',this)"><i class="fas fa-download"></i> 导出 CSV</button>
+          <button class="ec-btn outline" onclick="doExport('rfm','json',this)"><i class="fas fa-file-code"></i> JSON</button>
+        </div>
+      </div>
+
     </div>
 
-    <!-- 导出历史 -->
-    <div class="export-history">
-        <h2><i class="fas fa-history"></i> 导出历史记录</h2>
-        <table class="table">
+    {# ── 订单数据源 ── #}
+    {% elif dtype == 'order' %}
+    <h2 class="section-h2"><i class="fas fa-th-large"></i> 订单数据导出 <span class="ds-type-tag">订单数据源</span></h2>
+    <div class="export-grid">
+
+      <div class="export-card">
+        <div class="ec-head"><div class="ec-icon teal"><i class="fas fa-receipt"></i></div>
+          <div class="ec-title"><h3>全量订单明细</h3><p>所有订单原始记录</p></div></div>
+        <div class="ec-body">
+          <div class="ec-row"><span class="lbl">核心字段</span><span class="val">订单ID · 用户 · 商品 · 金额 · 时间</span></div>
+          <div class="ec-row"><span class="lbl">记录总数</span><span class="val">{{ '{:,}'.format(rec) }} 条</span></div>
+          <div class="ec-row"><span class="lbl">格式</span><span class="val">CSV / JSON</span></div>
+        </div>
+        <div class="ec-foot">
+          <button class="ec-btn primary" onclick="doExport('dashboard','csv',this)"><i class="fas fa-download"></i> 导出 CSV</button>
+          <button class="ec-btn outline" onclick="doExport('dashboard','json',this)"><i class="fas fa-file-code"></i> JSON</button>
+        </div>
+      </div>
+
+      <div class="export-card">
+        <div class="ec-head"><div class="ec-icon gold"><i class="fas fa-chart-bar"></i></div>
+          <div class="ec-title"><h3>销售汇总统计</h3><p>GMV · 客单价 · 购买频次</p></div></div>
+        <div class="ec-body">
+          <div class="ec-row"><span class="lbl">包含指标</span><span class="val">总销售额 · 客单价 · 购买频次</span></div>
+          <div class="ec-row"><span class="lbl">分析维度</span><span class="val">总体 + 按时间段</span></div>
+          <div class="ec-row"><span class="lbl">格式</span><span class="val">CSV / JSON</span></div>
+        </div>
+        <div class="ec-foot">
+          <button class="ec-btn primary" onclick="doExport('dashboard','csv',this)"><i class="fas fa-download"></i> 导出 CSV</button>
+          <button class="ec-btn outline" onclick="doExport('dashboard','json',this)"><i class="fas fa-file-code"></i> JSON</button>
+        </div>
+      </div>
+
+      <div class="export-card {% if 'user_id' not in fields %}unavailable{% endif %}">
+        <div class="ec-head"><div class="ec-icon purple"><i class="fas fa-users"></i></div>
+          <div class="ec-title"><h3>RFM 用户分群</h3><p>基于订单的 RFM 分群结果</p></div></div>
+        <div class="ec-body">
+          <div class="ec-row"><span class="lbl">核心字段</span><span class="val">用户ID · 分群标签 · R/F/M 值</span></div>
+          <div class="ec-row"><span class="lbl">分群数</span><span class="val">5 个核心分群</span></div>
+          <div class="ec-row"><span class="lbl">格式</span><span class="val">CSV / JSON</span></div>
+        </div>
+        <div class="ec-foot">
+          <button class="ec-btn primary" onclick="doExport('rfm','csv',this)"><i class="fas fa-download"></i> 导出 CSV</button>
+          <button class="ec-btn outline" onclick="doExport('rfm','json',this)"><i class="fas fa-file-code"></i> JSON</button>
+        </div>
+      </div>
+
+      <div class="export-card {% if 'category' not in fields %}unavailable{% endif %}">
+        <div class="ec-head"><div class="ec-icon green"><i class="fas fa-tags"></i></div>
+          <div class="ec-title"><h3>品类销售排行</h3><p>各品类销售额 · 订单数 · 占比</p></div></div>
+        <div class="ec-body">
+          <div class="ec-row"><span class="lbl">核心字段</span><span class="val">品类 · 销售额 · 订单数 · 占比</span></div>
+          <div class="ec-row"><span class="lbl">排序</span><span class="val">按销售额降序</span></div>
+          <div class="ec-row"><span class="lbl">格式</span><span class="val">CSV</span></div>
+        </div>
+        <div class="ec-foot">
+          <button class="ec-btn primary" onclick="doExport('item','csv',this)"><i class="fas fa-download"></i> 导出 CSV</button>
+        </div>
+      </div>
+
+    </div>
+
+    {# ── 用户数据源 ── #}
+    {% elif dtype == 'user' %}
+    <h2 class="section-h2"><i class="fas fa-th-large"></i> 用户数据导出 <span class="ds-type-tag">用户数据源</span></h2>
+    <div class="export-grid">
+
+      <div class="export-card">
+        <div class="ec-head"><div class="ec-icon blue"><i class="fas fa-address-book"></i></div>
+          <div class="ec-title"><h3>用户基础信息</h3><p>用户ID · 性别 · 年龄 · 注册时间</p></div></div>
+        <div class="ec-body">
+          <div class="ec-row"><span class="lbl">核心字段</span><span class="val">用户ID · 性别 · 年龄 · 地区 · 注册时间</span></div>
+          <div class="ec-row"><span class="lbl">记录总数</span><span class="val">{{ '{:,}'.format(rec) }} 条</span></div>
+          <div class="ec-row"><span class="lbl">格式</span><span class="val">CSV / JSON</span></div>
+        </div>
+        <div class="ec-foot">
+          <button class="ec-btn primary" onclick="doExport('dashboard','csv',this)"><i class="fas fa-download"></i> 导出 CSV</button>
+          <button class="ec-btn outline" onclick="doExport('dashboard','json',this)"><i class="fas fa-file-code"></i> JSON</button>
+        </div>
+      </div>
+
+      <div class="export-card {% if 'user_province' not in fields %}unavailable{% endif %}">
+        <div class="ec-head"><div class="ec-icon green"><i class="fas fa-map-marker-alt"></i></div>
+          <div class="ec-title"><h3>地域分布统计</h3><p>用户省份 · 城市级别分布</p></div></div>
+        <div class="ec-body">
+          <div class="ec-row"><span class="lbl">核心字段</span><span class="val">省份 · 城市级别 · 用户数 · 占比</span></div>
+          <div class="ec-row"><span class="lbl">排序</span><span class="val">按用户数降序</span></div>
+          <div class="ec-row"><span class="lbl">格式</span><span class="val">CSV</span></div>
+        </div>
+        <div class="ec-foot">
+          <button class="ec-btn primary" onclick="doExport('dashboard','csv',this)"><i class="fas fa-download"></i> 导出 CSV</button>
+        </div>
+      </div>
+
+      <div class="export-card {% if 'total_purchase_times' not in fields %}unavailable{% endif %}">
+        <div class="ec-head"><div class="ec-icon purple"><i class="fas fa-users"></i></div>
+          <div class="ec-title"><h3>RFM 用户分群</h3><p>基于用户消费数据的分群</p></div></div>
+        <div class="ec-body">
+          <div class="ec-row"><span class="lbl">核心字段</span><span class="val">用户ID · 分群标签 · R/F/M 值</span></div>
+          <div class="ec-row"><span class="lbl">分群数</span><span class="val">5 个核心分群</span></div>
+          <div class="ec-row"><span class="lbl">格式</span><span class="val">CSV / JSON</span></div>
+        </div>
+        <div class="ec-foot">
+          <button class="ec-btn primary" onclick="doExport('rfm','csv',this)"><i class="fas fa-download"></i> 导出 CSV</button>
+          <button class="ec-btn outline" onclick="doExport('rfm','json',this)"><i class="fas fa-file-code"></i> JSON</button>
+        </div>
+      </div>
+
+    </div>
+
+    {# ── 未知/其他数据源 ── #}
+    {% else %}
+    <h2 class="section-h2"><i class="fas fa-th-large"></i> 通用导出 <span class="ds-type-tag">通用数据源</span></h2>
+    <div class="export-grid">
+      <div class="export-card">
+        <div class="ec-head"><div class="ec-icon blue"><i class="fas fa-table"></i></div>
+          <div class="ec-title"><h3>全量数据导出</h3><p>导出当前数据源全部记录</p></div></div>
+        <div class="ec-body">
+          <div class="ec-row"><span class="lbl">记录总数</span><span class="val">{{ '{:,}'.format(rec) }} 条</span></div>
+          <div class="ec-row"><span class="lbl">可用字段</span><span class="val">{{ active_ds.fields | join(' · ') if active_ds.fields else '未知' }}</span></div>
+          <div class="ec-row"><span class="lbl">格式</span><span class="val">CSV / JSON</span></div>
+        </div>
+        <div class="ec-foot">
+          <button class="ec-btn primary" onclick="doExport('dashboard','csv',this)"><i class="fas fa-download"></i> 导出 CSV</button>
+          <button class="ec-btn outline" onclick="doExport('dashboard','json',this)"><i class="fas fa-file-code"></i> JSON</button>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- ── 导出历史（本次会话） ── -->
+    <div class="history-section">
+        <h2><i class="fas fa-history"></i> 本次会话导出记录</h2>
+        <table class="hist-table">
             <thead>
                 <tr>
                     <th>文件名</th>
-                    <th>模板类型</th>
-                    <th>文件大小</th>
+                    <th>数据模块</th>
+                    <th>格式</th>
                     <th>导出时间</th>
                     <th>状态</th>
                     <th>操作</th>
                 </tr>
             </thead>
-            <tbody>
-                <tr>
-                    <td>behavior_log_20260416.csv</td>
-                    <td>行为日志</td>
-                    <td>15.2 MB</td>
-                    <td>2026-04-16 14:30</td>
-                    <td><span class="badge success">成功</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-primary">
-                            <i class="fas fa-download"></i> 下载
-                        </button>
-                    </td>
-                </tr>
-                <tr>
-                    <td>product_sales_20260416.xlsx</td>
-                    <td>商品销售</td>
-                    <td>3.8 MB</td>
-                    <td>2026-04-16 12:15</td>
-                    <td><span class="badge success">成功</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-primary">
-                            <i class="fas fa-download"></i> 下载
-                        </button>
-                    </td>
-                </tr>
-                <tr>
-                    <td>user_segments_20260415.xlsx</td>
-                    <td>用户分群</td>
-                    <td>2.1 MB</td>
-                    <td>2026-04-15 18:45</td>
-                    <td><span class="badge success">成功</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-primary">
-                            <i class="fas fa-download"></i> 下载
-                        </button>
-                    </td>
-                </tr>
-                <tr>
-                    <td>daily_report_20260415.pdf</td>
-                    <td>日报</td>
-                    <td>5.5 MB</td>
-                    <td>2026-04-15 09:00</td>
-                    <td><span class="badge success">成功</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-primary">
-                            <i class="fas fa-download"></i> 下载
-                        </button>
-                    </td>
-                </tr>
+            <tbody id="historyTbody">
+                <tr><td colspan="6" class="hist-empty">本次会话暂无导出记录</td></tr>
             </tbody>
         </table>
     </div>
+
 </div>
+
+<!-- ── 数据源切换 Modal ── -->
+<div class="modal-overlay" id="sourceModal" onclick="if(event.target===this)closeSourceModal()">
+    <div class="modal-box">
+        <div class="modal-head">
+            <h3><i class="fas fa-database"></i> 切换数据源</h3>
+            <button class="modal-close" onclick="closeSourceModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            {% if ds_list %}
+            {% for ds in ds_list %}
+            {% set ic = {'behavior':'src-behavior','order':'src-order','user':'src-user'}.get(ds.data_type,'src-unknown') %}
+            {% set fi = {'behavior':'fas fa-chart-line','order':'fas fa-receipt','user':'fas fa-users'}.get(ds.data_type,'fas fa-database') %}
+            <div class="source-row {{ 'active-row' if ds.is_active else '' }}"
+                 onclick="switchSource({{ ds.id }}, this)">
+                <div class="src-icon {{ ic }}"><i class="{{ fi }}"></i></div>
+                <div class="source-row-info">
+                    <strong>{{ ds.filename }}</strong>
+                    <span>{{ {'behavior':'行为数据','order':'订单数据','user':'用户数据'}.get(ds.data_type,'未知') }}
+                        · {{ '{:,}'.format(ds.record_count) }} 条
+                        · {{ ds.upload_time }}</span>
+                </div>
+                {% if ds.is_active %}<span class="active-badge">当前激活</span>{% endif %}
+            </div>
+            {% endfor %}
+            {% else %}
+            <p style="color:#999;text-align:center;padding:24px;">暂无可用数据源，请先上传数据。</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block page_js %}
 <script>
-let _savedDirHandle = null;  // File System Access API handle
+/* ── session export history ── */
+const _exportHistory = [];
 
-document.addEventListener('DOMContentLoaded', function() {
-    const today = new Date();
-    const endDate = today.toISOString().split('T')[0];
-    const startDate = new Date(today.setDate(today.getDate() - 30)).toISOString().split('T')[0];
-    document.getElementById('end_date').value = endDate;
-    document.getElementById('start_date').value = startDate;
-});
-
-async function pickDirectory() {
-    if (!window.showDirectoryPicker) {
-        alert('当前浏览器不支持文件夹选择（需 Chrome 86+）。\n文件将保存到浏览器默认下载目录。');
-        return;
-    }
-    try {
-        _savedDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-        document.getElementById('saveDirLabel').textContent = '📁 ' + _savedDirHandle.name;
-    } catch(e) {
-        if (e.name !== 'AbortError') alert('无法选择文件夹: ' + e.message);
-    }
+function _addHistory(filename, module, format) {
+    const now = new Date().toLocaleString('zh-CN');
+    _exportHistory.unshift({ filename, module, format, time: now });
+    _renderHistory();
 }
 
-// 生成报告
+function _renderHistory() {
+    const tbody = document.getElementById('historyTbody');
+    if (!_exportHistory.length) return;
+    tbody.innerHTML = _exportHistory.map(h => `
+        <tr>
+            <td>${h.filename}</td>
+            <td>${h.module}</td>
+            <td>${h.format.toUpperCase()}</td>
+            <td>${h.time}</td>
+            <td><span class="badge-ok">成功</span></td>
+            <td><span style="color:#aaa;font-size:12px;">已下载</span></td>
+        </tr>`).join('');
+}
+
+/* ── init date pickers ── */
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date();
+    document.getElementById('end_date').value = today.toISOString().split('T')[0];
+    const s = new Date(today); s.setDate(s.getDate() - 30);
+    document.getElementById('start_date').value = s.toISOString().split('T')[0];
+});
+
+/* ── generate report ── */
 async function generateReport(type) {
     const btn = event.target.closest('button');
-    const originalText = btn.innerHTML;
+    const orig = btn.innerHTML;
     let days = 30;
     if (type === 'today') days = 1;
     else if (type === 'week') days = 7;
@@ -613,60 +515,68 @@ async function generateReport(type) {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
     try {
-        const fmt = document.getElementById('exportFormat').value;
-        const result = await fetch(`/api/export/report?days=${days}&format=${fmt}&module=dashboard`).then(r=>r.json());
-        if (!result.success) throw new Error(result.error);
+        const fmt = document.getElementById('reportFmt').value;
+        const res = await fetch(`/api/export/report?days=${days}&format=${fmt}&module=dashboard`).then(r => r.json());
+        if (!res.success) throw new Error(res.error);
         btn.innerHTML = '<i class="fas fa-check"></i> 生成完成！';
-        await _saveFile(result.data, result.filename, fmt);
-        setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; }, 2000);
-    } catch (error) {
-        alert('报告生成失败: ' + error.message);
-        btn.disabled = false; btn.innerHTML = originalText;
+        _triggerDownload(res.data, res.filename, fmt);
+        _addHistory(res.filename, '综合报告', fmt);
+        setTimeout(() => { btn.disabled = false; btn.innerHTML = orig; }, 2000);
+    } catch (err) {
+        alert('报告生成失败: ' + err.message);
+        btn.disabled = false; btn.innerHTML = orig;
     }
 }
 
-// 导出数据
-async function exportData(dataType, format) {
-    const btn = event.target.closest('button');
-    const originalText = btn.innerHTML;
+/* ── per-card export ── */
+async function doExport(module, format, btn) {
+    const orig = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 导出中...';
     try {
-        const moduleMap = {behavior:'behavior', product:'item', rfm:'rfm', funnel:'behavior', user:'dashboard'};
-        const module = moduleMap[dataType] || 'dashboard';
-        const days = 30;
-        const result = await fetch(`/api/export/report?days=${days}&format=${format}&module=${module}`).then(r=>r.json());
-        if (!result.success) throw new Error(result.error);
-        await _saveFile(result.data, result.filename, format);
-        btn.innerHTML = '<i class="fas fa-check"></i> 导出完成！';
-        setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; }, 2000);
-    } catch (error) {
-        alert('导出失败: ' + error.message);
-        btn.disabled = false;
-        btn.innerHTML = originalText;
+        const days = 90;
+        const res = await fetch(`/api/export/report?days=${days}&format=${format}&module=${module}`).then(r => r.json());
+        if (!res.success) throw new Error(res.error);
+        _triggerDownload(res.data, res.filename, format);
+        _addHistory(res.filename, module, format);
+        btn.innerHTML = '<i class="fas fa-check"></i> 完成';
+        setTimeout(() => { btn.disabled = false; btn.innerHTML = orig; }, 2000);
+    } catch (err) {
+        alert('导出失败: ' + err.message);
+        btn.disabled = false; btn.innerHTML = orig;
     }
 }
 
-// 统一文件保存辅助（支持自选目录）
-async function _saveFile(content, filename, format) {
-    const mimeType = format === 'csv' ? 'text/csv;charset=utf-8' : 'application/json';
+/* ── file download helper ── */
+function _triggerDownload(content, filename, format) {
+    const mime = format === 'csv' ? 'text/csv;charset=utf-8' : 'application/json';
     const text = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
-
-    if (_savedDirHandle) {
-        try {
-            const fh = await _savedDirHandle.getFileHandle(filename, { create: true });
-            const w  = await fh.createWritable();
-            await w.write(text); await w.close();
-            alert(`✅ 文件已保存至：${_savedDirHandle.name}/${filename}`);
-            return;
-        } catch(e) { console.warn('目录写入失败，回退下载', e); }
-    }
-    const blob = new Blob([text], { type: mimeType });
+    const blob = new Blob([text], { type: mime });
     const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = filename;
+    const a    = Object.assign(document.createElement('a'), { href: url, download: filename });
     document.body.appendChild(a); a.click();
     URL.revokeObjectURL(url); document.body.removeChild(a);
+}
+
+/* ── source switcher modal ── */
+function openSourceModal()  { document.getElementById('sourceModal').classList.add('open'); }
+function closeSourceModal() { document.getElementById('sourceModal').classList.remove('open'); }
+
+async function switchSource(dsId, row) {
+    const rows = document.querySelectorAll('.source-row');
+    rows.forEach(r => r.classList.remove('active-row'));
+    row.classList.add('active-row');
+    try {
+        const res = await fetch(`/api/activate_source/${dsId}`, { method: 'POST' }).then(r => r.json());
+        if (res.success) {
+            closeSourceModal();
+            location.reload();
+        } else {
+            alert('切换失败: ' + (res.error || '未知错误'));
+        }
+    } catch(e) {
+        alert('切换失败: ' + e.message);
+    }
 }
 </script>
 {% endblock %}

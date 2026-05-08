@@ -2636,8 +2636,25 @@ def user_value_analysis():
 @app.route('/data_export')
 @login_required
 def data_export():
-    """数据导出页面"""
-    return render_template('data_export.html')
+    """数据导出页面 — 以当前激活数据源为核心"""
+    import json as _json
+    try:
+        active_ds = UploadHistory.query.filter_by(is_active=True, status='success').first()
+        all_sources = UploadHistory.query.filter_by(status='success').order_by(
+            UploadHistory.upload_time.desc()).limit(20).all()
+        ds_list = [s.to_dict() for s in all_sources]
+        if active_ds:
+            active = active_ds.to_dict()
+            # 解析可用字段
+            fields = _json.loads(active_ds.available_fields) if active_ds.available_fields else []
+            active['fields'] = fields
+        else:
+            active = None
+    except Exception as e:
+        print(f"data_export view error: {e}")
+        active = None
+        ds_list = []
+    return render_template('data_export.html', active_ds=active, ds_list=ds_list)
 
 # ========== 推荐分析视图函数（保留旧路由兼容） ==========
 @app.route('/recommend_analysis')
@@ -3428,6 +3445,23 @@ def api_user_profile(user_id):
             return jsonify({'success': True, 'data': info})
         return jsonify({'success': False, 'error': '未找到该用户数据'})
     except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/activate_source/<int:source_id>', methods=['POST'])
+@login_required
+def api_activate_source(source_id):
+    """激活指定上传历史为当前数据源"""
+    try:
+        UploadHistory.query.filter_by(is_active=True).update({'is_active': False})
+        target = UploadHistory.query.get(source_id)
+        if not target:
+            return jsonify({'success': False, 'error': '数据源不存在'})
+        target.is_active = True
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
         return jsonify({'success': False, 'error': str(e)})
 
 
