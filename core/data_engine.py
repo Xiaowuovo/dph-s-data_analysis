@@ -1563,8 +1563,18 @@ def get_order_behavior_stats(days: int = 0) -> dict:
     }
 
 
+_rfm_cache: dict = {}   # {days: (timestamp, result)}
+_RFM_CACHE_TTL = 300    # 5 分钟
+
 def get_order_rfm_data(days: int = 0) -> dict:
     """从 orders 表计算 RFM 分群（Recency/Frequency/Monetary 均来自真实订单）"""
+    import time as _time
+    _now = _time.time()
+    if days in _rfm_cache:
+        _ts, _cached = _rfm_cache[days]
+        if _now - _ts < _RFM_CACHE_TTL:
+            return _cached
+
     s, e = _order_date_range(days)
     if s is None:
         return {'segments': [], 'total_users': 0}
@@ -1575,7 +1585,7 @@ def get_order_rfm_data(days: int = 0) -> dict:
         func.max(Order.order_time).label('last_order'),
         func.count().label('freq'),
         func.sum(Order.amount).label('monetary')
-    ).filter(base).group_by(Order.user_id).all()
+    ).filter(base).group_by(Order.user_id).limit(50000).all()
 
     if not rfm_q:
         return {'segments': [], 'total_users': 0}
@@ -1586,18 +1596,31 @@ def get_order_rfm_data(days: int = 0) -> dict:
         days_ago = (ref_dt - r.last_order).days if r.last_order else 999
         rows.append({'user_id': r.user_id, 'R': days_ago, 'F': r.freq, 'M': float(r.monetary or 0)})
 
-    # 简单四分位分层
-    import statistics
+    # 简单四分位分层 — 快速中位数
+    def _fast_median(vals):
+        s = sorted(vals)
+        n = len(s)
+        return (s[n // 2] + s[(n - 1) // 2]) / 2 if n else 0
+
     r_vals = [x['R'] for x in rows]
     f_vals = [x['F'] for x in rows]
     m_vals = [x['M'] for x in rows]
-    r_med  = statistics.median(r_vals)
-    f_med  = statistics.median(f_vals)
-    m_med  = statistics.median(m_vals)
+    r_med  = _fast_median(r_vals)
+    f_med  = _fast_median(f_vals)
+    m_med  = _fast_median(m_vals)
 
-    seg_counts = defaultdict(int)
+    _SEG_COLOR = {
+        '高价值用户': '#5470C6', '潜力用户':  '#91CC75',
+        '高消费用户': '#FAC858', '新用户':    '#EE6666',
+        '忠诚用户':  '#3BA272', '流失用户':  '#FC8452',
+        '一般用户':  '#73C0DE',
+    }
+    seg_counts  = defaultdict(int)
+    seg_r_sum   = defaultdict(float)
+    seg_f_sum   = defaultdict(float)
+    seg_m_sum   = defaultdict(float)
     for row in rows:
-        r_high = row['R'] <= r_med   # 最近购买 → 高=小天数
+        r_high = row['R'] <= r_med
         f_high = row['F'] >= f_med
         m_high = row['M'] >= m_med
         if r_high and f_high and m_high:
@@ -1616,14 +1639,32 @@ def get_order_rfm_data(days: int = 0) -> dict:
             seg = '一般用户'
         row['segment'] = seg
         seg_counts[seg] += 1
+        seg_r_sum[seg]  += row['R']
+        seg_f_sum[seg]  += row['F']
+        seg_m_sum[seg]  += row['M']
 
-    segments = [{'segment': k, 'count': v,
-                 'pct': round(v / len(rows) * 100, 1)} for k, v in seg_counts.items()]
+    total = len(rows)
+    segments = []
+    for k, v in seg_counts.items():
+        segments.append({
+            'segment':       k,
+            'segment_name':  k,
+            'count':         v,
+            'pct':           round(v / total * 100, 1),
+            'color':         _SEG_COLOR.get(k, '#aaa'),
+            'avg_recency':   round(seg_r_sum[k] / v, 1),
+            'avg_frequency': round(seg_f_sum[k] / v, 1),
+            'avg_monetary':  round(seg_m_sum[k] / v, 2),
+        })
     segments.sort(key=lambda x: -x['count'])
 
-    return {
-        'segments':    segments,
-        'total_users': len(rows),
-        'rfm_rows':    rows[:200],  # 返回前200条供散点图
-        '_source':     'order',
+    result = {
+        'segments':     segments,
+        'total_users':  total,
+        'rfm_rows':     rows[:200],
+        'segment_dist': [{'name': s['segment_name'], 'value': s['count'], 'color': s['color']}
+                         for s in segments],
+        '_source':      'order',
     }
+    _rfm_cache[days] = (_time.time(), result)
+    return result

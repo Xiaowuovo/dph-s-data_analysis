@@ -2616,13 +2616,21 @@ def user_value_analysis():
         rfm_data = de.get_rfm_data(days)
         total_u = rfm_data.get('total_users', 0)
         segs = rfm_data.get('segments', [])
-        avg_r = round(sum(s['avg_recency'] * s['count'] for s in segs) / total_u, 1) if total_u else 0
-        avg_f = round(sum(s['avg_frequency'] * s['count'] for s in segs) / total_u, 1) if total_u else 0
-        avg_m = round(sum(s['avg_monetary'] * s['count'] for s in segs) / total_u, 2) if total_u else 0
+        if total_u and segs:
+            avg_r = round(sum(s.get('avg_recency',   0) * s['count'] for s in segs) / total_u, 1)
+            avg_f = round(sum(s.get('avg_frequency', 0) * s['count'] for s in segs) / total_u, 1)
+            avg_m = round(sum(s.get('avg_monetary',  0) * s['count'] for s in segs) / total_u, 2)
+        else:
+            avg_r = avg_f = avg_m = 0
         rfm_data['avg_recency']   = avg_r
         rfm_data['avg_frequency'] = avg_f
         rfm_data['avg_monetary']  = avg_m
+        if 'segment_dist' not in rfm_data:
+            rfm_data['segment_dist'] = [
+                {'name': s.get('segment_name', s['segment']), 'value': s['count'],
+                 'color': s.get('color', '#aaa')} for s in segs]
     except Exception as e:
+        import traceback; traceback.print_exc()
         print(f"用户价值分析错误: {e}")
         rfm_data = de._empty_rfm()
         rfm_data.update({'avg_recency': 0, 'avg_frequency': 0, 'avg_monetary': 0})
