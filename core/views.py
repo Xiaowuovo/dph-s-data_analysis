@@ -3409,6 +3409,58 @@ def api_behavior_stats():
         return jsonify({'success': False, 'error': str(e)})
 
 
+@app.route('/api/behavior/time_charts')
+@login_required
+def api_behavior_time_charts():
+    """行为分析 — 周/月分布图表数据"""
+    days = int(request.args.get('days', 90))
+    try:
+        s_ts, e_ts = de._ts_range(days)
+        s_dt = datetime.fromtimestamp(s_ts)
+        e_dt = datetime.fromtimestamp(e_ts)
+
+        # weekday distribution using behavior_datetime (SQLite strftime %w: 0=Sun…6=Sat)
+        wday_q = db.session.query(
+            func.strftime('%w', UserBehavior.behavior_datetime).label('wd'),
+            func.count().label('cnt')
+        ).filter(
+            UserBehavior.behavior_datetime != None,
+            UserBehavior.behavior_datetime.between(s_dt, e_dt)
+        ).group_by('wd').all()
+
+        wday_map = {int(r.wd): r.cnt for r in wday_q if r.wd is not None}
+        # reorder SQLite %w (0=Sun,1=Mon…6=Sat) → Mon(1)…Sat(6),Sun(0)
+        weekday_data = [wday_map.get(i, 0) for i in [1, 2, 3, 4, 5, 6, 0]]
+
+        # monthly trend — group by year-month
+        month_q = db.session.query(
+            func.strftime('%Y-%m', UserBehavior.behavior_datetime).label('ym'),
+            func.count().label('cnt')
+        ).filter(
+            UserBehavior.behavior_datetime != None,
+            UserBehavior.behavior_datetime.between(s_dt, e_dt)
+        ).group_by('ym').order_by('ym').all()
+        monthly_labels = [r.ym for r in month_q if r.ym]
+        monthly_data   = [r.cnt for r in month_q if r.ym]
+
+        # hourly breakdown + daily trend from get_behavior_stats
+        beh = de.get_behavior_stats(days)
+        hourly      = beh.get('hourly', {})
+        daily_trend = beh.get('daily_trend', {})
+
+        return jsonify({
+            'success': True,
+            'weekday':     {'labels': ['周一','周二','周三','周四','周五','周六','周日'],
+                            'data': weekday_data},
+            'monthly':     {'labels': monthly_labels, 'data': monthly_data},
+            'hourly':      hourly,
+            'daily_trend': daily_trend,
+        })
+    except Exception as ex:
+        import traceback; traceback.print_exc()
+        return jsonify({'success': False, 'error': str(ex)})
+
+
 @app.route('/api/item/stats')
 @login_required
 def api_item_stats():
@@ -3468,35 +3520,77 @@ def api_activate_source(source_id):
 @app.route('/api/export/report')
 @login_required
 def api_export_report():
-    """生成并返回报告数据（CSV/JSON）"""
-    days   = int(request.args.get('days', 30))
+    """生成并返回报告数据（CSV/JSON）— 输出真实扁平化行数据"""
+    days   = int(request.args.get('days', 90))
     fmt    = request.args.get('format', 'csv')
     module = request.args.get('module', 'dashboard')
+    ts     = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+    def _to_csv(rows):
+        if not rows:
+            return 'no_data\n无数据\n'
+        df = pd.DataFrame(rows)
+        return df.to_csv(index=False, encoding='utf-8-sig')
+
+    def _to_json(rows):
+        return json.dumps(rows, ensure_ascii=False, indent=2, default=str)
+
     try:
-        if module == 'dashboard':
-            data = de.get_dashboard_stats(days)
-        elif module == 'behavior':
+        rows = []
+        if module == 'behavior':
             data = de.get_behavior_stats(days)
+            hourly = data.get('hourly', {})
+            hours  = hourly.get('hours', list(range(24)))
+            rows = [{'小时': h,
+                     '浏览PV': hourly.get('pv', [0]*24)[i] if i < len(hourly.get('pv', [])) else 0,
+                     '加购':   hourly.get('cart', [0]*24)[i] if i < len(hourly.get('cart', [])) else 0,
+                     '收藏':   hourly.get('fav', [0]*24)[i] if i < len(hourly.get('fav', [])) else 0,
+                     '购买':   hourly.get('buy', [0]*24)[i] if i < len(hourly.get('buy', [])) else 0}
+                    for i, h in enumerate(hours)]
+
         elif module == 'item':
             data = de.get_item_stats(days)
+            top  = data.get('top_items', [])
+            rows = [{'商品ID': r.get('item_id'), '商品名': r.get('product_name'),
+                     '品牌': r.get('brand'), '类目': r.get('category_name'),
+                     '浏览量': r.get('view_count', 0), '加购量': r.get('cart_count', 0),
+                     '收藏量': r.get('fav_count', 0), '购买量': r.get('purchase_count', 0),
+                     '转化率%': r.get('conversion_rate', 0), '销售额': r.get('revenue', 0)}
+                    for r in top]
+
         elif module == 'rfm':
-            raw = de.get_rfm_data(days)
-            data = {'segments': raw['segments'], 'total_users': raw['total_users']}
+            raw  = de.get_rfm_data(days)
+            segs = raw.get('segments', [])
+            rows = [{'分群名称': s.get('name'), '用户数': s.get('count'),
+                     '占比%': s.get('percentage'), '平均R': s.get('avg_recency'),
+                     '平均F': s.get('avg_frequency'), '平均M': s.get('avg_monetary'),
+                     '描述': s.get('description', '')}
+                    for s in segs]
+
+        elif module == 'dashboard':
+            data = de.get_dashboard_stats(days)
+            rows = [{'指标': k, '值': v} for k, v in data.items()
+                    if not isinstance(v, (list, dict))]
+
         else:
             data = de.get_dashboard_stats(days)
+            rows = [{'指标': k, '值': v} for k, v in data.items()
+                    if not isinstance(v, (list, dict))]
+
+        if not rows:
+            return jsonify({'success': False, 'error': '当前数据源暂无数据，请先上传并激活数据源'})
 
         if fmt == 'json':
-            content = json.dumps(data, ensure_ascii=False, indent=2)
-            return jsonify({'success': True, 'data': content,
-                            'filename': f'{module}_report_{datetime.now().strftime("%Y%m%d")}.json'})
+            content  = _to_json(rows)
+            filename = f'{module}_export_{ts}.json'
         else:
-            # 对 top_items / segments 等列表做 CSV
-            rows = data.get('top_items') or data.get('segments') or [data]
-            df = pd.DataFrame(rows)
-            content = df.to_csv(index=False, encoding='utf-8-sig')
-            return jsonify({'success': True, 'data': content,
-                            'filename': f'{module}_report_{datetime.now().strftime("%Y%m%d")}.csv'})
+            content  = _to_csv(rows)
+            filename = f'{module}_export_{ts}.csv'
+
+        return jsonify({'success': True, 'data': content, 'filename': filename,
+                        'row_count': len(rows)})
     except Exception as e:
+        import traceback; traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
 
 
@@ -3523,6 +3617,40 @@ def api_item_analysis(item_id):
         if detail:
             return jsonify({'success': True, 'data': detail})
         return jsonify({'success': False, 'error': '未找到该商品数据'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/item/chart_data')
+@login_required
+def api_item_chart_data():
+    """商品分析 — 图表专用接口，返回类目分布、漏斗、品牌、价格区间"""
+    days = int(request.args.get('days', 90))
+    try:
+        data = de.get_item_stats(days)
+        beh  = de.get_behavior_stats(days)
+        funnel = beh.get('conversion_funnel', [])
+        # 转化率 by category
+        cat_dist = data.get('category_dist', [])
+        cat_conv = []
+        for c in cat_dist:
+            total_pv = c.get('pv_cnt') or c.get('buy_cnt', 1)
+            buy_cnt  = c.get('buy_cnt', 0)
+            conv = round(buy_cnt / max(total_pv, 1) * 100, 1)
+            cat_conv.append({'name': c.get('name') or c.get('category_name', '—'), 'conv': conv,
+                             'buy_cnt': buy_cnt})
+        return jsonify({
+            'success': True,
+            'category_dist': [{'name': c.get('name') or c.get('category_name','—'),
+                                'value': c.get('buy_cnt', 0)}
+                               for c in cat_dist],
+            'category_conv': cat_conv,
+            'funnel': funnel,
+            'brand_dist': [{'name': b.get('brand','—'), 'value': b.get('buy_cnt', 0)}
+                            for b in data.get('brand_dist', [])],
+            'price_dist': data.get('price_dist', []),
+            'top_items':  data.get('top_items', [])[:7],
+        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 

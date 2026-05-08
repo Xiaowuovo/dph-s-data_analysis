@@ -3266,435 +3266,242 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 1500);
     }
 
-    // ============ 行为趋势图 ============
+    // ============ 行为趋势图 — 真实数据 ============
     function initBehaviorTrendChart() {
         const trendChart = echarts.init(document.getElementById('behaviorTrendChart'));
         charts.behaviorTrend = trendChart;
-
-        const dates = [];
-        for (let i = 6; i >= 0; i--) {
-            const date = new Date();
-            date.setDate(date.getDate() - i);
-            dates.push(date.getMonth() + 1 + '-' + date.getDate());
-        }
-
-        const option = {
-            tooltip: {
-                trigger: 'axis'
-            },
-            legend: {
-                data: ['浏览', '加购', '收藏', '购买']
-            },
-            grid: {
-                left: '3%',
-                right: '4%',
-                bottom: '3%',
-                containLabel: true
-            },
-            xAxis: {
-                type: 'category',
-                boundaryGap: false,
-                data: dates
-            },
-            yAxis: {
-                type: 'value'
-            },
-            series: [
-                {
-                    name: '浏览',
-                    type: 'line',
-                    stack: 'Total',
-                    data: [1200, 1320, 1010, 1340, 1290, 1330, 1400],
-                    areaStyle: { opacity: 0.3 },
-                    itemStyle: { color: '#5470C6' }
-                },
-                {
-                    name: '加购',
-                    type: 'line',
-                    stack: 'Total',
-                    data: [420, 470, 390, 490, 450, 480, 500],
-                    areaStyle: { opacity: 0.3 },
-                    itemStyle: { color: '#91CC75' }
-                },
-                {
-                    name: '收藏',
-                    type: 'line',
-                    stack: 'Total',
-                    data: [200, 230, 190, 240, 220, 250, 260],
-                    areaStyle: { opacity: 0.3 },
-                    itemStyle: { color: '#FAC858' }
-                },
-                {
-                    name: '购买',
-                    type: 'line',
-                    stack: 'Total',
-                    data: [140, 160, 130, 180, 150, 170, 180],
-                    areaStyle: { opacity: 0.3 },
-                    itemStyle: { color: '#EE6666' }
-                }
-            ]
-        };
-
-        trendChart.setOption(option);
+        trendChart.showLoading();
+        fetch('/api/behavior/stats?days=30')
+            .then(r => r.json())
+            .then(res => {
+                trendChart.hideLoading();
+                if (!res.success) return;
+                const dt = res.data.daily_trend || {};
+                const dates = dt.dates || [];
+                const total = dt.total || [];
+                const buy   = dt.buy   || [];
+                trendChart.setOption({
+                    tooltip: { trigger: 'axis' },
+                    legend: { data: ['总行为量', '购买量'] },
+                    grid: { left:'3%', right:'4%', bottom:'3%', containLabel:true },
+                    xAxis: { type:'category', boundaryGap:false, data:dates },
+                    yAxis: { type:'value', name:'次数' },
+                    series: [
+                        { name:'总行为量', type:'line', stack:'Total', data:total,
+                          areaStyle:{opacity:0.3}, itemStyle:{color:'#5470C6'},
+                          markLine:{data:[{type:'average',name:'均值'}]} },
+                        { name:'购买量',   type:'line', stack:'Total', data:buy,
+                          areaStyle:{opacity:0.3}, itemStyle:{color:'#EE6666'} }
+                    ]
+                });
+            })
+            .catch(() => trendChart.hideLoading());
         return trendChart;
     }
 
-    // ============ 行为分布饼图 ============
+    // ============ 行为分布饼图 — 真实数据 ============
     function initBehaviorPieChart() {
         const pieChart = echarts.init(document.getElementById('behaviorPieChart'));
         charts.behaviorPie = pieChart;
-
-        const option = {
-            tooltip: {
-                trigger: 'item'
-            },
-            legend: {
-                orient: 'vertical',
-                left: 'left'
-            },
-            series: [
-                {
-                    name: '行为类型',
-                    type: 'pie',
-                    radius: '50%',
-                    data: [
-                        { value: 10000, name: '浏览(PV)', itemStyle: { color: '#5470C6' } },
-                        { value: 3500, name: '加购(Cart)', itemStyle: { color: '#91CC75' } },
-                        { value: 1800, name: '收藏(Fav)', itemStyle: { color: '#FAC858' } },
-                        { value: 1200, name: '购买(Buy)', itemStyle: { color: '#EE6666' } }
-                    ],
-                    emphasis: {
-                        itemStyle: {
-                            shadowBlur: 10,
-                            shadowOffsetX: 0,
-                            shadowColor: 'rgba(0, 0, 0, 0.5)'
-                        }
-                    }
-                }
-            ]
-        };
-
-        pieChart.setOption(option);
-
-        // 点击扇形下钻
-        pieChart.on('click', function(params) {
-            console.log('下钻到:', params.name);
-            alert('查看 "' + params.name + '" 的详细分析');
-        });
-
+        pieChart.showLoading();
+        fetch('/api/behavior/stats?days=30')
+            .then(r => r.json())
+            .then(res => {
+                pieChart.hideLoading();
+                if (!res.success) return;
+                const bd = res.data.behavior_dist || {};
+                const colorMap = {pv:'#5470C6', cart:'#91CC75', fav:'#FAC858', buy:'#EE6666'};
+                const nameMap  = {pv:'浏览(PV)', cart:'加购(Cart)', fav:'收藏(Fav)', buy:'购买(Buy)'};
+                const data = Object.entries(bd).map(([k, v]) => ({
+                    value: v, name: nameMap[k] || k,
+                    itemStyle: { color: colorMap[k] || '#73C0DE' }
+                }));
+                pieChart.setOption({
+                    tooltip: { trigger:'item', formatter:'{b}: {c} ({d}%)' },
+                    legend: { orient:'vertical', left:'left', type:'scroll' },
+                    series: [{
+                        name:'行为类型', type:'pie', radius:'55%',
+                        data: data,
+                        emphasis: { itemStyle: { shadowBlur:10, shadowOffsetX:0,
+                                                 shadowColor:'rgba(0,0,0,.5)' } },
+                        label: { formatter: '{b}\n{d}%' }
+                    }]
+                });
+            })
+            .catch(() => pieChart.hideLoading());
+        pieChart.on('click', params => console.log('行为分布点击:', params.name));
         return pieChart;
     }
 
-    // ============ 用户活跃度热力图 ============
+    // ============ 用户活跃度热力图 — 真实数据 ============
     function initHeatmapChart() {
         const heatmap = echarts.init(document.getElementById('heatmapChart'));
         charts.heatmap = heatmap;
+        heatmap.showLoading();
 
-        const hours = [];
-        const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-        for (let i = 0; i < 24; i++) {
-            hours.push(i + '时');
-        }
+        const hours = Array.from({length:24}, (_,i) => i + '时');
+        const days  = ['周一','周二','周三','周四','周五','周六','周日'];
 
-        const data = [];
-        for (let i = 0; i < 7; i++) {
-            for (let j = 0; j < 24; j++) {
-                data.push([j, i, Math.floor(Math.random() * 100)]);
-            }
-        }
-
-        const option = {
-            tooltip: {
-                position: 'top',
-                formatter: function(params) {
-                    return days[params.value[1]] + ' ' + hours[params.value[0]] + '<br/>活跃度: ' + params.value[2];
-                }
-            },
-            grid: {
-                height: '70%',
-                top: '10%'
-            },
-            xAxis: {
-                type: 'category',
-                data: hours,
-                splitArea: {
-                    show: true
-                }
-            },
-            yAxis: {
-                type: 'category',
-                data: days,
-                splitArea: {
-                    show: true
-                }
-            },
-            visualMap: {
-                min: 0,
-                max: 100,
-                calculable: true,
-                orient: 'horizontal',
-                left: 'center',
-                bottom: '5%',
-                inRange: {
-                    color: ['#f0f9ff', '#6f068bad']
-                }
-            },
-            series: [
-                {
-                    name: '活跃度',
-                    type: 'heatmap',
-                    data: data,
-                    label: {
-                        show: false
-                    },
-                    emphasis: {
-                        itemStyle: {
-                            shadowBlur: 10,
-                            shadowColor: 'rgba(0, 0, 0, 0.5)'
-                        }
+        // Build heatmap from hourly + weekday real data
+        fetch('/api/behavior/time_charts?days=90')
+            .then(r => r.json())
+            .then(res => {
+                heatmap.hideLoading();
+                const h  = (res.success && res.hourly)  || {};
+                const wd = (res.success && res.weekday) || {};
+                const pvHours  = h.pv  || Array(24).fill(0);
+                const wdData   = wd.data || Array(7).fill(0);
+                const wdTotal  = wdData.reduce((a,b)=>a+b,1);
+                const pvTotal  = pvHours.reduce((a,b)=>a+b,1);
+                const data = [];
+                for (let di = 0; di < 7; di++) {
+                    const dayW = wdData[di] / wdTotal;
+                    for (let hi = 0; hi < 24; hi++) {
+                        const hrW = pvHours[hi] / pvTotal;
+                        data.push([hi, di, Math.round(dayW * hrW * 10000)]);
                     }
                 }
-            ]
-        };
+                const maxVal = Math.max(...data.map(d=>d[2])) || 1;
 
-        heatmap.setOption(option);
+                heatmap.setOption({
+                    tooltip: { position:'top',
+                        formatter: p => days[p.value[1]] + ' ' + hours[p.value[0]] + '<br/>活跃度: ' + p.value[2] },
+                    grid: { height:'70%', top:'10%' },
+                    xAxis: { type:'category', data:hours, splitArea:{show:true} },
+                    yAxis: { type:'category', data:days, splitArea:{show:true} },
+                    visualMap: { min:0, max:maxVal, calculable:true, orient:'horizontal',
+                                 left:'center', bottom:'5%',
+                                 inRange:{ color:['#f0f9ff','#6f068bad'] } },
+                    series: [{ name:'活跃度', type:'heatmap', data:data,
+                               label:{show:false},
+                               emphasis:{itemStyle:{shadowBlur:10,shadowColor:'rgba(0,0,0,.5)'}} }]
+                });
+            })
+            .catch(() => heatmap.hideLoading());
         return heatmap;
     }
 
-    // ============ 商品类目分析 ============
+    // ============ 商品类目分析 — 真实数据 ============
     function initCategoryChart() {
         const categoryChart = echarts.init(document.getElementById('categoryChart'));
         charts.category = categoryChart;
-
-        const option = {
-            tooltip: {
-                trigger: 'axis',
-                axisPointer: {
-                    type: 'shadow'
-                }
-            },
-            legend: {},
-            grid: {
-                left: '3%',
-                right: '4%',
-                bottom: '3%',
-                containLabel: true
-            },
-            xAxis: {
-                type: 'value'
-            },
-            yAxis: {
-                type: 'category',
-                data: ['电子产品', '服装鞋包', '食品', '美妆', '家居']
-            },
-            series: [
-                {
-                    name: '浏览量',
-                    type: 'bar',
-                    data: [2800, 2400, 1800, 2200, 1600],
-                    itemStyle: { color: '#5470C6' }
-                },
-                {
-                    name: '转化量',
-                    type: 'bar',
-                    data: [420, 380, 260, 340, 220],
-                    itemStyle: { color: '#91CC75' }
-                }
-            ]
-        };
-
-        categoryChart.setOption(option);
-
-        // 点击类目下钻
-        categoryChart.on('click', function(params) {
+        categoryChart.showLoading();
+        fetch('/api/item/chart_data?days=90')
+            .then(r => r.json())
+            .then(res => {
+                categoryChart.hideLoading();
+                if (!res.success) return;
+                const cats = (res.category_dist || []).slice(0, 8);
+                const names = cats.map(c => c.name);
+                const vals  = cats.map(c => c.value);
+                categoryChart.setOption({
+                    tooltip: { trigger:'axis', axisPointer:{type:'shadow'} },
+                    legend: { data:['购买量'] },
+                    grid: { left:'3%', right:'8%', bottom:'3%', containLabel:true },
+                    xAxis: { type:'value', name:'购买量' },
+                    yAxis: { type:'category', data:names },
+                    series: [{
+                        name:'购买量', type:'bar',
+                        data: vals,
+                        itemStyle:{ color: p => ['#5470C6','#91CC75','#FAC858','#EE6666','#73C0DE','#3BA272','#FC8452','#9A60B4'][p.dataIndex%8] },
+                        label:{ show:true, position:'right', formatter:p=>p.value.toLocaleString() }
+                    }]
+                });
+            })
+            .catch(() => categoryChart.hideLoading());
+        categoryChart.on('click', params => {
             console.log('下钻到类目:', params.name);
             document.getElementById('categoryFilter').value = params.name;
-            // 切换到漏斗标签页并过滤
             document.querySelector('[data-tab="funnel"]').click();
         });
-
         return categoryChart;
     }
 
-    // ============ 24小时用户分层对比图（含异常检测） ============
+    // ============ 24小时用户行为分布（真实数据） ============
     function initHourlySegmentChart() {
         const hourlyChart = echarts.init(document.getElementById('hourlySegmentChart'));
-        
-        const hours = [];
-        for (let i = 0; i < 24; i++) {
-            hours.push(i + ':00');
-        }
-
-        // 模拟三类用户的24小时行为数据
-        const newUserData = [80, 50, 30, 15, 10, 25, 60, 150, 280, 320, 350, 380, 
-                             400, 380, 360, 340, 320, 380, 440, 500, 550, 420, 300, 180];
-        const oldUserData = [150, 100, 70, 40, 25, 60, 120, 250, 400, 480, 520, 550,
-                             580, 560, 540, 520, 500, 580, 660, 750, 820, 620, 450, 280];
-        const highValueData = [90, 60, 40, 20, 15, 35, 80, 180, 320, 380, 420, 450,
-                               480, 460, 440, 420, 400, 480, 560, 640, 720, 540, 380, 220];
-
-        const option = {
-            tooltip: {
-                trigger: 'axis',
-                axisPointer: { type: 'cross' }
-            },
-            legend: {
-                data: ['新用户', '老用户', '高价值用户'],
-                top: 10
-            },
-            grid: {
-                left: '3%',
-                right: '4%',
-                bottom: '3%',
-                containLabel: true
-            },
-            xAxis: {
-                type: 'category',
-                data: hours,
-                boundaryGap: false
-            },
-            yAxis: {
-                type: 'value',
-                name: '活跃用户数'
-            },
-            series: [
-                {
-                    name: '新用户',
-                    type: 'line',
-                    data: newUserData,
-                    smooth: true,
-                    lineStyle: { color: '#4facfe', width: 2 },
-                    itemStyle: { color: '#4facfe' },
-                    areaStyle: { color: 'rgba(79, 172, 254, 0.1)' }
-                },
-                {
-                    name: '老用户',
-                    type: 'line',
-                    data: oldUserData,
-                    smooth: true,
-                    lineStyle: { color: '#f093fb', width: 2 },
-                    itemStyle: { color: '#f093fb' },
-                    areaStyle: { color: 'rgba(240, 147, 251, 0.1)' }
-                },
-                {
-                    name: '高价值用户',
-                    type: 'line',
-                    data: highValueData,
-                    smooth: true,
-                    lineStyle: { color: '#43e97b', width: 2 },
-                    itemStyle: { color: '#43e97b' },
-                    areaStyle: { color: 'rgba(67, 233, 123, 0.1)' }
-                },
-                {
-                    name: '异常标注',
-                    type: 'line',
-                    data: [],
-                    markArea: {
-                        itemStyle: {
-                            color: 'rgba(220, 53, 69, 0.2)'
-                        },
-                        data: [
-                            [
-                                { name: '系统维护', xAxis: '3:00' },
-                                { xAxis: '4:00' }
-                            ]
-                        ],
-                        label: {
-                            show: true,
-                            position: 'top',
-                            formatter: '异常时段\n系统维护',
-                            color: '#dc3545',
-                            fontSize: 11
-                        }
-                    }
-                }
-            ]
-        };
-
-        hourlyChart.setOption(option);
-        
-        // 点击事件：钻取到用户画像
-        hourlyChart.on('click', function(params) {
-            if (params.componentType === 'series') {
-                const hour = params.name;
-                drillDownToUserProfile('hour_' + hour);
-            }
+        hourlyChart.showLoading();
+        const hours = Array.from({length:24}, (_,i) => i + ':00');
+        fetch('/api/behavior/time_charts?days=90')
+            .then(r => r.json())
+            .then(res => {
+                hourlyChart.hideLoading();
+                if (!res.success) return;
+                const h = res.hourly || {};
+                const pv   = h.pv   || Array(24).fill(0);
+                const cart = h.cart || Array(24).fill(0);
+                const fav  = h.fav  || Array(24).fill(0);
+                const buy  = h.buy  || Array(24).fill(0);
+                hourlyChart.setOption({
+                    tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+                    legend: { data: ['浏览PV','加购','收藏','购买'], top: 10 },
+                    grid: { left:'3%', right:'4%', bottom:'3%', containLabel: true },
+                    xAxis: { type: 'category', data: hours, boundaryGap: false },
+                    yAxis: { type: 'value', name: '行为次数' },
+                    series: [
+                        { name:'浏览PV', type:'line', smooth:true, data:pv,
+                          lineStyle:{color:'#4facfe',width:2}, itemStyle:{color:'#4facfe'},
+                          areaStyle:{color:'rgba(79,172,254,0.1)'},
+                          markPoint:{data:[{type:'max',name:'峰值'}]},
+                          markLine:{data:[{type:'average',name:'均值'}]} },
+                        { name:'加购', type:'line', smooth:true, data:cart,
+                          lineStyle:{color:'#f093fb',width:2}, itemStyle:{color:'#f093fb'},
+                          areaStyle:{color:'rgba(240,147,251,0.1)'} },
+                        { name:'收藏', type:'line', smooth:true, data:fav,
+                          lineStyle:{color:'#FAC858',width:2}, itemStyle:{color:'#FAC858'},
+                          areaStyle:{color:'rgba(250,200,88,0.1)'} },
+                        { name:'购买', type:'line', smooth:true, data:buy,
+                          lineStyle:{color:'#43e97b',width:2}, itemStyle:{color:'#43e97b'},
+                          areaStyle:{color:'rgba(67,233,123,0.1)'} }
+                    ]
+                });
+            })
+            .catch(() => hourlyChart.hideLoading());
+        hourlyChart.on('click', params => {
+            if (params.componentType === 'series') drillDownToUserProfile('hour_' + params.name);
         });
-        
         return hourlyChart;
     }
 
-    // ============ 周行为模式图（含趋势线） ============
+    // ============ 周行为模式图（真实数据） ============
     function initWeekdayPatternChart() {
         const weekdayChart = echarts.init(document.getElementById('weekdayPatternChart'));
-        
-        const weekData = [12800, 13200, 13600, 14200, 15100, 19600, 17800];
-        const trendData = [12500, 13000, 13700, 14300, 15000, 19000, 17500];
-
-        const option = {
-            tooltip: {
-                trigger: 'axis',
-                axisPointer: { type: 'shadow' }
-            },
-            legend: {
-                data: ['实际活跃度', '趋势拟合线']
-            },
-            grid: {
-                left: '3%',
-                right: '4%',
-                bottom: '3%',
-                containLabel: true
-            },
-            xAxis: {
-                type: 'category',
-                data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
-            },
-            yAxis: {
-                type: 'value',
-                name: '活跃用户数'
-            },
-            series: [
-                {
-                    name: '实际活跃度',
-                    type: 'bar',
-                    data: weekData,
-                    itemStyle: {
-                        color: function(params) {
-                            const colors = ['#667eea', '#667eea', '#667eea', '#667eea', '#667eea', '#43e97b', '#f093fb'];
-                            return colors[params.dataIndex];
-                        }
-                    },
-                    label: {
-                        show: true,
-                        position: 'top',
-                        formatter: '{c}'
-                    }
-                },
-                {
-                    name: '趋势拟合线',
-                    type: 'line',
-                    data: trendData,
-                    smooth: true,
-                    lineStyle: {
-                        color: '#fa709a',
-                        width: 3,
-                        type: 'dashed'
-                    },
-                    itemStyle: { color: '#fa709a' },
-                    symbolSize: 8
-                }
-            ]
-        };
-
-        weekdayChart.setOption(option);
-        
-        // 点击事件：钻取
-        weekdayChart.on('click', function(params) {
-            if (params.seriesName === '实际活跃度') {
-                drillDownToUserProfile('weekday_' + params.name);
-            }
+        weekdayChart.showLoading();
+        fetch('/api/behavior/time_charts?days=90')
+            .then(r => r.json())
+            .then(res => {
+                weekdayChart.hideLoading();
+                if (!res.success) return;
+                const wd = res.weekday || {};
+                const labels = wd.labels || ['周一','周二','周三','周四','周五','周六','周日'];
+                const data   = wd.data   || Array(7).fill(0);
+                // simple linear trend
+                const n = data.length;
+                const sumX = n*(n-1)/2, sumY = data.reduce((a,b)=>a+b,0);
+                const sumXY = data.reduce((s,v,i)=>s+i*v,0), sumX2 = data.reduce((s,_,i)=>s+i*i,0);
+                const slope = (n*sumXY - sumX*sumY)/(n*sumX2 - sumX*sumX) || 0;
+                const intercept = (sumY - slope*sumX)/n;
+                const trend = data.map((_,i) => Math.round(intercept + slope*i));
+                weekdayChart.setOption({
+                    tooltip: { trigger:'axis', axisPointer:{type:'shadow'} },
+                    legend: { data:['实际活跃度','趋势拟合线'] },
+                    grid: { left:'3%', right:'4%', bottom:'3%', containLabel:true },
+                    xAxis: { type:'category', data:labels },
+                    yAxis: { type:'value', name:'行为次数' },
+                    series: [
+                        { name:'实际活跃度', type:'bar', data:data,
+                          itemStyle:{ color: p => ['#667eea','#667eea','#667eea','#667eea','#667eea','#43e97b','#f093fb'][p.dataIndex] },
+                          label:{ show:true, position:'top', formatter: p => p.value.toLocaleString() } },
+                        { name:'趋势拟合线', type:'line', data:trend, smooth:true,
+                          lineStyle:{ color:'#fa709a', width:3, type:'dashed' },
+                          itemStyle:{ color:'#fa709a' }, symbolSize:8 }
+                    ]
+                });
+            })
+            .catch(() => weekdayChart.hideLoading());
+        weekdayChart.on('click', params => {
+            if (params.seriesName === '实际活跃度') drillDownToUserProfile('weekday_' + params.name);
         });
-        
         return weekdayChart;
     }
 
@@ -3738,235 +3545,161 @@ document.addEventListener('DOMContentLoaded', function() {
         return benchmarkChart;
     }
 
-    // ============ 日期趋势预测图 ============
+    // ============ 日期趋势图（真实历史数据 + 简单线性预测） ============
     function initTrendForecastChart() {
         const forecastChart = echarts.init(document.getElementById('trendForecastChart'));
-        
-        const dates = [];
-        const historicalData = [];
-        const forecastData = [];
-        const upperBound = [];
-        const lowerBound = [];
-
-        // 历史30天数据
-        for (let i = 29; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            dates.push((d.getMonth() + 1) + '-' + d.getDate());
-            historicalData.push(16000 + Math.random() * 2000 + i * 50);
-        }
-
-        // 未来7天预测
-        for (let i = 1; i <= 7; i++) {
-            const d = new Date();
-            d.setDate(d.getDate() + i);
-            dates.push((d.getMonth() + 1) + '-' + d.getDate());
-            
-            const forecast = 18000 + i * 100 + Math.random() * 200;
-            forecastData.push(forecast);
-            upperBound.push(forecast + 400);
-            lowerBound.push(forecast - 400);
-        }
-
-        const option = {
-            tooltip: {
-                trigger: 'axis',
-                axisPointer: { type: 'cross' }
-            },
-            legend: {
-                data: ['历史数据', '预测数据', '置信区间']
-            },
-            grid: {
-                left: '3%',
-                right: '4%',
-                bottom: '3%',
-                containLabel: true
-            },
-            xAxis: {
-                type: 'category',
-                data: dates,
-                boundaryGap: false
-            },
-            yAxis: {
-                type: 'value',
-                name: '活跃用户数'
-            },
-            series: [
-                {
-                    name: '历史数据',
-                    type: 'line',
-                    data: historicalData.concat(Array(7).fill(null)),
-                    smooth: true,
-                    lineStyle: { color: '#667eea', width: 3 },
-                    itemStyle: { color: '#667eea' },
-                    areaStyle: {
-                        color: {
-                            type: 'linear',
-                            x: 0, y: 0, x2: 0, y2: 1,
-                            colorStops: [
-                                { offset: 0, color: 'rgba(102, 126, 234, 0.3)' },
-                                { offset: 1, color: 'rgba(102, 126, 234, 0.05)' }
-                            ]
-                        }
-                    }
-                },
-                {
-                    name: '预测数据',
-                    type: 'line',
-                    data: Array(30).fill(null).concat(forecastData),
-                    smooth: true,
-                    lineStyle: { 
-                        color: '#4facfe', 
-                        width: 3,
-                        type: 'dashed'
-                    },
-                    itemStyle: { color: '#4facfe' }
-                },
-                {
-                    name: '置信区间',
-                    type: 'line',
-                    data: Array(30).fill(null).concat(upperBound),
-                    lineStyle: { opacity: 0 },
-                    stack: 'confidence-band',
-                    symbol: 'none'
-                },
-                {
-                    name: '置信区间下限',
-                    type: 'line',
-                    data: Array(30).fill(null).concat(lowerBound.map((v, i) => upperBound[i] - v)),
-                    lineStyle: { opacity: 0 },
-                    areaStyle: {
-                        color: 'rgba(79, 172, 254, 0.2)'
-                    },
-                    stack: 'confidence-band',
-                    symbol: 'none'
+        forecastChart.showLoading();
+        fetch('/api/behavior/time_charts?days=60')
+            .then(r => r.json())
+            .then(res => {
+                forecastChart.hideLoading();
+                if (!res.success) return;
+                const dt = res.daily_trend || {};
+                const histDates = dt.dates || [];
+                const histData  = dt.total  || [];
+                const hLen = histDates.length;
+                // linear forecast: next 7 days
+                const n = hLen || 1;
+                const sumX  = n*(n-1)/2;
+                const sumY  = histData.reduce((a,b)=>a+b, 0);
+                const sumXY = histData.reduce((s,v,i)=>s+i*v, 0);
+                const sumX2 = histData.reduce((s,_,i)=>s+i*i, 0);
+                const slope = n > 1 ? (n*sumXY - sumX*sumY)/(n*sumX2 - sumX*sumX) : 0;
+                const intercept = (sumY - slope*sumX)/n;
+                const forecastDates = [], forecastData = [], upperBound = [], lowerBound = [];
+                for (let i = 1; i <= 7; i++) {
+                    const d = new Date(); d.setDate(d.getDate() + i);
+                    forecastDates.push((d.getMonth()+1) + '-' + d.getDate());
+                    const v = Math.max(0, Math.round(intercept + slope*(hLen + i - 1)));
+                    const band = Math.round(v * 0.08);
+                    forecastData.push(v);
+                    upperBound.push(v + band);
+                    lowerBound.push(Math.max(0, v - band));
                 }
-            ]
-        };
-
-        forecastChart.setOption(option);
+                const allDates = histDates.concat(forecastDates);
+                forecastChart.setOption({
+                    tooltip: { trigger:'axis', axisPointer:{type:'cross'} },
+                    legend: { data:['历史数据','趋势预测','置信区间'] },
+                    grid: { left:'3%', right:'4%', bottom:'10%', containLabel:true },
+                    dataZoom: [{ type:'inside', start:60, end:100 }, { type:'slider', bottom:0 }],
+                    xAxis: { type:'category', data:allDates, boundaryGap:false },
+                    yAxis: { type:'value', name:'行为次数' },
+                    series: [
+                        { name:'历史数据', type:'line', smooth:true,
+                          data: histData.concat(Array(7).fill(null)),
+                          lineStyle:{color:'#667eea',width:3}, itemStyle:{color:'#667eea'},
+                          areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,
+                            colorStops:[{offset:0,color:'rgba(102,126,234,.3)'},{offset:1,color:'rgba(102,126,234,.05)'}]}} },
+                        { name:'趋势预测', type:'line', smooth:true,
+                          data: Array(hLen).fill(null).concat(forecastData),
+                          lineStyle:{color:'#4facfe',width:3,type:'dashed'}, itemStyle:{color:'#4facfe'} },
+                        { name:'置信区间', type:'line', symbol:'none',
+                          data: Array(hLen).fill(null).concat(upperBound),
+                          lineStyle:{opacity:0}, stack:'cb' },
+                        { name:'置信区间下限', type:'line', symbol:'none',
+                          data: Array(hLen).fill(null).concat(upperBound.map((v,i)=>v-lowerBound[i])),
+                          lineStyle:{opacity:0}, stack:'cb',
+                          areaStyle:{color:'rgba(79,172,254,0.15)'} }
+                    ]
+                });
+            })
+            .catch(() => forecastChart.hideLoading());
         return forecastChart;
     }
 
-    // ============ 24小时活跃度 ============
+    // ============ 24小时活跃度 — 真实数据 ============
     function initHourlyChart() {
         const hourlyChart = echarts.init(document.getElementById('hourlyChart'));
         charts.hourly = hourlyChart;
-
-        const hours = [];
-        for (let i = 0; i < 24; i++) {
-            hours.push(i + ':00');
-        }
-
-        const option = {
-            tooltip: {
-                trigger: 'axis'
-            },
-            xAxis: {
-                type: 'category',
-                data: hours
-            },
-            yAxis: {
-                type: 'value',
-                name: '活跃用户数'
-            },
-            series: [
-                {
-                    data: [120, 80, 60, 40, 30, 50, 100, 200, 350, 420, 450, 480, 
-                           500, 480, 460, 440, 420, 480, 550, 620, 680, 520, 380, 220],
-                    type: 'line',
-                    smooth: true,
-                    areaStyle: {
-                        color: {
-                            type: 'linear',
-                            x: 0, y: 0, x2: 0, y2: 1,
-                            colorStops: [
-                                { offset: 0, color: 'rgba(111, 6, 139, 0.5)' },
-                                { offset: 1, color: 'rgba(111, 6, 139, 0.1)' }
-                            ]
-                        }
-                    },
-                    itemStyle: { color: '#6f068bad' },
-                    markPoint: {
-                        data: [
-                            { type: 'max', name: '最大值' },
-                            { type: 'min', name: '最小值' }
-                        ]
-                    },
-                    markLine: {
-                        data: [{ type: 'average', name: '平均值' }]
-                    }
-                }
-            ]
-        };
-
-        hourlyChart.setOption(option);
+        hourlyChart.showLoading();
         return hourlyChart;
     }
 
-    // ============ 星期分布 ============
+    // ============ 星期分布 — 真实数据 ============
     function initWeekdayChart() {
         const weekdayChart = echarts.init(document.getElementById('weekdayChart'));
         charts.weekday = weekdayChart;
-
-        const option = {
-            tooltip: {
-                trigger: 'axis'
-            },
-            xAxis: {
-                type: 'category',
-                data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
-            },
-            yAxis: {
-                type: 'value'
-            },
-            series: [
-                {
-                    data: [2800, 2600, 2700, 2900, 3100, 3800, 3600],
-                    type: 'bar',
-                    itemStyle: {
-                        color: function(params) {
-                            const colors = ['#5470C6', '#5470C6', '#5470C6', '#5470C6', '#5470C6', '#91CC75', '#91CC75'];
-                            return colors[params.dataIndex];
-                        }
-                    }
-                }
-            ]
-        };
-
-        weekdayChart.setOption(option);
+        weekdayChart.showLoading();
         return weekdayChart;
     }
 
-    // ============ 月度趋势 ============
+    // ============ 月度趋势 — 真实数据 ============
     function initMonthlyChart() {
         const monthlyChart = echarts.init(document.getElementById('monthlyChart'));
         charts.monthly = monthlyChart;
-
-        const option = {
-            tooltip: {
-                trigger: 'axis'
-            },
-            xAxis: {
-                type: 'category',
-                data: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
-            },
-            yAxis: {
-                type: 'value'
-            },
-            series: [
-                {
-                    data: [28000, 26000, 32000, 35000, 38000, 42000, 45000, 48000, 46000, 50000, 52000, 55000],
-                    type: 'line',
-                    smooth: true,
-                    itemStyle: { color: '#6f068bad' },
-                    lineStyle: { width: 3 }
-                }
-            ]
-        };
-
-        monthlyChart.setOption(option);
+        monthlyChart.showLoading();
         return monthlyChart;
+    }
+
+    // ── 从 /api/behavior/time_charts 加载真实时间分布数据 ──
+    function loadTimeCharts(days) {
+        const d = days || 90;
+        fetch('/api/behavior/time_charts?days=' + d)
+            .then(r => r.json())
+            .then(res => {
+                if (!res.success) return;
+
+                // 小时分布
+                const h = res.hourly || {};
+                const hLabels = (h.hours || Array.from({length:24},(_,i)=>i)).map(x => x + ':00');
+                const pvData  = h.pv   || Array(24).fill(0);
+                const buyData = h.buy  || Array(24).fill(0);
+                if (charts.hourly) {
+                    charts.hourly.hideLoading();
+                    charts.hourly.setOption({
+                        tooltip: { trigger: 'axis' },
+                        legend: { data: ['浏览PV','购买'] },
+                        xAxis: { type: 'category', data: hLabels },
+                        yAxis: { type: 'value', name: '次数' },
+                        series: [
+                            { name: '浏览PV', type: 'line', smooth: true, data: pvData,
+                              areaStyle: { color: { type:'linear', x:0,y:0,x2:0,y2:1,
+                                colorStops:[{offset:0,color:'rgba(111,6,139,.4)'},{offset:1,color:'rgba(111,6,139,.05)'}]} },
+                              itemStyle: { color: '#6f068bad' },
+                              markPoint: { data: [{type:'max',name:'峰值'}] },
+                              markLine: { data: [{type:'average',name:'均值'}] } },
+                            { name: '购买', type: 'line', smooth: true, data: buyData,
+                              itemStyle: { color: '#91CC75' } }
+                        ]
+                    });
+                }
+
+                // 星期分布
+                const wd = res.weekday || {};
+                if (charts.weekday) {
+                    charts.weekday.hideLoading();
+                    charts.weekday.setOption({
+                        tooltip: { trigger: 'axis' },
+                        xAxis: { type: 'category', data: wd.labels || ['周一','周二','周三','周四','周五','周六','周日'] },
+                        yAxis: { type: 'value', name: '行为次数' },
+                        series: [{
+                            type: 'bar',
+                            data: wd.data || [],
+                            itemStyle: { color: p => ['#5470C6','#5470C6','#5470C6','#5470C6','#5470C6','#91CC75','#91CC75'][p.dataIndex] },
+                            label: { show: true, position: 'top', formatter: p => p.value.toLocaleString() }
+                        }]
+                    });
+                }
+
+                // 月度趋势
+                const mo = res.monthly || {};
+                if (charts.monthly) {
+                    charts.monthly.hideLoading();
+                    charts.monthly.setOption({
+                        tooltip: { trigger: 'axis' },
+                        xAxis: { type: 'category', data: mo.labels || [] },
+                        yAxis: { type: 'value', name: '行为次数' },
+                        series: [{
+                            type: 'line', smooth: true, data: mo.data || [],
+                            itemStyle: { color: '#6f068bad' }, lineStyle: { width: 3 },
+                            areaStyle: { color: { type:'linear',x:0,y:0,x2:0,y2:1,
+                                colorStops:[{offset:0,color:'rgba(111,6,139,.35)'},{offset:1,color:'rgba(111,6,139,.05)'}]} },
+                            markLine: { data: [{type:'average',name:'均值'}] }
+                        }]
+                    });
+                }
+            })
+            .catch(e => console.warn('time_charts load error:', e));
     }
 
     // ============ RFM分群分布饼图 ============
@@ -4274,6 +4007,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!charts.weekdayPattern) charts.weekdayPattern = initWeekdayPatternChart();
                 if (!charts.weekdayBenchmark) charts.weekdayBenchmark = initWeekdayBenchmarkChart();
                 if (!charts.trendForecast) charts.trendForecast = initTrendForecastChart();
+                // 加载真实时间分布数据到 hourly/weekday/monthly 辅助图
+                loadTimeCharts(90);
             } else if (tabName === 'rfm') {
                 // 初始化RFM相关所有图表
                 if (!charts.rfmPie) charts.rfmPie = initRFMPieChart();

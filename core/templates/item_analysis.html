@@ -375,231 +375,121 @@
 {% block page_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // 初始化图表
-    const trendChart = echarts.init(document.getElementById('itemTrendChart'));
-    const categoryChart = echarts.init(document.getElementById('categoryDistributionChart'));
+    const trendChart      = echarts.init(document.getElementById('itemTrendChart'));
+    const categoryChart   = echarts.init(document.getElementById('categoryDistributionChart'));
     const conversionChart = echarts.init(document.getElementById('conversionAnalysisChart'));
-    const funnelChart = echarts.init(document.getElementById('behaviorFunnelChart'));
+    const funnelChart     = echarts.init(document.getElementById('behaviorFunnelChart'));
 
-    // 商品趋势图
-    const trendOption = {
-        title: {
-            text: '热门商品趋势对比',
-            left: 'center'
-        },
-        tooltip: {
-            trigger: 'axis',
-            formatter: function(params) {
-                let result = params[0].axisValue + '<br/>';
-                params.forEach(function(item) {
-                    result += item.marker + item.seriesName + ': ' + item.value + ' 次<br/>';
-                });
-                return result;
-            }
-        },
-        legend: {
-            data: ['商品A', '商品B', '商品C', '商品D', '商品E'],
-            bottom: 10
-        },
-        xAxis: {
-            type: 'category',
-            data: ['12-01', '12-02', '12-03', '12-04', '12-05', '12-06', '12-07']
-        },
-        yAxis: {
-            type: 'value',
-            name: '浏览量'
-        },
-        series: [
-            {
-                name: '商品A',
-                type: 'line',
-                data: [320, 332, 301, 334, 390, 330, 320],
-                smooth: true
-            },
-            {
-                name: '商品B',
-                type: 'line',
-                data: [220, 182, 191, 234, 290, 330, 310],
-                smooth: true
-            },
-            {
-                name: '商品C',
-                type: 'line',
-                data: [150, 232, 201, 154, 190, 330, 410],
-                smooth: true
-            },
-            {
-                name: '商品D',
-                type: 'line',
-                data: [98, 77, 101, 99, 40, 62, 69],
-                smooth: true
-            },
-            {
-                name: '商品E',
-                type: 'line',
-                data: [56, 76, 35, 48, 29, 33, 45],
-                smooth: true
-            }
-        ],
-        dataZoom: [{
-            type: 'inside',
-            start: 0,
-            end: 100
-        }]
-    };
+    const COLORS = ['#5470C6','#91CC75','#FAC858','#EE6666','#73C0DE','#3BA272','#FC8452','#9A60B4'];
 
-    // 类目分布图
-    const categoryOption = {
-        title: {
-            text: '类目商品分布',
-            subtext: '各商品类目数量占比',
-            left: 'center'
-        },
-        tooltip: {
-            trigger: 'item',
-            formatter: '{a} <br/>{b}: {c} ({d}%)'
-        },
-        legend: {
-            orient: 'vertical',
-            left: 'left',
-            data: ['电子产品', '服装', '家居用品', '美妆护肤', '食品饮料', '其他']
-        },
-        series: [
-            {
-                name: '商品类目',
-                type: 'pie',
-                radius: '50%',
-                data: [
-                    {value: 335, name: '电子产品', itemStyle: {color: '#5470C6'}},
-                    {value: 310, name: '服装', itemStyle: {color: '#91CC75'}},
-                    {value: 234, name: '家居用品', itemStyle: {color: '#FAC858'}},
-                    {value: 135, name: '美妆护肤', itemStyle: {color: '#EE6666'}},
-                    {value: 154, name: '食品饮料', itemStyle: {color: '#73C0DE'}},
-                    {value: 68, name: '其他', itemStyle: {color: '#3BA272'}}
-                ],
-                emphasis: {
+    function showLoading(charts) { charts.forEach(c => c.showLoading()); }
+    function hideLoading(charts) { charts.forEach(c => c.hideLoading()); }
+
+    async function loadCharts() {
+        const days = document.getElementById('timeRange') ? document.getElementById('timeRange').value : 90;
+        showLoading([trendChart, categoryChart, conversionChart, funnelChart]);
+        try {
+            const res = await fetch(`/api/item/chart_data?days=${days}`);
+            const d   = await res.json();
+            hideLoading([trendChart, categoryChart, conversionChart, funnelChart]);
+            if (!d.success) { console.error('chart_data error:', d.error); return; }
+
+            /* ── 1. 热门商品购买量排行（横向柱状图） ── */
+            const topItems = d.top_items || [];
+            trendChart.setOption({
+                title: { text: '热门商品购买量 Top ' + topItems.length, left: 'center' },
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                grid: { left: '3%', right: '8%', containLabel: true },
+                xAxis: { type: 'value', name: '购买量' },
+                yAxis: {
+                    type: 'category',
+                    data: topItems.map(i => String(i.item_id)).reverse(),
+                    axisLabel: { width: 80, overflow: 'truncate' }
+                },
+                series: [{
+                    name: '购买量',
+                    type: 'bar',
+                    data: topItems.map(i => i.purchase_count || 0).reverse(),
+                    itemStyle: { color: '#5470C6' },
+                    label: { show: true, position: 'right' }
+                }]
+            });
+
+            /* ── 2. 类目销售分布饼图 ── */
+            const catDist = d.category_dist || [];
+            categoryChart.setOption({
+                title: { text: '类目销售分布', subtext: '各类目购买量占比', left: 'center' },
+                tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+                legend: { orient: 'vertical', left: 'left', type: 'scroll' },
+                series: [{
+                    name: '类目',
+                    type: 'pie',
+                    radius: ['35%', '60%'],
+                    data: catDist.map((c, i) => ({
+                        value: c.value, name: c.name,
+                        itemStyle: { color: COLORS[i % COLORS.length] }
+                    })),
+                    emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,.4)' } },
+                    label: { formatter: '{b}\n{d}%' }
+                }]
+            });
+
+            /* ── 3. 类目转化率对比（柱状图） ── */
+            const catConv = d.category_conv || [];
+            conversionChart.setOption({
+                title: { text: '各类目购买量对比', left: 'center' },
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' },
+                           formatter: p => p[0].name + '：' + p[0].value.toLocaleString() + ' 件' },
+                xAxis: { type: 'category',
+                         data: catConv.map(c => c.name),
+                         axisLabel: { rotate: 35, interval: 0 } },
+                yAxis: { type: 'value', name: '购买量' },
+                series: [{
+                    name: '购买量',
+                    type: 'bar',
+                    data: catConv.map(c => c.buy_cnt),
                     itemStyle: {
-                        shadowBlur: 10,
-                        shadowOffsetX: 0,
-                        shadowColor: 'rgba(0, 0, 0, 0.5)'
-                    }
-                }
-            }
-        ]
-    };
+                        color: p => { const v = p.value;
+                            if (v >= catConv.reduce((a,b)=>a+b.buy_cnt,0)/catConv.length*1.5) return '#91CC75';
+                            if (v >= catConv.reduce((a,b)=>a+b.buy_cnt,0)/catConv.length*0.5)  return '#FAC858';
+                            return '#EE6666'; }
+                    },
+                    label: { show: true, position: 'top', formatter: p => p.value.toLocaleString() }
+                }]
+            });
 
-    // 转化率分析图
-    const conversionOption = {
-        title: {
-            text: '各商品类目转化率对比',
-            left: 'center'
-        },
-        tooltip: {
-            trigger: 'axis',
-            axisPointer: {
-                type: 'shadow'
-            },
-            formatter: function(params) {
-                return params[0].name + ': ' + params[0].value + '%';
-            }
-        },
-        xAxis: {
-            type: 'category',
-            data: ['电子产品', '服装', '家居用品', '美妆护肤', '食品饮料'],
-            axisLabel: {
-                rotate: 45
-            }
-        },
-        yAxis: {
-            type: 'value',
-            axisLabel: {
-                formatter: '{value}%'
-            }
-        },
-        series: [
-            {
-                name: '转化率',
-                type: 'bar',
-                data: [8.5, 6.2, 7.8, 9.1, 5.4],
-                itemStyle: {
-                    color: function(params) {
-                        const value = params.value;
-                        if (value >= 8) return '#91CC75';
-                        if (value >= 6) return '#FAC858';
-                        return '#EE6666';
-                    }
-                },
-                label: {
-                    show: true,
-                    position: 'top',
-                    formatter: '{c}%'
-                }
-            }
-        ]
-    };
+            /* ── 4. 行为转化漏斗（真实数据） ── */
+            const funnel = d.funnel || [];
+            const maxVal = funnel.length ? Math.max(...funnel.map(f => f.value || 0)) : 1;
+            funnelChart.setOption({
+                title: { text: '行为转化漏斗', subtext: '浏览→加购→收藏→购买', left: 'center' },
+                tooltip: { trigger: 'item',
+                           formatter: p => p.name + '：' + (p.value||0).toLocaleString() + ' 次' },
+                series: [{
+                    name: '转化漏斗', type: 'funnel',
+                    left: '10%', top: 60, bottom: 60, width: '80%',
+                    min: 0, max: maxVal, sort: 'descending', gap: 2,
+                    label: { show: true, position: 'inside',
+                             formatter: p => p.name + '\n' + (p.value||0).toLocaleString() },
+                    itemStyle: { borderColor: '#fff', borderWidth: 1 },
+                    data: funnel.map((f, i) => ({
+                        name: f.name, value: f.value,
+                        itemStyle: { color: COLORS[i % COLORS.length] }
+                    }))
+                }]
+            });
 
-    // 行为漏斗图
-    const funnelOption = {
-        title: {
-            text: '商品行为转化漏斗',
-            subtext: '从浏览到购买的转化过程',
-            left: 'center'
-        },
-        tooltip: {
-            trigger: 'item',
-            formatter: '{a} <br/>{b} : {c}'
-        },
-        series: [
-            {
-                name: '转化漏斗',
-                type: 'funnel',
-                left: '10%',
-                top: 60,
-                bottom: 60,
-                width: '80%',
-                min: 0,
-                max: 100,
-                minSize: '0%',
-                maxSize: '100%',
-                sort: 'descending',
-                gap: 2,
-                label: {
-                    show: true,
-                    position: 'inside'
-                },
-                labelLine: {
-                    length: 10,
-                    lineStyle: {
-                        width: 1,
-                        type: 'solid'
-                    }
-                },
-                itemStyle: {
-                    borderColor: '#fff',
-                    borderWidth: 1
-                },
-                data: [
-                    {value: 100, name: '浏览'},
-                    {value: 25, name: '加购'},
-                    {value: 15, name: '收藏'},
-                    {value: 8, name: '购买'}
-                ]
-            }
-        ]
-    };
+        } catch(err) {
+            hideLoading([trendChart, categoryChart, conversionChart, funnelChart]);
+            console.error('加载图表数据失败:', err);
+        }
+    }
 
-    // 渲染图表
-    trendChart.setOption(trendOption);
-    categoryChart.setOption(categoryOption);
-    conversionChart.setOption(conversionOption);
-    funnelChart.setOption(funnelOption);
+    loadCharts();
 
-    // 窗口大小变化时重绘
     window.addEventListener('resize', function() {
-        trendChart.resize();
-        categoryChart.resize();
-        conversionChart.resize();
-        funnelChart.resize();
+        trendChart.resize(); categoryChart.resize();
+        conversionChart.resize(); funnelChart.resize();
     });
 
     // 应用筛选
@@ -619,6 +509,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await resp.json();
             if (result.success) {
                 updateTopItemsTable(result.data);
+                loadCharts();
             } else {
                 alert('筛选失败: ' + (result.error || '未知错误'));
             }

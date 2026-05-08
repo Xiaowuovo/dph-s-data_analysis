@@ -315,394 +315,173 @@
 {% block page_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // 初始化图表
-    const hourlyChart = echarts.init(document.getElementById('hourlyPatternChart'));
-    const weeklyChart = echarts.init(document.getElementById('weeklyPatternChart'));
-    const trendChart = echarts.init(document.getElementById('dateTrendChart'));
+    const hourlyChart  = echarts.init(document.getElementById('hourlyPatternChart'));
+    const weeklyChart  = echarts.init(document.getElementById('weeklyPatternChart'));
+    const trendChart   = echarts.init(document.getElementById('dateTrendChart'));
     const holidayChart = echarts.init(document.getElementById('holidayComparisonChart'));
-    
-    // 24小时行为模式图表
-    const hourlyOption = {
-        title: {
-            text: '24小时用户行为分布',
-            left: 'center'
-        },
-        tooltip: {
-            trigger: 'axis',
-            formatter: function(params) {
-                let result = params[0].axisValue + '时<br/>';
-                params.forEach(function(item) {
-                    result += item.marker + item.seriesName + ': ' + item.value + ' (' + (item.value * 100 / totalCount).toFixed(1) + '%)<br/>';
-                });
-                return result;
-            }
-        },
-        legend: {
-            data: ['浏览(PV)', '加购(Cart)', '收藏(Fav)', '购买(Buy)'],
-            bottom: 10
-        },
-        xAxis: {
-            type: 'category',
-            data: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23'],
-            name: '小时',
-            axisLabel: {
-                interval: 0
-            }
-        },
-        yAxis: {
-            type: 'value',
-            name: '行为数量'
-        },
-        series: [
-            {
-                name: '浏览(PV)',
-                type: 'line',
-                smooth: true,
-                data: [120, 90, 60, 50, 40, 60, 120, 240, 320, 400, 450, 500, 550, 580, 600, 620, 650, 700, 800, 950, 1050, 980, 750, 400],
-                lineStyle: {
-                    width: 3,
-                    color: '#5470C6'
-                },
-                areaStyle: {
-                    color: 'rgba(84, 112, 198, 0.1)'
-                }
-            },
-            {
-                name: '加购(Cart)',
-                type: 'line',
-                smooth: true,
-                data: [15, 10, 5, 3, 2, 5, 15, 30, 45, 60, 70, 80, 85, 90, 95, 100, 110, 120, 140, 160, 180, 170, 130, 80],
-                lineStyle: {
-                    width: 3,
-                    color: '#91CC75'
-                },
-                areaStyle: {
-                    color: 'rgba(145, 204, 117, 0.1)'
-                }
-            },
-            {
-                name: '收藏(Fav)',
-                type: 'line',
-                smooth: true,
-                data: [8, 5, 3, 2, 1, 3, 8, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 80, 90, 85, 70, 40],
-                lineStyle: {
-                    width: 3,
-                    color: '#FAC858'
-                },
-                areaStyle: {
-                    color: 'rgba(250, 200, 88, 0.1)'
-                }
-            },
-            {
-                name: '购买(Buy)',
-                type: 'line',
-                smooth: true,
-                data: [5, 3, 1, 0, 0, 1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 75, 85, 80, 60, 30],
-                lineStyle: {
-                    width: 3,
-                    color: '#EE6666'
-                },
-                areaStyle: {
-                    color: 'rgba(238, 102, 102, 0.1)'
-                }
-            }
-        ],
-        dataZoom: [{
-            type: 'inside',
-            start: 0,
-            end: 100
-        }]
-    };
-    
-    // 周行为模式图表
-    const weeklyOption = {
-        title: {
-            text: '一周用户行为分布',
-            left: 'center'
-        },
-        tooltip: {
-            trigger: 'axis',
-            axisPointer: {
-                type: 'shadow'
-            }
-        },
-        legend: {
-            data: ['浏览(PV)', '加购(Cart)', '收藏(Fav)', '购买(Buy)'],
-            bottom: 10
-        },
-        xAxis: {
-            type: 'category',
-            data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
-            name: '星期'
-        },
-        yAxis: {
-            type: 'value',
-            name: '行为数量'
-        },
-        series: [
-            {
-                name: '浏览(PV)',
-                type: 'bar',
-                barWidth: '20%',
-                data: [3200, 3400, 3300, 3500, 3800, 5200, 4800],
-                itemStyle: {
-                    color: '#5470C6'
-                }
-            },
-            {
-                name: '加购(Cart)',
-                type: 'bar',
-                barWidth: '20%',
-                data: [450, 480, 470, 490, 520, 780, 720],
-                itemStyle: {
-                    color: '#91CC75'
-                }
-            },
-            {
-                name: '收藏(Fav)',
-                type: 'bar',
-                barWidth: '20%',
-                data: [230, 250, 240, 260, 280, 420, 390],
-                itemStyle: {
-                    color: '#FAC858'
-                }
-            },
-            {
-                name: '购买(Buy)',
-                type: 'bar',
-                barWidth: '20%',
-                data: [150, 160, 155, 170, 190, 280, 260],
-                itemStyle: {
-                    color: '#EE6666'
-                }
-            }
-        ]
-    };
-    
-    // 日期趋势分析图表
-    const trendOption = {
-        title: {
-            text: '用户行为日期趋势',
-            left: 'center'
-        },
-        tooltip: {
-            trigger: 'axis',
-            formatter: function(params) {
-                let result = params[0].axisValue + '<br/>';
-                params.forEach(function(item) {
-                    result += item.marker + item.seriesName + ': ' + item.value + '<br/>';
-                });
-                return result;
-            }
-        },
-        legend: {
-            data: ['浏览(PV)', '加购(Cart)', '收藏(Fav)', '购买(Buy)'],
-            bottom: 10
-        },
-        xAxis: {
-            type: 'category',
-            data: ['1日', '2日', '3日', '4日', '5日', '6日', '7日', '8日', '9日', '10日', 
-                   '11日', '12日', '13日', '14日', '15日', '16日', '17日', '18日', '19日', '20日',
-                   '21日', '22日', '23日', '24日', '25日', '26日', '27日', '28日', '29日', '30日'],
-            name: '日期',
-            axisLabel: {
-                rotate: 45
-            }
-        },
-        yAxis: {
-            type: 'value',
-            name: '行为数量'
-        },
-        series: [
-            {
-                name: '浏览(PV)',
-                type: 'line',
-                smooth: true,
-                data: generateDailyData(10000, 15000, [10, 15, 20, 25]),
-                lineStyle: {
-                    width: 3,
-                    color: '#5470C6'
-                },
-                areaStyle: {
-                    color: 'rgba(84, 112, 198, 0.1)'
-                }
-            },
-            {
-                name: '加购(Cart)',
-                type: 'line',
-                smooth: true,
-                data: generateDailyData(1500, 2500, [10, 15, 20, 25]),
-                lineStyle: {
-                    width: 3,
-                    color: '#91CC75'
-                },
-                areaStyle: {
-                    color: 'rgba(145, 204, 117, 0.1)'
-                }
-            },
-            {
-                name: '收藏(Fav)',
-                type: 'line',
-                smooth: true,
-                data: generateDailyData(800, 1500, [10, 15, 20, 25]),
-                lineStyle: {
-                    width: 3,
-                    color: '#FAC858'
-                },
-                areaStyle: {
-                    color: 'rgba(250, 200, 88, 0.1)'
-                }
-            },
-            {
-                name: '购买(Buy)',
-                type: 'line',
-                smooth: true,
-                data: generateDailyData(500, 1000, [10, 15, 20, 25]),
-                lineStyle: {
-                    width: 3,
-                    color: '#EE6666'
-                },
-                areaStyle: {
-                    color: 'rgba(238, 102, 102, 0.1)'
-                }
-            }
-        ],
-        dataZoom: [{
-            type: 'inside',
-            start: 0,
-            end: 100
-        }],
-        markLine: {
-            data: [
-                {
-                    name: '促销开始',
-                    xAxis: '5日',
-                    lineStyle: {
-                        color: '#EE6666'
-                    },
-                    label: {
-                        formatter: '促销开始',
-                        position: 'insideStartTop'
+
+    [hourlyChart, weeklyChart, trendChart, holidayChart].forEach(c => c.showLoading());
+
+    async function loadCharts(days) {
+        days = days || parseInt(document.getElementById('timeRange').value) || 30;
+        try {
+            const res = await fetch('/api/behavior/time_charts?days=' + days).then(r => r.json());
+            if (!res.success) throw new Error(res.error);
+
+            const h  = res.hourly       || {};
+            const wd = res.weekday      || {};
+            const dt = res.daily_trend  || {};
+
+            const hLabels = (h.hours || Array.from({length:24},(_,i)=>i)).map(x => x + ':00');
+            const pv   = h.pv   || Array(24).fill(0);
+            const cart = h.cart || Array(24).fill(0);
+            const fav  = h.fav  || Array(24).fill(0);
+            const buy  = h.buy  || Array(24).fill(0);
+
+            /* ── 1. 24小时行为分布 ── */
+            hourlyChart.hideLoading();
+            hourlyChart.setOption({
+                title: { text: '24小时用户行为分布', left: 'center' },
+                tooltip: { trigger: 'axis',
+                    formatter: params => {
+                        const total = params.reduce((s,p) => s + (p.value||0), 0) || 1;
+                        return params[0].axisValue + '时<br/>' +
+                            params.map(p => p.marker + p.seriesName + ': ' +
+                                (p.value||0).toLocaleString() +
+                                ' (' + (p.value/total*100).toFixed(1) + '%)').join('<br/>');
                     }
                 },
-                {
-                    name: '促销结束',
-                    xAxis: '15日',
-                    lineStyle: {
-                        color: '#EE6666'
-                    },
-                    label: {
-                        formatter: '促销结束',
-                        position: 'insideStartTop'
-                    }
-                }
-            ]
+                legend: { data: ['浏览(PV)','加购(Cart)','收藏(Fav)','购买(Buy)'], bottom: 10 },
+                xAxis: { type: 'category', data: hLabels, name: '小时',
+                         axisLabel: { interval: 1 } },
+                yAxis: { type: 'value', name: '行为次数' },
+                dataZoom: [{ type: 'inside' }],
+                series: [
+                    { name:'浏览(PV)',   type:'line', smooth:true, data:pv,
+                      lineStyle:{width:3,color:'#5470C6'}, itemStyle:{color:'#5470C6'},
+                      areaStyle:{color:'rgba(84,112,198,0.1)'},
+                      markPoint:{data:[{type:'max',name:'峰值'}]},
+                      markLine:{data:[{type:'average',name:'均值'}]} },
+                    { name:'加购(Cart)', type:'line', smooth:true, data:cart,
+                      lineStyle:{width:3,color:'#91CC75'}, itemStyle:{color:'#91CC75'},
+                      areaStyle:{color:'rgba(145,204,117,0.1)'} },
+                    { name:'收藏(Fav)',  type:'line', smooth:true, data:fav,
+                      lineStyle:{width:3,color:'#FAC858'}, itemStyle:{color:'#FAC858'},
+                      areaStyle:{color:'rgba(250,200,88,0.1)'} },
+                    { name:'购买(Buy)',  type:'line', smooth:true, data:buy,
+                      lineStyle:{width:3,color:'#EE6666'}, itemStyle:{color:'#EE6666'},
+                      areaStyle:{color:'rgba(238,102,102,0.1)'} }
+                ]
+            });
+
+            /* ── 2. 周行为分布 ── */
+            weeklyChart.hideLoading();
+            const wLabels = wd.labels || ['周一','周二','周三','周四','周五','周六','周日'];
+            const wData   = wd.data   || Array(7).fill(0);
+            weeklyChart.setOption({
+                title: { text: '一周用户行为分布', left: 'center' },
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                legend: { data: ['行为总量'], bottom: 10 },
+                xAxis: { type: 'category', data: wLabels, name: '星期' },
+                yAxis: { type: 'value', name: '行为次数' },
+                series: [{
+                    name: '行为总量', type: 'bar',
+                    data: wData,
+                    itemStyle: { color: p =>
+                        ['#5470C6','#5470C6','#5470C6','#5470C6','#5470C6','#91CC75','#EE6666'][p.dataIndex] },
+                    label: { show: true, position: 'top',
+                             formatter: p => p.value.toLocaleString() }
+                }]
+            });
+
+            /* ── 3. 日期趋势 ── */
+            trendChart.hideLoading();
+            const dates  = dt.dates || [];
+            const totals = dt.total || [];
+            const buys   = dt.buy   || [];
+            trendChart.setOption({
+                title: { text: '用户行为日期趋势', left: 'center' },
+                tooltip: { trigger: 'axis',
+                    formatter: params => params[0].axisValue + '<br/>' +
+                        params.map(p => p.marker + p.seriesName + ': ' +
+                            (p.value||0).toLocaleString()).join('<br/>') },
+                legend: { data: ['总行为量','购买量'], bottom: 10 },
+                xAxis: { type: 'category', data: dates, name: '日期',
+                         axisLabel: { rotate: 45 } },
+                yAxis: { type: 'value', name: '次数' },
+                dataZoom: [{ type: 'inside', start: 0, end: 100 },
+                           { type: 'slider', bottom: 30 }],
+                series: [
+                    { name:'总行为量', type:'line', smooth:true, data:totals,
+                      lineStyle:{width:3,color:'#5470C6'}, itemStyle:{color:'#5470C6'},
+                      areaStyle:{color:'rgba(84,112,198,0.1)'},
+                      markLine:{data:[{type:'average',name:'均值'}]} },
+                    { name:'购买量', type:'line', smooth:true, data:buys,
+                      lineStyle:{width:2,color:'#EE6666'}, itemStyle:{color:'#EE6666'},
+                      areaStyle:{color:'rgba(238,102,102,0.08)'} }
+                ]
+            });
+
+            /* ── 4. 节假日对比（周末 vs 工作日） ── */
+            holidayChart.hideLoading();
+            const weekendIdx = [5, 6]; // 周六=5, 周日=6
+            const wkdaySum = wData.filter((_,i) => !weekendIdx.includes(i)).reduce((a,b)=>a+b,0);
+            const wkendSum = wData.filter((_,i) =>  weekendIdx.includes(i)).reduce((a,b)=>a+b,0);
+            const wkdayDays = 5, wkendDays = 2;
+            const wkdayAvg = Math.round(wkdaySum / wkdayDays);
+            const wkendAvg = Math.round(wkendSum / wkendDays);
+            holidayChart.setOption({
+                title: { text: '工作日 vs 周末行为对比', left: 'center' },
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                legend: { data: ['工作日(日均)','周末(日均)'], bottom: 10 },
+                xAxis: { type: 'category',
+                         data: wLabels.slice(0,5).concat(wLabels.slice(5)),
+                         name: '星期' },
+                yAxis: { type: 'value', name: '行为次数' },
+                series: [
+                    { name:'工作日(日均)', type:'bar',
+                      data: wData.map((v,i) => weekendIdx.includes(i) ? null : v),
+                      itemStyle:{color:'#91CC75'}, label:{show:true,position:'top',
+                        formatter:p=>p.value!=null?p.value.toLocaleString():''} },
+                    { name:'周末(日均)', type:'bar',
+                      data: wData.map((v,i) => weekendIdx.includes(i) ? v : null),
+                      itemStyle:{color:'#EE6666'}, label:{show:true,position:'top',
+                        formatter:p=>p.value!=null?p.value.toLocaleString():''} }
+                ],
+                graphic: [{
+                    type: 'text', left: 'center', bottom: 60,
+                    style: { text: `工作日日均: ${wkdayAvg.toLocaleString()}  |  周末日均: ${wkendAvg.toLocaleString()}  |  周末提升: ${wkdayAvg>0?((wkendAvg-wkdayAvg)/wkdayAvg*100).toFixed(1):0}%`,
+                             fill: '#666', fontSize: 12 }
+                }]
+            });
+
+        } catch(err) {
+            [hourlyChart, weeklyChart, trendChart, holidayChart].forEach(c => c.hideLoading());
+            console.error('时间模式图表加载失败:', err);
         }
-    };
-    
-    // 节假日对比图表
-    const holidayOption = {
-        title: {
-            text: '节假日行为对比',
-            left: 'center'
-        },
-        tooltip: {
-            trigger: 'axis',
-            axisPointer: {
-                type: 'shadow'
-            }
-        },
-        legend: {
-            data: ['平日', '节假日'],
-            bottom: 10
-        },
-        xAxis: {
-            type: 'category',
-            data: ['浏览量', '加购量', '收藏量', '购买量', '客单价'],
-            name: '指标'
-        },
-        yAxis: {
-            type: 'value',
-            name: '数值'
-        },
-        series: [
-            {
-                name: '平日',
-                type: 'bar',
-                barWidth: '30%',
-                data: [10000, 1500, 800, 500, 150],
-                itemStyle: {
-                    color: '#91CC75'
-                },
-                label: {
-                    show: true,
-                    position: 'top'
-                }
-            },
-            {
-                name: '节假日',
-                type: 'bar',
-                barWidth: '30%',
-                data: [18000, 2700, 1400, 900, 190],
-                itemStyle: {
-                    color: '#EE6666'
-                },
-                label: {
-                    show: true,
-                    position: 'top'
-                }
-            }
-        ]
-    };
-    
-    // 渲染图表
-    hourlyChart.setOption(hourlyOption);
-    weeklyChart.setOption(weeklyOption);
-    trendChart.setOption(trendOption);
-    holidayChart.setOption(holidayOption);
-    
-    // 窗口大小变化时重绘
-    window.addEventListener('resize', function() {
-        hourlyChart.resize();
-        weeklyChart.resize();
-        trendChart.resize();
-        holidayChart.resize();
+    }
+
+    loadCharts();
+
+    window.addEventListener('resize', () => {
+        [hourlyChart, weeklyChart, trendChart, holidayChart].forEach(c => c.resize());
     });
-    
-    // 时间范围选择切换
+
     document.getElementById('timeRange').addEventListener('change', function() {
         const customRange = document.getElementById('customDateRange');
-        if (this.value === 'custom') {
-            customRange.style.display = 'block';
-        } else {
-            customRange.style.display = 'none';
-        }
+        customRange.style.display = this.value === 'custom' ? 'block' : 'none';
     });
-    
-    // 应用筛选
+
     document.getElementById('applyFilters').addEventListener('click', function() {
-        const timeRange = document.getElementById('timeRange').value;
-        const behaviorType = document.getElementById('behaviorType').value;
-        const includeWeekend = document.getElementById('weekendFilter').checked;
-        const includeHoliday = document.getElementById('holidayFilter').checked;
-        const userSegment = document.getElementById('userSegment').value;
-        
-        // 显示加载状态
         this.disabled = true;
         this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 分析中...';
-        
-        // 模拟数据加载
-        setTimeout(() => {
-            // 更新图表数据
-            updateCharts(timeRange, behaviorType, includeWeekend, includeHoliday, userSegment);
-            
-            // 恢复按钮状态
+        [hourlyChart, weeklyChart, trendChart, holidayChart].forEach(c => c.showLoading());
+        loadCharts().finally(() => {
             this.disabled = false;
             this.innerHTML = '<i class="fas fa-chart-line"></i> 应用分析';
-        }, 1500);
+        });
     });
-    
-    // 重置筛选
+
     document.getElementById('resetFilters').addEventListener('click', function() {
         document.getElementById('timeRange').value = '30';
         document.getElementById('behaviorType').value = 'all';
@@ -710,131 +489,23 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('holidayFilter').checked = true;
         document.getElementById('userSegment').value = 'all';
         document.getElementById('customDateRange').style.display = 'none';
+        [hourlyChart, weeklyChart, trendChart, holidayChart].forEach(c => c.showLoading());
+        loadCharts();
     });
-    
-    // 导出图表
-    document.getElementById('exportHourlyChart').addEventListener('click', function() {
-        exportChart(hourlyChart, '24小时行为模式.png');
-    });
-    
-    document.getElementById('exportWeeklyChart').addEventListener('click', function() {
-        exportChart(weeklyChart, '周行为模式.png');
-    });
-    
-    document.getElementById('exportTrendChart').addEventListener('click', function() {
-        exportChart(trendChart, '日期趋势分析.png');
-    });
-    
-    document.getElementById('exportHolidayChart').addEventListener('click', function() {
-        exportChart(holidayChart, '节假日对比.png');
-    });
-    
-    document.getElementById('exportAnalysis').addEventListener('click', function() {
-        alert('完整分析报告导出功能将在后端实现');
-    });
-    
-    // 工具函数
-    function generateDailyData(baseMin, baseMax, promoDays) {
-        const data = [];
-        for (let i = 1; i <= 30; i++) {
-            let value = Math.floor(Math.random() * (baseMax - baseMin + 1)) + baseMin;
-            
-            // 促销日增加
-            if (promoDays.includes(i)) {
-                value = Math.floor(value * (1.5 + Math.random() * 0.5));
-            }
-            
-            // 周末增加
-            if (i % 7 === 6 || i % 7 === 0) { // 周六或周日
-                value = Math.floor(value * (1.2 + Math.random() * 0.3));
-            }
-            
-            data.push(value);
-        }
-        return data;
-    }
-    
-    function updateCharts(timeRange, behaviorType, includeWeekend, includeHoliday, userSegment) {
-        console.log('更新图表:', {
-            timeRange, 
-            behaviorType, 
-            includeWeekend, 
-            includeHoliday, 
-            userSegment
-        });
-        
-        // 这里应该发送AJAX请求获取新的数据
-        // 然后更新所有图表
-        
-        // 模拟数据更新
-        hourlyChart.setOption({
-            series: [
-                {data: generateHourlyData(behaviorType)},
-                {data: generateHourlyData(behaviorType, 0.15)},
-                {data: generateHourlyData(behaviorType, 0.08)},
-                {data: generateHourlyData(behaviorType, 0.05)}
-            ]
-        });
-        
-        weeklyChart.setOption({
-            series: [
-                {data: generateWeeklyData(behaviorType)},
-                {data: generateWeeklyData(behaviorType, 0.15)},
-                {data: generateWeeklyData(behaviorType, 0.08)},
-                {data: generateWeeklyData(behaviorType, 0.05)}
-            ]
-        });
-    }
-    
-    function generateHourlyData(behaviorType, ratio = 1) {
-        const baseData = [120, 90, 60, 50, 40, 60, 120, 240, 320, 400, 450, 500, 
-                          550, 580, 600, 620, 650, 700, 800, 950, 1050, 980, 750, 400];
-        
-        if (behaviorType === 'all') {
-            return baseData.map(val => Math.floor(val * ratio));
-        }
-        
-        // 根据行为类型调整数据
-        let multiplier = 1;
-        if (behaviorType === 'pv') multiplier = 1.2;
-        else if (behaviorType === 'cart') multiplier = 0.9;
-        else if (behaviorType === 'fav') multiplier = 0.7;
-        else if (behaviorType === 'buy') multiplier = 0.5;
-        
-        return baseData.map(val => Math.floor(val * ratio * multiplier));
-    }
-    
-    function generateWeeklyData(behaviorType, ratio = 1) {
-        const baseData = [3200, 3400, 3300, 3500, 3800, 5200, 4800];
-        
-        if (behaviorType === 'all') {
-            return baseData.map(val => Math.floor(val * ratio));
-        }
-        
-        // 根据行为类型调整数据
-        let multiplier = 1;
-        if (behaviorType === 'pv') multiplier = 1.2;
-        else if (behaviorType === 'cart') multiplier = 0.9;
-        else if (behaviorType === 'fav') multiplier = 0.7;
-        else if (behaviorType === 'buy') multiplier = 0.5;
-        
-        return baseData.map(val => Math.floor(val * ratio * multiplier));
-    }
-    
+
     function exportChart(chart, filename) {
-        const url = chart.getDataURL({
-            type: 'png',
-            pixelRatio: 2,
-            backgroundColor: '#fff'
-        });
-        
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const url = chart.getDataURL({ type:'png', pixelRatio:2, backgroundColor:'#fff' });
+        const a = Object.assign(document.createElement('a'), { href:url, download:filename });
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
     }
+
+    document.getElementById('exportHourlyChart').addEventListener('click', () => exportChart(hourlyChart, '24小时行为模式.png'));
+    document.getElementById('exportWeeklyChart').addEventListener('click', () => exportChart(weeklyChart, '周行为模式.png'));
+    document.getElementById('exportTrendChart').addEventListener('click', () => exportChart(trendChart, '日期趋势分析.png'));
+    document.getElementById('exportHolidayChart').addEventListener('click', () => exportChart(holidayChart, '节假日对比.png'));
+    document.getElementById('exportAnalysis').addEventListener('click', () => {
+        window.location.href = '/data_export';
+    });
 });
 </script>
 {% endblock %}
